@@ -1,0 +1,30 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+      - "codex/**"
+  pull_request:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore .\TurboBoxManager.csproj
+
+      - name: Build
+        run: dotnet build .\TurboBoxManager.csproj -c Release --no-restore
+
+      - name: Verify catalog
+        run: dotnet run --project .\tests\CatalogVerifier\CatalogVerifier.csproj -c Release -- .\Assets\Catalog\catalog.json
+

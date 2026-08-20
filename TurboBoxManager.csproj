@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>Turborama</AssemblyName>
+    <RootNamespace>TurboBoxManager</RootNamespace>
+    <Version>1.5.0</Version>
+    <AssemblyVersion>1.5.0.0</AssemblyVersion>
+    <FileVersion>1.5.0.0</FileVersion>
+    <Product>Turborama</Product>
+    <Company>Turborama</Company>
+    <Description>Central Turborama de sistemas, biblioteca e downloads.</Description>
+    <ApplicationIcon>Assets\turborama-app-icon.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="tests\**\*.cs" />
+    <Content Include="Assets\Catalog\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </Content>
+    <Resource Include="Assets\f15-turborama-user-original-v13.png" />
+    <Resource Include="Assets\turborama-logo-v3.png" />
+    <Resource Include="Assets\turborama-app-icon.ico" />
+  </ItemGroup>
+</Project>

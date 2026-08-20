@@ -1,0 +1,17 @@
+bin/
+obj/
+obj-*/
+.vs/
+.vscode/
+publish/
+artifacts/
+TestResults/
+*.user
+*.suo
+*.pdb
+*.cache
+*.tmp
+*.log
+.env
+.env.*
+

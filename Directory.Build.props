@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>obj-turborama\</BaseIntermediateOutputPath>
+    <MSBuildProjectExtensionsPath>obj-turborama\</MSBuildProjectExtensionsPath>
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj\**;obj-*\**</DefaultItemExcludes>
+  </PropertyGroup>
+</Project>

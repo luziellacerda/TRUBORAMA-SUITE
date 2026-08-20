@@ -1,0 +1,36 @@
+{
+  "categories": [
+    { "id": "system-tools", "displayName": "Sistema e utilitários", "shortCode": "SYS", "glyph": "⚙", "description": "Ferramentas essenciais, runtimes e ajustes do ambiente Turborama.", "accent": "#9DFF00", "order": 0, "sourceItemCount": 2 },
+    { "id": "emulators", "displayName": "Emuladores", "shortCode": "EMU", "glyph": "◫", "description": "Central de emulação organizada para instalação em um clique.", "accent": "#22D3EE", "order": 1, "sourceItemCount": 17 },
+    { "id": "retro-games", "displayName": "Jogos retrô", "shortCode": "RET", "glyph": "✦", "description": "Coleções clássicas com identidade visual Turborama.", "accent": "#FFB020", "order": 2, "sourceItemCount": 45 },
+    { "id": "nintendo-3ds", "displayName": "Nintendo 3DS", "shortCode": "3DS", "glyph": "▣", "description": "Biblioteca e perfis dedicados à experiência portátil 3D.", "accent": "#FF3347", "order": 3, "sourceItemCount": 23 },
+    { "id": "gamecube", "displayName": "Nintendo GameCube", "shortCode": "GC", "glyph": "◆", "description": "Configurações e coleções para o console cúbico da Nintendo.", "accent": "#A78BFA", "order": 5, "sourceItemCount": 32 },
+    { "id": "playstation-1", "displayName": "PlayStation 1", "shortCode": "PS1", "glyph": "◈", "description": "Clássicos da primeira geração PlayStation com apresentação Turborama.", "accent": "#60A5FA", "order": 6, "sourceItemCount": 119 },
+    { "id": "playstation-2", "displayName": "PlayStation 2", "shortCode": "PS2", "glyph": "◈", "description": "Perfis, utilitários e coleções para PlayStation 2.", "accent": "#3B82F6", "order": 7, "sourceItemCount": 57 },
+    { "id": "playstation-2-br", "displayName": "PlayStation 2 • BR", "shortCode": "P2BR", "glyph": "◈", "description": "Seleção em português para PlayStation 2.", "accent": "#22C55E", "order": 8, "sourceItemCount": 50 },
+    { "id": "playstation-3", "displayName": "PlayStation 3", "shortCode": "PS3", "glyph": "◈", "description": "Biblioteca e ferramentas dedicadas ao PlayStation 3.", "accent": "#0EA5E9", "order": 9, "sourceItemCount": 29 },
+    { "id": "playstation-4", "displayName": "PlayStation 4", "shortCode": "PS4", "glyph": "◈", "description": "Conteúdo organizado para o ecossistema PlayStation 4.", "accent": "#2563EB", "order": 10, "sourceItemCount": 24 },
+    { "id": "playstation-5", "displayName": "PlayStation 5", "shortCode": "PS5", "glyph": "◈", "description": "Página dedicada à geração PlayStation 5.", "accent": "#38BDF8", "order": 11, "sourceItemCount": 55 },
+    { "id": "psp", "displayName": "PSP", "shortCode": "PSP", "glyph": "▰", "description": "Experiências portáteis organizadas para PSP.", "accent": "#818CF8", "order": 12, "sourceItemCount": 21 },
+    { "id": "ps-vita", "displayName": "PS Vita", "shortCode": "VITA", "glyph": "▰", "description": "Biblioteca portátil e ferramentas para PS Vita.", "accent": "#06B6D4", "order": 13, "sourceItemCount": 23 },
+    { "id": "sega-saturn", "displayName": "Sega Saturn", "shortCode": "SAT", "glyph": "◉", "description": "Coleções da era 32-bit com acabamento Turborama.", "accent": "#F59E0B", "order": 14, "sourceItemCount": 31 },
+    { "id": "nintendo-switch", "displayName": "Nintendo Switch", "shortCode": "NSW", "glyph": "◐", "description": "Página dedicada ao ecossistema híbrido Nintendo Switch.", "accent": "#EF4444", "order": 15, "sourceItemCount": 83 },
+    { "id": "nintendo-wii", "displayName": "Nintendo Wii", "shortCode": "WII", "glyph": "⌁", "description": "Perfis de movimento, coleções e utilitários para Wii.", "accent": "#67E8F9", "order": 16, "sourceItemCount": 9 },
+    { "id": "nintendo-wii-u", "displayName": "Nintendo Wii U", "shortCode": "WIIU", "glyph": "⌁", "description": "Conteúdo e configurações organizadas para Wii U.", "accent": "#0891B2", "order": 17, "sourceItemCount": 9 },
+    { "id": "windows", "displayName": "Windows", "shortCode": "WIN", "glyph": "⊞", "description": "Jogos, runtimes e utilitários para Windows.", "accent": "#38BDF8", "order": 18, "sourceItemCount": 98 },
+    { "id": "xbox", "displayName": "Xbox", "shortCode": "XBOX", "glyph": "✕", "description": "Coleções e perfis para o Xbox original.", "accent": "#84CC16", "order": 19, "sourceItemCount": 54 },
+    { "id": "xbox-360", "displayName": "Xbox 360", "shortCode": "X360", "glyph": "✕", "description": "Página Turborama dedicada ao Xbox 360.", "accent": "#65A30D", "order": 20, "sourceItemCount": 24 },
+    { "id": "xbox-one", "displayName": "Xbox One", "shortCode": "XB1", "glyph": "✕", "description": "Conteúdo organizado para a geração Xbox One.", "accent": "#4ADE80", "order": 21, "sourceItemCount": 18 },
+    { "id": "xbox-series", "displayName": "Xbox Series", "shortCode": "XS", "glyph": "✕", "description": "Página dedicada aos consoles Xbox Series.", "accent": "#22C55E", "order": 22, "sourceItemCount": 27 }
+  ],
+  "packageTemplates": [
+    { "id": "base", "name": "Base Turborama", "subtitle": "Núcleo organizado do sistema", "badge": "ESSENCIAL", "size": "2,4 GB", "version": "v1.0", "keywords": "base principal instalação", "order": 1 },
+    { "id": "performance", "name": "Performance Pack", "subtitle": "Perfil otimizado de desempenho", "badge": "TURBO", "size": "860 MB", "version": "v1.2", "keywords": "performance fps otimização", "order": 2 },
+    { "id": "visual", "name": "Visual HD", "subtitle": "Interface e apresentação em alta definição", "badge": "4K", "size": "1,8 GB", "version": "v2.0", "keywords": "visual hd 4k interface", "order": 3 },
+    { "id": "controller", "name": "Controle Pro", "subtitle": "Perfis prontos para controles", "badge": "INPUT", "size": "96 MB", "version": "v1.4", "keywords": "controle joystick gamepad", "order": 4 },
+    { "id": "brazil", "name": "Brasil Pack", "subtitle": "Interface e presets em português", "badge": "PT-BR", "size": "640 MB", "version": "v1.1", "keywords": "brasil português tradução", "order": 5 },
+    { "id": "arcade", "name": "Arcade Mode", "subtitle": "Experiência para gabinete e fliperama", "badge": "ARCADE", "size": "1,1 GB", "version": "v1.3", "keywords": "arcade gabinete fliperama", "order": 6 },
+    { "id": "saves", "name": "Save Station", "subtitle": "Estrutura local de saves e perfis", "badge": "SAVE", "size": "128 MB", "version": "v1.0", "keywords": "save perfil backup", "order": 7 },
+    { "id": "complete", "name": "Complete Edition", "subtitle": "Conjunto Turborama completo", "badge": "FULL", "size": "4,7 GB", "version": "v3.0", "keywords": "completo full coleção", "order": 8 }
+  ]
+}

@@ -1,0 +1,361 @@
+<Window x:Class="TurboBoxManager.PremiumLoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="TURBORAMA" Icon="Assets/turborama-app-icon.ico"
+        Width="1320" Height="700" MinWidth="1080" MinHeight="620"
+        WindowStartupLocation="CenterScreen" WindowStyle="None" ResizeMode="CanResize"
+        Background="#050706" Foreground="#F5F7F5" FontFamily="Segoe UI"
+        UseLayoutRounding="True" SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="Lime" Color="#73FF68"/>
+        <SolidColorBrush x:Key="Emerald" Color="#20E889"/>
+        <SolidColorBrush x:Key="Red" Color="#FF3B4D"/>
+        <SolidColorBrush x:Key="Muted" Color="#8D9991"/>
+
+        <Style x:Key="ChromeButton" TargetType="Button">
+            <Setter Property="Width" Value="42"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Margin" Value="1,0,0,0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#C8D0CB"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ChromeSurface" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ChromeSurface" Property="Background" Value="#2AFFFFFF"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ChromeSurface" Property="Background" Value="#3AFFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#B7FF46"/>
+                        <GradientStop Color="#67F35F" Offset="0.48"/>
+                        <GradientStop Color="#15D97D" Offset="1"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Foreground" Value="#071009"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonSurface" Background="{TemplateBinding Background}" CornerRadius="10">
+                            <Grid>
+                                <Border VerticalAlignment="Top" Height="1" Margin="10,0" CornerRadius="1" Background="#AFFFFFFF"/>
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonSurface" Property="Background" Value="#A9FF65"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonSurface" Property="Opacity" Value="0.86"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonSurface" Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid x:Name="Root" ClipToBounds="True">
+        <Grid.Triggers>
+            <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                <BeginStoryboard>
+                    <Storyboard Timeline.DesiredFrameRate="30">
+                        <DoubleAnimation Storyboard.TargetName="AccessCard"
+                                         Storyboard.TargetProperty="Opacity"
+                                         From="0" To="1" Duration="0:0:0.45"/>
+                        <DoubleAnimation Storyboard.TargetName="CardEntryTranslate"
+                                         Storyboard.TargetProperty="X"
+                                         From="-18" To="0" Duration="0:0:0.45">
+                            <DoubleAnimation.EasingFunction>
+                                <CubicEase EasingMode="EaseOut"/>
+                            </DoubleAnimation.EasingFunction>
+                        </DoubleAnimation>
+                        <DoubleAnimation Storyboard.TargetName="LogoHalo"
+                                         Storyboard.TargetProperty="Opacity"
+                                         From="0.14" To="0.30" Duration="0:0:2.8"
+                                         AutoReverse="True" RepeatBehavior="Forever"/>
+                        <DoubleAnimation Storyboard.TargetName="OnlineDot"
+                                         Storyboard.TargetProperty="Opacity"
+                                         From="0.35" To="1" Duration="0:0:1.6"
+                                         AutoReverse="True" RepeatBehavior="Forever"/>
+                        <DoubleAnimation Storyboard.TargetName="OnlineDotScale"
+                                         Storyboard.TargetProperty="ScaleX"
+                                         From="0.82" To="1.16" Duration="0:0:1.6"
+                                         AutoReverse="True" RepeatBehavior="Forever"/>
+                        <DoubleAnimation Storyboard.TargetName="OnlineDotScale"
+                                         Storyboard.TargetProperty="ScaleY"
+                                         From="0.82" To="1.16" Duration="0:0:1.6"
+                                         AutoReverse="True" RepeatBehavior="Forever"/>
+                        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ButtonSweep"
+                                                       Storyboard.TargetProperty="(Canvas.Left)"
+                                                       Duration="0:0:5.8" RepeatBehavior="Forever">
+                            <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="-120"/>
+                            <DiscreteDoubleKeyFrame KeyTime="0:0:0.9" Value="-120"/>
+                            <EasingDoubleKeyFrame KeyTime="0:0:1.9" Value="480">
+                                <EasingDoubleKeyFrame.EasingFunction>
+                                    <CubicEase EasingMode="EaseInOut"/>
+                                </EasingDoubleKeyFrame.EasingFunction>
+                            </EasingDoubleKeyFrame>
+                            <DiscreteDoubleKeyFrame KeyTime="0:0:5.8" Value="480"/>
+                        </DoubleAnimationUsingKeyFrames>
+                        <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ButtonSweep"
+                                                       Storyboard.TargetProperty="Opacity"
+                                                       Duration="0:0:5.8" RepeatBehavior="Forever">
+                            <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="0"/>
+                            <LinearDoubleKeyFrame KeyTime="0:0:0.9" Value="0"/>
+                            <LinearDoubleKeyFrame KeyTime="0:0:1.16" Value="0.56"/>
+                            <LinearDoubleKeyFrame KeyTime="0:0:1.72" Value="0"/>
+                            <DiscreteDoubleKeyFrame KeyTime="0:0:5.8" Value="0"/>
+                        </DoubleAnimationUsingKeyFrames>
+                    </Storyboard>
+                </BeginStoryboard>
+            </EventTrigger>
+        </Grid.Triggers>
+
+        <!-- Exact image selected by the user; no generated overlays or effects are placed over the aircraft. -->
+        <Image Grid.RowSpan="2" Stretch="UniformToFill" IsHitTestVisible="False"
+               RenderOptions.BitmapScalingMode="HighQuality" CacheMode="BitmapCache">
+            <Image.Source>
+                <BitmapImage UriSource="Assets/f15-turborama-user-original-v13.png" CacheOption="OnLoad"/>
+            </Image.Source>
+        </Image>
+
+        <!-- Cinematic vignette keeps the login legible while leaving the fighter unobstructed. -->
+        <Border IsHitTestVisible="False">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                    <GradientStop Color="#FC020504" Offset="0"/>
+                    <GradientStop Color="#F4040706" Offset="0.27"/>
+                    <GradientStop Color="#D0080C09" Offset="0.41"/>
+                    <GradientStop Color="#52030705" Offset="0.57"/>
+                    <GradientStop Color="#00000000" Offset="0.73"/>
+                </LinearGradientBrush>
+            </Border.Background>
+        </Border>
+        <Border IsHitTestVisible="False">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#7A000000" Offset="0"/>
+                    <GradientStop Color="#00000000" Offset="0.17"/>
+                    <GradientStop Color="#00000000" Offset="0.76"/>
+                    <GradientStop Color="#8E000000" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+        </Border>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="44"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Minimal application chrome. -->
+            <Border Grid.Row="0" Background="#DB050806" BorderBrush="#2EFFFFFF" BorderThickness="0,0,0,1"
+                    MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <DockPanel LastChildFill="False">
+                    <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center" Margin="22,0,0,0">
+                        <Rectangle Width="3" Height="18" Fill="{StaticResource Red}" Margin="0,0,11,0"/>
+                        <Image Source="Assets/turborama-app-icon.ico" Width="22" Height="22" Stretch="Uniform"
+                               RenderOptions.BitmapScalingMode="HighQuality" Margin="0,0,9,0"/>
+                        <TextBlock Text="TURBORAMA" FontWeight="Bold" FontSize="12" Foreground="White" VerticalAlignment="Center"/>
+                        <Ellipse Width="4" Height="4" Fill="{StaticResource Lime}" Margin="10,0"/>
+                        <TextBlock Text="GAMES PLATFORM" FontSize="10" FontWeight="SemiBold" Foreground="#8D9991" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                        <Button Content="—" Style="{StaticResource ChromeButton}" Click="Minimize_Click"/>
+                        <Button Content="□" Style="{StaticResource ChromeButton}" Click="Maximize_Click"/>
+                        <Button Content="×" Style="{StaticResource ChromeButton}" Foreground="#FF6878" Click="Close_Click"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <Grid Grid.Row="1">
+                <!-- Clean premium access card: no perspective grid, radar, reticle or scanline. -->
+                <Border x:Name="AccessCard" Width="450" HorizontalAlignment="Left" VerticalAlignment="Center"
+                        Margin="68,0,0,0" CornerRadius="19" BorderThickness="1" Opacity="0"
+                        RenderTransformOrigin="0.5,0.5">
+                    <Border.RenderTransform>
+                        <TranslateTransform x:Name="CardEntryTranslate"/>
+                    </Border.RenderTransform>
+                    <Border.BorderBrush>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#8A63F579"/>
+                            <GradientStop Color="#3356675C" Offset="0.42"/>
+                            <GradientStop Color="#56526458" Offset="0.76"/>
+                            <GradientStop Color="#79FF3B4D" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.BorderBrush>
+                    <Border.Effect>
+                        <DropShadowEffect Color="#31E878" BlurRadius="40" ShadowDepth="2" Opacity="0.22"/>
+                    </Border.Effect>
+
+                    <Border Margin="1" CornerRadius="18" Background="#E50A0E0C">
+                        <Grid ClipToBounds="True">
+                            <Border x:Name="LogoHalo" Width="340" Height="126" HorizontalAlignment="Left" VerticalAlignment="Top"
+                                    Margin="28,34,0,0" Opacity="0.18" IsHitTestVisible="False">
+                                <Border.Background>
+                                    <RadialGradientBrush Center="0.34,0.5" GradientOrigin="0.34,0.5" RadiusX="0.65" RadiusY="0.62">
+                                        <GradientStop Color="#7A33F58C"/>
+                                        <GradientStop Color="#0010D86D" Offset="1"/>
+                                    </RadialGradientBrush>
+                                </Border.Background>
+                                <Border.Effect><BlurEffect Radius="26"/></Border.Effect>
+                            </Border>
+
+                            <!-- Restrained corner marks replace the former full grid. -->
+                            <Canvas IsHitTestVisible="False" Opacity="0.82">
+                                <Path Data="M 20,58 L 20,20 L 58,20" Stroke="#7C73FF68" StrokeThickness="1.2"/>
+                                <Path Data="M 392,20 L 430,20 L 430,58" Stroke="#62FF3B4D" StrokeThickness="1.2"/>
+                                <Rectangle Canvas.Left="20" Canvas.Top="18" Width="38" Height="2" Fill="{StaticResource Lime}"/>
+                                <Rectangle Canvas.Left="392" Canvas.Top="18" Width="12" Height="2" Fill="{StaticResource Red}"/>
+                            </Canvas>
+
+                            <StackPanel Margin="36,30,36,30">
+                                <Grid>
+                                    <TextBlock Text="MEMBER ACCESS" FontSize="10" FontWeight="Bold" Foreground="#76FF8A"/>
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <Ellipse Width="4" Height="4" Fill="{StaticResource Red}" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                                        <TextBlock Text="SECURE / 01" FontSize="9" FontWeight="SemiBold" Foreground="#87938B"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <Image Source="Assets/turborama-logo-v3.png" Height="84" Stretch="Uniform"
+                                       HorizontalAlignment="Left" Margin="0,14,0,0"/>
+
+                                <StackPanel Orientation="Horizontal" Margin="3,12,0,0">
+                                    <TextBlock Text="TURBO" Foreground="#9EFF6F" FontSize="10" FontWeight="Bold"/>
+                                    <Ellipse Width="3" Height="3" Fill="{StaticResource Red}" Margin="10,0"/>
+                                    <TextBlock Text="CAÇA" Foreground="#CDD4CF" FontSize="10" FontWeight="Bold"/>
+                                    <Ellipse Width="3" Height="3" Fill="{StaticResource Red}" Margin="10,0"/>
+                                    <TextBlock Text="FLIPERAMA" Foreground="#CDD4CF" FontSize="10" FontWeight="Bold"/>
+                                </StackPanel>
+
+                                <Border Height="1" Margin="0,20,0,20">
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                            <GradientStop Color="#665F7567"/>
+                                            <GradientStop Color="#1A5F7567" Offset="0.72"/>
+                                            <GradientStop Color="#00FFFFFF" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                </Border>
+
+                                <TextBlock Text="BEM-VINDO À TURBORAMA" FontSize="10" FontWeight="Bold" Foreground="#38E78B"/>
+                                <TextBlock Text="Entre no seu hangar." FontSize="29" FontWeight="SemiBold" Foreground="#F7F9F7" Margin="0,6,0,0"/>
+                                <TextBlock Text="Sua biblioteca. Seus jogos. Um só lugar." FontSize="12" Foreground="#909B93" Margin="0,5,0,0"/>
+
+                                <TextBlock Text="CHAVE DE ACESSO" Foreground="#8A968E" FontSize="10" FontWeight="Bold" Margin="0,22,0,8"/>
+                                <Border Height="54" Background="#C6070B08" BorderBrush="#53637468" BorderThickness="1" CornerRadius="10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="46"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="42"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" BorderBrush="#2E607066" BorderThickness="0,0,1,0">
+                                            <TextBlock Text="◆" Foreground="{StaticResource Lime}" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBox x:Name="LicenseInput" Grid.Column="1" Margin="14,0,8,0" Background="Transparent" BorderThickness="0"
+                                                 Foreground="White" CaretBrush="{StaticResource Lime}" FontSize="13"
+                                                 VerticalContentAlignment="Center" AutomationProperties.Name="Chave de acesso Turborama"/>
+                                        <TextBlock Grid.Column="2" Text="KEY" Foreground="#7C887F" FontSize="9" FontWeight="Bold"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+
+                                <TextBlock x:Name="StatusText" Visibility="Collapsed" Foreground="#FF6072" FontSize="9" AutomationProperties.Name="Status da licença"
+                                           FontWeight="Bold" Margin="2,7,0,0"/>
+
+                                <Grid Height="54" Margin="0,15,0,0" ClipToBounds="True">
+                                    <Grid.Effect>
+                                        <DropShadowEffect Color="#5DFF73" BlurRadius="18" ShadowDepth="0" Opacity="0.34"/>
+                                    </Grid.Effect>
+                                    <Button Content="ENTRAR NA TURBORAMA    →" Style="{StaticResource PrimaryButton}" Click="Enter_Click" AutomationProperties.Name="Entrar na Turborama"/>
+                                    <Canvas IsHitTestVisible="False">
+                                        <Rectangle x:Name="ButtonSweep" Canvas.Left="-120" Canvas.Top="-18" Width="72" Height="92" Opacity="0">
+                                            <Rectangle.Fill>
+                                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                    <GradientStop Color="#00FFFFFF"/>
+                                                    <GradientStop Color="#AFFFFFFF" Offset="0.5"/>
+                                                    <GradientStop Color="#00FFFFFF" Offset="1"/>
+                                                </LinearGradientBrush>
+                                            </Rectangle.Fill>
+                                            <Rectangle.RenderTransform><SkewTransform AngleX="-18"/></Rectangle.RenderTransform>
+                                        </Rectangle>
+                                    </Canvas>
+                                    <Border VerticalAlignment="Bottom" Height="2" Margin="10,0" CornerRadius="1">
+                                        <Border.Background>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                <GradientStop Color="#00FF3B4D"/>
+                                                <GradientStop Color="#FFFF3B4D" Offset="0.5"/>
+                                                <GradientStop Color="#00FF3B4D" Offset="1"/>
+                                            </LinearGradientBrush>
+                                        </Border.Background>
+                                    </Border>
+                                </Grid>
+
+                                <TextBlock HorizontalAlignment="Center" FontSize="10" Foreground="#737E76" Margin="0,14,0,0">
+                                    <Run Text="Ainda não tem uma licença? "/>
+                                    <Run Text="Conheça os planos" Foreground="#8FFF69" FontWeight="SemiBold" TextDecorations="Underline"/>
+                                </TextBlock>
+
+                                <Border BorderBrush="#254E5B51" BorderThickness="0,1,0,0" Margin="0,18,0,0" Padding="0,14,0,0">
+                                    <Grid>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Grid Width="10" Height="10" Margin="0,0,8,0">
+                                                <Ellipse x:Name="OnlineDot" Width="7" Height="7" Fill="#62F36B" Opacity="0.8" RenderTransformOrigin="0.5,0.5">
+                                                    <Ellipse.RenderTransform><ScaleTransform x:Name="OnlineDotScale"/></Ellipse.RenderTransform>
+                                                    <Ellipse.Effect><DropShadowEffect Color="#62F36B" BlurRadius="7" ShadowDepth="0" Opacity="0.8"/></Ellipse.Effect>
+                                                </Ellipse>
+                                            </Grid>
+                                            <TextBlock Text="SERVIÇO ONLINE" FontSize="9" Foreground="#929E95" FontWeight="Bold" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <TextBlock Text="CONEXÃO PROTEGIDA" HorizontalAlignment="Right" FontSize="9" Foreground="#87938B" FontWeight="Bold"/>
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Border>
+
+                <!-- One quiet brand signature; the aircraft remains completely unobstructed. -->
+                <StackPanel HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,36,30" Opacity="0.70">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Ellipse Width="5" Height="5" Fill="{StaticResource Lime}" Margin="0,0,8,0"/>
+                        <TextBlock Text="HANGAR DIGITAL ONLINE" FontSize="10" Foreground="#E5EBE7" FontWeight="Bold"/>
+                    </StackPanel>
+                    <TextBlock Text="GAMES  •  ARCADE  •  EMULAÇÃO" FontSize="9" Foreground="#929E95" HorizontalAlignment="Right" Margin="0,5,0,0"/>
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>
