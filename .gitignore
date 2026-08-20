@@ -4,8 +4,17 @@ obj-*/
 .vs/
 .vscode/
 publish/
+publish*/
+package-*/
+runtime-*/
+release-staging*/
 artifacts/
 TestResults/
+Assets/Catalog/Images/*
+!Assets/Catalog/Images/_turborama-fallback.jpg
+Assets/Catalog/catalog.full.json
+*.zip
+SHA256SUMS.txt
 *.user
 *.suo
 *.pdb
@@ -14,4 +23,3 @@ TestResults/
 *.log
 .env
 .env.*
-

@@ -22,6 +22,11 @@
         <SolidColorBrush x:Key="MutedBrush" Color="#8E988C"/>
         <SolidColorBrush x:Key="PanelSurface" Color="#0E120E"/>
         <SolidColorBrush x:Key="LineBrush" Color="#293027"/>
+        <BitmapImage x:Key="CatalogFallbackArtwork"
+                     UriSource="Assets/f15-turborama-user-original-v13.png"
+                     DecodePixelWidth="512"
+                     CacheOption="OnLoad"
+                     CreateOptions="DelayCreation"/>
 
         <Style TargetType="ScrollBar">
             <Setter Property="Width" Value="7"/>
@@ -70,29 +75,169 @@
         </DataTemplate>
 
         <DataTemplate x:Key="CatalogCardTemplate">
-            <Border Margin="7" Background="#111511" BorderBrush="{Binding AccentBrush}" BorderThickness="1" CornerRadius="14" ClipToBounds="True">
-                <Grid><Grid.RowDefinitions><RowDefinition Height="172"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                    <Grid ClipToBounds="True">
-                        <Image Source="Assets/f15-turborama-user-original-v13.png" Stretch="UniformToFill" HorizontalAlignment="Stretch" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
-                        <Border><Border.Background><LinearGradientBrush StartPoint="0,0" EndPoint="0,1"><GradientStop Color="#18000000" Offset="0"/><GradientStop Color="#54000000" Offset=".55"/><GradientStop Color="#FA090D09" Offset="1"/></LinearGradientBrush></Border.Background></Border>
-                        <Border Width="76" Height="76" CornerRadius="38" HorizontalAlignment="Center" VerticalAlignment="Center" Background="#B3090E09" BorderBrush="{Binding AccentBrush}" BorderThickness="2"><StackPanel VerticalAlignment="Center"><TextBlock Text="{Binding SystemGlyph}" Foreground="{Binding AccentBrush}" FontSize="17" FontWeight="Bold" HorizontalAlignment="Center"/><TextBlock Text="{Binding SystemCode}" Foreground="White" FontSize="12" FontWeight="Black" HorizontalAlignment="Center" Margin="0,2,0,0"/></StackPanel></Border>
-                        <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="11" Padding="8,4" CornerRadius="5" Background="#D20B0E0B" BorderBrush="{Binding AccentBrush}" BorderThickness="1"><TextBlock Text="{Binding Badge}" Foreground="{Binding AccentBrush}" FontSize="9" FontWeight="Bold"/></Border>
-                        <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="11" Padding="8,4" CornerRadius="5" Background="#D20B0E0B"><TextBlock Text="{Binding Size}" Foreground="#E8EEE4" FontSize="9" FontWeight="SemiBold"/></Border>
-                        <Grid VerticalAlignment="Bottom" Height="31" Margin="11,0,11,9"><TextBlock Text="T U R B O R A M A" Foreground="White" FontSize="8" FontWeight="Bold" VerticalAlignment="Bottom"/><Rectangle Height="2" Fill="{Binding AccentBrush}" VerticalAlignment="Bottom" Margin="0,0,0,-2"/><Rectangle Width="18" Height="2" Fill="{StaticResource RedBrush}" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,0,-2"/></Grid>
+            <Border Margin="7" MinHeight="342" Background="#111511" BorderBrush="{Binding AccentBrush}" BorderThickness="1" CornerRadius="14" ClipToBounds="True">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="176"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Grid x:Name="CardCoverFrame" ClipToBounds="True" Background="#0B100B">
+                        <Image x:Name="CardCoverFallback"
+                               Source="{StaticResource CatalogFallbackArtwork}"
+                               Stretch="UniformToFill"
+                               RenderOptions.BitmapScalingMode="HighQuality"
+                               IsHitTestVisible="False"/>
+                        <Image x:Name="CardCoverImage"
+                               Source="{Binding ImageSource, IsAsync=True}"
+                               Stretch="UniformToFill"
+                               RenderOptions.BitmapScalingMode="HighQuality"
+                               AutomationProperties.Name="{Binding ImageAltText}"
+                               AutomationProperties.HelpText="Capa específica deste item">
+                            <Image.Style>
+                                <Style TargetType="Image">
+                                    <Setter Property="Opacity" Value="1"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ImageSource}" Value=""><Setter Property="Opacity" Value="0"/></DataTrigger>
+                                        <DataTrigger Binding="{Binding ImageSource}" Value="{x:Null}"><Setter Property="Opacity" Value="0"/></DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Image.Style>
+                        </Image>
+                        <Border x:Name="CardCoverLoading" Background="#62070A07">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ImageSource}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                        <DataTrigger Binding="{Binding ImageSource}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding SystemGlyph}" Foreground="{Binding AccentBrush}" FontSize="23" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                <TextBlock Text="CAPA TURBORAMA" Foreground="#BEC7BA" FontSize="8" FontWeight="Bold" Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border IsHitTestVisible="False">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                    <GradientStop Color="#08000000" Offset="0"/>
+                                    <GradientStop Color="#30000000" Offset=".5"/>
+                                    <GradientStop Color="#F2080C08" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                        </Border>
+                        <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10" Padding="8,4" CornerRadius="5" Background="#DF070B08" BorderBrush="{Binding AccentBrush}" BorderThickness="1">
+                            <TextBlock Text="{Binding Badge}" Foreground="{Binding AccentBrush}" FontSize="9" FontWeight="Bold"/>
+                        </Border>
+                        <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10" Padding="8,4" CornerRadius="5" Background="#E0070B08">
+                            <TextBlock Text="{Binding Size}" Foreground="#F4F7F1" FontSize="9" FontWeight="SemiBold"/>
+                        </Border>
+                        <Grid VerticalAlignment="Bottom" Height="34" Margin="10,0,10,9">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom">
+                                <TextBlock Text="T U R B O R A M A" Foreground="White" FontSize="8" FontWeight="Bold"/>
+                                <Border Background="#C9090E09" BorderBrush="{Binding AccentBrush}" BorderThickness="1" CornerRadius="4" Padding="6,2" Margin="8,0,0,-3">
+                                    <TextBlock Text="{Binding SystemCode}" Foreground="{Binding AccentBrush}" FontSize="8" FontWeight="Black"/>
+                                </Border>
+                            </StackPanel>
+                            <Rectangle Height="2" Fill="{Binding AccentBrush}" VerticalAlignment="Bottom" Margin="0,0,0,-2"/>
+                            <Rectangle Width="18" Height="2" Fill="{StaticResource RedBrush}" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,0,-2"/>
+                        </Grid>
                     </Grid>
-                    <Grid Grid.Row="1" Margin="14,12,14,14"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="42"/></Grid.RowDefinitions>
-                        <TextBlock Text="{Binding Title}" Foreground="White" FontSize="14" FontWeight="Bold" TextWrapping="Wrap" MaxHeight="41" TextTrimming="CharacterEllipsis"/>
-                        <TextBlock Grid.Row="1" Text="{Binding Subtitle}" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,5,0,0" TextTrimming="CharacterEllipsis"/>
-                        <DockPanel Grid.Row="2" Margin="0,12,0,12"><TextBlock Text="{Binding Version}" Foreground="{Binding AccentBrush}" FontSize="10" FontWeight="Bold"/><TextBlock DockPanel.Dock="Right" Text="VERIFICADO" Foreground="#687265" FontSize="9" FontWeight="Bold"/></DockPanel>
-                        <Button Grid.Row="4" Content="BAIXAR PACOTE  ↓" Tag="{Binding Id}" Click="DownloadItem_Click" AutomationProperties.Name="{Binding Title}" Style="{StaticResource PrimaryButtonStyle}"/>
+
+                    <Grid Grid.Row="1" Margin="12,10,12,12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="6"/>
+                            <RowDefinition Height="38"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="{Binding Title}" Foreground="White" FontSize="13" FontWeight="Bold" TextWrapping="Wrap" MaxHeight="36" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Grid.Row="1" Text="{Binding Subtitle}" Foreground="{StaticResource MutedBrush}" FontSize="10" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
+                        <DockPanel Grid.Row="2" Margin="0,8,0,0" LastChildFill="False">
+                            <TextBlock DockPanel.Dock="Left" Text="{Binding Version}" Foreground="{Binding AccentBrush}" FontSize="9" FontWeight="Bold"/>
+                            <TextBlock DockPanel.Dock="Right" Text="VERIFICADO" Foreground="#667063" FontSize="8" FontWeight="Bold"/>
+                        </DockPanel>
+                        <TextBlock x:Name="CardDownloadStatus" Grid.Row="3" Text="{Binding DownloadStatus}" Foreground="#98A493" FontSize="9" Margin="0,5,0,5" TextTrimming="CharacterEllipsis"/>
+                        <ProgressBar x:Name="CardDownloadProgress" Grid.Row="4" Minimum="0" Maximum="100" Value="{Binding ProgressPercentage, Mode=OneWay}" Foreground="{Binding AccentBrush}" Background="#222A20" BorderThickness="0" Height="4" VerticalAlignment="Center">
+                            <ProgressBar.Style>
+                                <Style TargetType="ProgressBar">
+                                    <Setter Property="Opacity" Value=".32"/>
+                                    <Style.Triggers><DataTrigger Binding="{Binding IsDownloading}" Value="True"><Setter Property="Opacity" Value="1"/></DataTrigger></Style.Triggers>
+                                </Style>
+                            </ProgressBar.Style>
+                        </ProgressBar>
+                        <Grid Grid.Row="5" Margin="0,7,0,0">
+                            <Button x:Name="CardDownloadButton" Content="{Binding DownloadActionLabel}" Tag="{Binding Id}" Click="DownloadItem_Click" AutomationProperties.Name="{Binding DownloadActionLabel}" AutomationProperties.HelpText="{Binding Title}">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CanCancel}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+                                            <DataTrigger Binding="{Binding CanOpen}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                            <Button x:Name="CardCancelButton" Content="CANCELAR DOWNLOAD" Tag="{Binding Id}" Click="DownloadItem_Click" AutomationProperties.Name="Cancelar download" AutomationProperties.HelpText="{Binding Title}" Foreground="#FF7180" BorderBrush="#7A2932">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers><DataTrigger Binding="{Binding CanCancel}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                            <Button x:Name="CardOpenButton" Content="ABRIR ARQUIVO  ✓" Tag="{Binding Id}" Click="DownloadItem_Click" AutomationProperties.Name="Abrir arquivo baixado" AutomationProperties.HelpText="{Binding Title}">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers><DataTrigger Binding="{Binding CanOpen}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                        </Grid>
+                    </Grid>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <DataTemplate x:Key="DownloadJobTemplate">
+            <Border Background="#101510" BorderBrush="#293228" BorderThickness="1" CornerRadius="12" Margin="0,0,0,10" Padding="15,13">
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="48"/><ColumnDefinition Width="*"/><ColumnDefinition Width="190"/></Grid.ColumnDefinitions>
+                    <Border Width="40" Height="40" CornerRadius="10" Background="#172312" BorderBrush="#3B542E" BorderThickness="1" VerticalAlignment="Top">
+                        <TextBlock Text="⇩" Foreground="{StaticResource LimeBrush}" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <Grid Grid.Column="1" Margin="12,0,18,0">
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="5"/></Grid.RowDefinitions>
+                        <DockPanel LastChildFill="False">
+                            <TextBlock DockPanel.Dock="Left" Text="{Binding Title}" Foreground="White" FontSize="13" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
+                            <Border DockPanel.Dock="Right" Background="#192219" CornerRadius="4" Padding="7,3" Margin="10,0,0,0">
+                                <TextBlock Text="{Binding StateLabel}" Foreground="{StaticResource LimeBrush}" FontSize="8" FontWeight="Bold"/>
+                            </Border>
+                        </DockPanel>
+                        <TextBlock Grid.Row="1" Text="{Binding Category}" Foreground="#727D6F" FontSize="9" Margin="0,3,0,0"/>
+                        <TextBlock Grid.Row="2" Text="{Binding StatusText}" Foreground="#AAB4A6" FontSize="10" Margin="0,5,0,5" TextTrimming="CharacterEllipsis"/>
+                        <ProgressBar Grid.Row="3" Minimum="0" Maximum="100" Value="{Binding ProgressPercentage, Mode=OneWay}" Foreground="{StaticResource LimeBrush}" Background="#232B20" BorderThickness="0" Height="4"/>
+                    </Grid>
+                    <Grid Grid.Column="2" VerticalAlignment="Center">
+                        <Button x:Name="DownloadJobCancelButton" Content="CANCELAR" Tag="{Binding}" Click="CancelDownloadJob_Click" AutomationProperties.Name="Cancelar download" AutomationProperties.HelpText="{Binding Title}">
+                            <Button.Style><Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding CanCancel}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Button.Style>
+                        </Button>
+                        <Button x:Name="DownloadJobOpenButton" Content="ABRIR PASTA  ✓" Tag="{Binding}" Click="OpenDownloadJob_Click" AutomationProperties.Name="Abrir download" AutomationProperties.HelpText="{Binding Title}">
+                            <Button.Style><Style TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding CanOpen}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Button.Style>
+                        </Button>
                     </Grid>
                 </Grid>
             </Border>
         </DataTemplate>
 
         <DataTemplate x:Key="PageNumberTemplate">
-            <Button Content="{Binding Number}" Tag="{Binding Number}" Click="SelectPage_Click" AutomationProperties.Name="{Binding Number}">
-                <Button.Style><Style TargetType="Button" BasedOn="{StaticResource PageNumberButtonStyle}"><Style.Triggers><DataTrigger Binding="{Binding IsCurrent}" Value="True"><Setter Property="Background" Value="{StaticResource BlueBrush}"/><Setter Property="BorderBrush" Value="{StaticResource BlueBrush}"/><Setter Property="Foreground" Value="White"/></DataTrigger></Style.Triggers></Style></Button.Style>
+            <Button Content="{Binding Number}" Tag="{Binding Page}" IsEnabled="{Binding IsEnabled}" Click="SelectPage_Click" AutomationProperties.Name="{Binding Number}">
+                <Button.Style><Style TargetType="Button" BasedOn="{StaticResource PageNumberButtonStyle}"><Style.Triggers><DataTrigger Binding="{Binding IsCurrent}" Value="True"><Setter Property="Background" Value="{StaticResource BlueBrush}"/><Setter Property="BorderBrush" Value="{StaticResource BlueBrush}"/><Setter Property="Foreground" Value="White"/></DataTrigger><DataTrigger Binding="{Binding IsEllipsis}" Value="True"><Setter Property="Background" Value="Transparent"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="Foreground" Value="#6A7466"/></DataTrigger></Style.Triggers></Style></Button.Style>
             </Button>
         </DataTemplate>
     </Window.Resources>
@@ -139,10 +284,64 @@
                         </StackPanel>
                     </ScrollViewer>
 
-                    <Grid x:Name="DownloadsPage" Visibility="Collapsed" Margin="32,28,28,38" AutomationProperties.Name="Página Downloads"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                        <StackPanel Orientation="Horizontal"><Rectangle Width="4" Height="31" RadiusX="2" Fill="{StaticResource RedBrush}" Margin="0,1,12,0"/><StackPanel><TextBlock Text="Central de downloads" FontSize="27" FontWeight="Bold"/><TextBlock Text="Acompanhe sua fila, instalações e atualizações" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,3,0,0"/></StackPanel></StackPanel>
-                        <Grid Grid.Row="1" Margin="0,24,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="210"/></Grid.ColumnDefinitions><Border Style="{StaticResource PanelBorderStyle}" Padding="21"><StackPanel Orientation="Horizontal"><Border Width="48" Height="48" CornerRadius="12" Background="#182312" BorderBrush="#3A542C" BorderThickness="1"><TextBlock Text="⇩" Foreground="{StaticResource LimeBrush}" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><StackPanel Margin="14,3,0,0"><TextBlock Text="Fila de transferências" FontSize="16" FontWeight="Bold"/><TextBlock Text="Nenhuma tarefa em andamento" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,5,0,0"/></StackPanel></StackPanel></Border><Border Grid.Column="1" Style="{StaticResource PanelBorderStyle}" Margin="12,0,0,0" Padding="20"><StackPanel><TextBlock Text="STATUS" Foreground="#667061" FontSize="9" FontWeight="Bold"/><StackPanel Orientation="Horizontal" Margin="0,9,0,0"><Ellipse Width="8" Height="8" Fill="{StaticResource LimeBrush}" VerticalAlignment="Center"/><TextBlock Text="Tudo em dia" FontSize="13" FontWeight="Bold" Margin="9,0,0,0"/></StackPanel></StackPanel></Border></Grid>
-                        <Border Grid.Row="2" Style="{StaticResource PanelBorderStyle}" Margin="0,18,0,0"><StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"><Grid Width="106" Height="106"><Ellipse Fill="#131B11" Stroke="#2F3C2A" StrokeThickness="1"/><Path Data="M20,52 L42,73 L85,27" Stroke="{StaticResource LimeBrush}" StrokeThickness="5" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/></Grid><TextBlock Text="Nenhum download ativo" FontSize="22" FontWeight="Bold" Margin="0,21,0,7"/><TextBlock Text="Sua fila está limpa. Explore um sistema para iniciar." Foreground="{StaticResource MutedBrush}"/><Button Content="EXPLORAR SISTEMAS" Click="OpenFirstCatalog_Click" AutomationProperties.Name="Explorar sistemas" Style="{StaticResource PrimaryButtonStyle}" Margin="0,22,0,0"/></StackPanel></Border>
+                    <Grid x:Name="DownloadsPage" Visibility="Collapsed" Margin="32,28,28,32" AutomationProperties.Name="Página Downloads">
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal">
+                                <Rectangle Width="4" Height="31" RadiusX="2" Fill="{StaticResource RedBrush}" Margin="0,1,12,0"/>
+                                <StackPanel><TextBlock Text="Central de downloads" FontSize="27" FontWeight="Bold"/><TextBlock Text="Fila real, progresso e histórico de transferências" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,3,0,0"/></StackPanel>
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="LIMPAR CONCLUÍDOS" Click="ClearDownloadHistory_Click" IsEnabled="{Binding HasDownloads}" AutomationProperties.Name="Limpar histórico de downloads" Style="{StaticResource SecondaryButtonStyle}" VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <Grid Grid.Row="1" Margin="0,22,0,0">
+                            <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="250"/></Grid.ColumnDefinitions>
+                            <Border Style="{StaticResource PanelBorderStyle}" Padding="18,15">
+                                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="48"/><ColumnDefinition/></Grid.ColumnDefinitions>
+                                    <Border Width="42" Height="42" CornerRadius="11" Background="#182312" BorderBrush="#3A542C" BorderThickness="1"><TextBlock Text="⇩" Foreground="{StaticResource LimeBrush}" FontSize="21" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                                    <StackPanel Grid.Column="1" Margin="13,1,0,0"><TextBlock Text="FILA DE TRANSFERÊNCIAS" Foreground="#687363" FontSize="9" FontWeight="Bold"/><TextBlock FontSize="14" FontWeight="SemiBold" Margin="0,6,0,0"><Run Text="{Binding DownloadJobs.Count, Mode=OneWay}"/><Run Text="  downloads registrados"/></TextBlock></StackPanel>
+                                </Grid>
+                            </Border>
+                            <Border Grid.Column="1" Style="{StaticResource PanelBorderStyle}" Margin="12,0,0,0" Padding="18,15">
+                                <StackPanel><TextBlock Text="CONTROLE DE REDE" Foreground="#687363" FontSize="9" FontWeight="Bold"/><StackPanel Orientation="Horizontal" Margin="0,8,0,0"><Ellipse Width="8" Height="8" Fill="{StaticResource LimeBrush}" VerticalAlignment="Center"/><TextBlock Text="1 download por vez" FontSize="13" FontWeight="Bold" Margin="9,0,0,0"/></StackPanel></StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <Grid Grid.Row="2" Margin="0,17,0,0">
+                            <Border Visibility="{Binding DownloadsEmptyVisibility}" Style="{StaticResource PanelBorderStyle}">
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Grid Width="96" Height="96"><Ellipse Fill="#131B11" Stroke="#2F3C2A" StrokeThickness="1"/><Path Data="M19,48 L39,68 L78,25" Stroke="{StaticResource LimeBrush}" StrokeThickness="5" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/></Grid>
+                                    <TextBlock Text="Nenhum download registrado" FontSize="21" FontWeight="Bold" Margin="0,19,0,7"/>
+                                    <TextBlock Text="Escolha um pacote no catálogo para iniciar a fila." Foreground="{StaticResource MutedBrush}"/>
+                                    <Button Content="EXPLORAR SISTEMAS" Click="OpenFirstCatalog_Click" AutomationProperties.Name="Explorar sistemas" Style="{StaticResource PrimaryButtonStyle}" Margin="0,20,0,0"/>
+                                </StackPanel>
+                            </Border>
+                            <ListBox x:Name="DownloadJobsHost"
+                                     ItemsSource="{Binding DownloadJobs}"
+                                     ItemTemplate="{StaticResource DownloadJobTemplate}"
+                                     Visibility="{Binding DownloadsListVisibility}"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     Padding="0"
+                                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                     ScrollViewer.CanContentScroll="True"
+                                     VirtualizingPanel.IsVirtualizing="True"
+                                     VirtualizingPanel.VirtualizationMode="Recycling"
+                                     AutomationProperties.Name="Fila de downloads">
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem">
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="BorderThickness" Value="0"/>
+                                        <Setter Property="Padding" Value="0"/>
+                                        <Setter Property="Focusable" Value="False"/>
+                                        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem"><ContentPresenter/></ControlTemplate></Setter.Value></Setter>
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                            </ListBox>
+                        </Grid>
                     </Grid>
 
                     <Grid x:Name="CatalogPage" Visibility="Collapsed" AutomationProperties.Name="Página do catálogo"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
@@ -165,7 +364,13 @@
                             </Border>
                             <Grid Grid.Row="2">
                                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="-7,11,-3,0" Visibility="{Binding CatalogResultsVisibility}">
-                                    <ItemsControl x:Name="CatalogItemsHost" ItemsSource="{Binding CatalogItems}" ItemTemplate="{StaticResource CatalogCardTemplate}" AutomationProperties.Name="Pacotes disponíveis">
+                                    <ItemsControl x:Name="CatalogItemsHost"
+                                                  ItemsSource="{Binding CatalogItems}"
+                                                  ItemTemplate="{StaticResource CatalogCardTemplate}"
+                                                  VirtualizingPanel.IsVirtualizing="True"
+                                                  VirtualizingPanel.VirtualizationMode="Recycling"
+                                                  ScrollViewer.CanContentScroll="True"
+                                                  AutomationProperties.Name="Pacotes disponíveis">
                                         <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                     </ItemsControl>
                                 </ScrollViewer>

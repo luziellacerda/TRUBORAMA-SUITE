@@ -19,12 +19,14 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      - name: Restore
-        run: dotnet restore .\TurboBoxManager.csproj
+      - name: Restore application
+        run: dotnet restore .\TurboBoxManager.csproj --source https://api.nuget.org/v3/index.json
+
+      - name: Restore catalog verifier
+        run: dotnet restore .\tests\CatalogVerifier\CatalogVerifier.csproj --source https://api.nuget.org/v3/index.json
 
       - name: Build
         run: dotnet build .\TurboBoxManager.csproj -c Release --no-restore
 
       - name: Verify catalog
-        run: dotnet run --project .\tests\CatalogVerifier\CatalogVerifier.csproj -c Release -- .\Assets\Catalog\catalog.json
-
+        run: dotnet run --project .\tests\CatalogVerifier\CatalogVerifier.csproj -c Release --no-restore -- .\Assets\Catalog\catalog.json

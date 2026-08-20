@@ -15,6 +15,9 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 {
     private const int CatalogPageSize = 4;
 
+    private readonly CatalogDownloadService _downloadService = new();
+    private readonly Dictionary<string, CatalogDownloadJob> _downloadJobsByItem =
+        new(StringComparer.OrdinalIgnoreCase);
     private CatalogRepository? _catalogRepository;
     private CatalogCategory? _selectedCategory;
     private int _currentCatalogPage = 1;
@@ -29,6 +32,11 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     public ObservableCollection<CatalogCategory> FeaturedCategories { get; } = [];
     public ObservableCollection<CatalogItem> CatalogItems { get; } = [];
     public ObservableCollection<PageNumber> PageNumbers { get; } = [];
+    public ObservableCollection<CatalogDownloadJob> DownloadJobs { get; } = [];
+
+    public bool HasDownloads => DownloadJobs.Count > 0;
+    public Visibility DownloadsEmptyVisibility => HasDownloads ? Visibility.Collapsed : Visibility.Visible;
+    public Visibility DownloadsListVisibility => HasDownloads ? Visibility.Visible : Visibility.Collapsed;
 
     public CatalogCategory? SelectedCategory
     {
@@ -238,9 +246,9 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         var page = source.Tag switch
         {
             int number => number,
-            PageNumber pageNumber => pageNumber.Number,
+            PageNumber pageNumber when !pageNumber.IsEllipsis => pageNumber.Page,
             string text when int.TryParse(text, out var number) => number,
-            _ when source.DataContext is PageNumber pageNumber => pageNumber.Number,
+            _ when source.DataContext is PageNumber { IsEllipsis: false } pageNumber => pageNumber.Page,
             _ => 0
         };
 
@@ -272,9 +280,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         foreach (var item in result.Items)
             CatalogItems.Add(item);
 
-        PageNumbers.Clear();
-        for (var page = 1; page <= result.TotalPages; page++)
-            PageNumbers.Add(new PageNumber { Number = page, IsCurrent = page == result.CurrentPage });
+        BuildCompactPageNumbers(result.CurrentPage, result.TotalPages);
 
         HasCatalogItems = result.TotalItems > 0;
         UpdateCatalogNavigation(result.CurrentPage, result.TotalPages);
@@ -284,6 +290,30 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             SetCatalogStatus("Nenhum pacote corresponde à busca neste sistema.");
         else
             SetCatalogStatus(string.Empty);
+    }
+
+    private void BuildCompactPageNumbers(int currentPage, int totalPages)
+    {
+        PageNumbers.Clear();
+        var visiblePages = new SortedSet<int> { 1, totalPages };
+        for (var page = currentPage - 2; page <= currentPage + 2; page++)
+        {
+            if (page >= 1 && page <= totalPages) visiblePages.Add(page);
+        }
+
+        var previousPage = 0;
+        foreach (var page in visiblePages)
+        {
+            if (previousPage > 0 && page - previousPage > 1)
+                PageNumbers.Add(new PageNumber { IsEllipsis = true });
+
+            PageNumbers.Add(new PageNumber
+            {
+                Page = page,
+                IsCurrent = page == currentPage
+            });
+            previousPage = page;
+        }
     }
 
     private void UpdateCatalogNavigation(int currentPage, int totalPages)
@@ -307,11 +337,11 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         SetText("CatalogPageDescription", SelectedCategory.Description);
         SetText("CatalogSystemCode", SelectedCategory.ShortCode);
 
-        var packageLabel = result.TotalItems == 1 ? "1 pacote Turborama" : $"{result.TotalItems} pacotes Turborama";
-        var referenceLabel = SelectedCategory.SourceItemCount == 1
-            ? "1 item catalogado"
-            : $"{SelectedCategory.SourceItemCount} itens catalogados";
-        SetText("CatalogResultCount", $"{packageLabel} • {referenceLabel}");
+        var itemLabel = result.TotalItems == 1 ? "1 item" : $"{result.TotalItems} itens";
+        var pageLabel = result.TotalPages == 1
+            ? "1 página"
+            : $"página {result.CurrentPage} de {result.TotalPages}";
+        SetText("CatalogResultCount", $"{itemLabel} • {pageLabel}");
     }
 
     private void ChooseInstallFolder_Click(object sender, RoutedEventArgs e)
@@ -370,19 +400,29 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         SetCatalogStatus("O canal de suporte ainda não foi configurado nesta versão.");
     }
 
-    private void DownloadItem_Click(object sender, RoutedEventArgs e)
+    private async void DownloadItem_Click(object sender, RoutedEventArgs e)
     {
         var source = sender as FrameworkElement;
         var item = source?.Tag as CatalogItem ?? source?.DataContext as CatalogItem;
         if (item is null && source?.Tag is string itemId)
-        {
-            item = CatalogItems.FirstOrDefault(candidate =>
-                candidate.Id.Equals(itemId, StringComparison.OrdinalIgnoreCase));
-        }
+            item = _catalogRepository?.FindById(itemId);
 
         if (item is null)
         {
             SetCatalogStatus("Não foi possível identificar o pacote selecionado. Nenhum download foi iniciado.");
+            return;
+        }
+
+        if (item.CanOpen)
+        {
+            OpenDownloadedFile(item.LocalFilePath);
+            return;
+        }
+
+        if (item.IsDownloading)
+        {
+            if (_downloadService.Cancel(item.Id))
+                SetCatalogStatus($"Cancelando {item.Title}...");
             return;
         }
 
@@ -392,7 +432,109 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             return;
         }
 
-        SetCatalogStatus($"{item.Title}: o endereço está cadastrado, mas o módulo de download ainda não foi implementado. Nada foi iniciado.");
+        EnsureDownloadJob(item);
+        SetCatalogStatus($"{item.Title}: iniciando download de teste verificado...");
+        var result = await _downloadService.DownloadAsync(item, _installFolderPath);
+        SetCatalogStatus(result.Message);
+    }
+
+    private void CancelDownloadJob_Click(object sender, RoutedEventArgs e)
+    {
+        var job = ResolveDownloadJob(sender as FrameworkElement);
+        if (job is null)
+        {
+            SetCatalogStatus("Não foi possível identificar o download para cancelar.");
+            return;
+        }
+
+        if (_downloadService.Cancel(job.ItemId))
+            SetCatalogStatus($"Cancelando {job.Title}...");
+    }
+
+    private void OpenDownloadJob_Click(object sender, RoutedEventArgs e)
+    {
+        var job = ResolveDownloadJob(sender as FrameworkElement);
+        if (job is null || !job.CanOpen)
+        {
+            SetCatalogStatus("O arquivo deste download ainda não está disponível.");
+            return;
+        }
+
+        OpenDownloadedFile(job.LocalFilePath);
+    }
+
+    private void ClearDownloadHistory_Click(object sender, RoutedEventArgs e)
+    {
+        for (var index = DownloadJobs.Count - 1; index >= 0; index--)
+        {
+            var job = DownloadJobs[index];
+            if (job.CanCancel) continue;
+            DownloadJobs.RemoveAt(index);
+            _downloadJobsByItem.Remove(job.ItemId);
+            job.Dispose();
+        }
+
+        NotifyDownloadCollectionChanged();
+    }
+
+    private CatalogDownloadJob EnsureDownloadJob(CatalogItem item)
+    {
+        if (_downloadJobsByItem.TryGetValue(item.Id, out var existing)) return existing;
+
+        var job = new CatalogDownloadJob(item);
+        _downloadJobsByItem.Add(item.Id, job);
+        DownloadJobs.Insert(0, job);
+        NotifyDownloadCollectionChanged();
+        return job;
+    }
+
+    private CatalogDownloadJob? ResolveDownloadJob(FrameworkElement? source)
+    {
+        if (source?.Tag is CatalogDownloadJob taggedJob) return taggedJob;
+        if (source?.DataContext is CatalogDownloadJob dataJob) return dataJob;
+        return source?.Tag is string itemId
+            ? _downloadJobsByItem.GetValueOrDefault(itemId)
+            : null;
+    }
+
+    private void NotifyDownloadCollectionChanged()
+    {
+        OnPropertyChanged(nameof(HasDownloads));
+        OnPropertyChanged(nameof(DownloadsEmptyVisibility));
+        OnPropertyChanged(nameof(DownloadsListVisibility));
+    }
+
+    private void OpenDownloadedFile(string localFilePath)
+    {
+        if (string.IsNullOrWhiteSpace(localFilePath) || !File.Exists(localFilePath))
+        {
+            SetCatalogStatus("O arquivo baixado não foi encontrado.");
+            return;
+        }
+
+        var canonicalRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(_installFolderPath))
+                            + Path.DirectorySeparatorChar;
+        var canonicalFile = Path.GetFullPath(localFilePath);
+        if (!canonicalFile.StartsWith(canonicalRoot, StringComparison.OrdinalIgnoreCase))
+        {
+            SetCatalogStatus("O arquivo está fora da pasta autorizada e não será aberto.");
+            return;
+        }
+
+        var containingDirectory = Path.GetDirectoryName(canonicalFile);
+        if (containingDirectory is null) return;
+
+        try
+        {
+            var startInfo = new ProcessStartInfo("explorer.exe") { UseShellExecute = true };
+            startInfo.ArgumentList.Add(containingDirectory);
+            Process.Start(startInfo);
+            SetCatalogStatus("Pasta do arquivo baixado aberta.");
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or Win32Exception)
+        {
+            SetCatalogStatus($"Não foi possível abrir a pasta do download: {exception.Message}");
+        }
     }
 
     private void ShowPage(string page)
@@ -490,6 +632,13 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
     private void Maximize_Click(object sender, RoutedEventArgs e) => ToggleMaximize();
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
+
+    protected override void OnClosed(EventArgs e)
+    {
+        foreach (var job in DownloadJobs) job.Dispose();
+        _downloadService.Dispose();
+        base.OnClosed(e);
+    }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
