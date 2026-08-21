@@ -12,6 +12,7 @@ artifacts/
 TestResults/
 # As capas fazem parte do catálogo distribuído e precisam acompanhar o código.
 Assets/Catalog/catalog.full.json
+dist-private/
 *.zip
 SHA256SUMS.txt
 *.user

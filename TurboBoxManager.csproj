@@ -16,6 +16,7 @@
     <ApplicationIcon>Assets\turborama-app-icon.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="tools\**\*.cs" />
     <Compile Remove="tests\**\*.cs" />
     <Content Include="Assets\Catalog\**\*.*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
