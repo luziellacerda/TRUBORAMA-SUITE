@@ -11,12 +11,15 @@ internal static class LocalDataPaths
 
     public static string KeyFile => Path.Combine(Root, "key.txt");
     public static string ConfigFile => Path.Combine(Root, "config.json");
+    private static string PackagedKeyFile => Path.Combine(AppContext.BaseDirectory, "Data", "key.txt");
+    private static string PackagedConfigFile => Path.Combine(AppContext.BaseDirectory, "Data", "config.json");
 
     public static string? ReadKey()
     {
         try
         {
-            return File.Exists(KeyFile) ? File.ReadAllText(KeyFile).Trim() : null;
+            var path = File.Exists(KeyFile) ? KeyFile : PackagedKeyFile;
+            return File.Exists(path) ? File.ReadAllText(path).Trim() : null;
         }
         catch (IOException) { return null; }
         catch (UnauthorizedAccessException) { return null; }
@@ -26,8 +29,9 @@ internal static class LocalDataPaths
     {
         try
         {
-            if (!File.Exists(ConfigFile)) return null;
-            using var document = JsonDocument.Parse(File.ReadAllText(ConfigFile));
+            var configPath = File.Exists(ConfigFile) ? ConfigFile : PackagedConfigFile;
+            if (!File.Exists(configPath)) return null;
+            using var document = JsonDocument.Parse(File.ReadAllText(configPath));
             if (!document.RootElement.TryGetProperty("InstallFolder", out var value)) return null;
             var path = value.GetString();
             return !string.IsNullOrWhiteSpace(path) && Directory.Exists(path) ? path : null;
