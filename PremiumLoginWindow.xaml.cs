@@ -5,7 +5,12 @@ namespace TurboBoxManager;
 
 public partial class PremiumLoginWindow : Window
 {
-    public PremiumLoginWindow() => InitializeComponent();
+    public PremiumLoginWindow()
+    {
+        InitializeComponent();
+        var savedKey = LocalDataPaths.ReadKey();
+        if (!string.IsNullOrWhiteSpace(savedKey)) LicenseInput.Text = savedKey;
+    }
 
     private void Enter_Click(object sender, RoutedEventArgs e)
     {

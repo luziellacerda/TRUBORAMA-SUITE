@@ -15,7 +15,21 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 {
     private const int CatalogPageSize = 4;
 
-    private readonly CatalogDownloadService _downloadService = new();
+    private readonly CatalogDownloadService _downloadService = new(new CatalogDownloadOptions
+    {
+        MaximumFileSizeBytes = 512L * 1024L * 1024L * 1024L,
+        AllowedHosts = new HashSet<string>(
+            [
+                "github.com",
+                "objects.githubusercontent.com",
+                "release-assets.githubusercontent.com",
+                "raw.githubusercontent.com",
+                "cucunot.sambox.club",
+                "detroit.sambox.club",
+                "miami.sambox.buzz"
+            ],
+            StringComparer.OrdinalIgnoreCase)
+    });
     private readonly Dictionary<string, CatalogDownloadJob> _downloadJobsByItem =
         new(StringComparer.OrdinalIgnoreCase);
     private CatalogRepository? _catalogRepository;
@@ -97,6 +111,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     {
         InitializeComponent();
         DataContext = this;
+        _installFolderPath = LocalDataPaths.ReadInstallFolder() ?? _installFolderPath;
         InitializeCatalog();
         UpdateFolderLabels();
 
@@ -111,7 +126,11 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     {
         try
         {
-            var manifestPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Catalog", "catalog.json");
+            var catalogDirectory = Path.Combine(AppContext.BaseDirectory, "Assets", "Catalog");
+            var privateManifestPath = Path.Combine(catalogDirectory, "catalog.full.json");
+            var manifestPath = File.Exists(privateManifestPath)
+                ? privateManifestPath
+                : Path.Combine(catalogDirectory, "catalog.json");
             _catalogRepository = CatalogRepository.Load(manifestPath);
 
             CatalogCategories.Clear();

@@ -10,8 +10,7 @@ runtime-*/
 release-staging*/
 artifacts/
 TestResults/
-Assets/Catalog/Images/*
-!Assets/Catalog/Images/_turborama-fallback.jpg
+# As capas fazem parte do catálogo distribuído e precisam acompanhar o código.
 Assets/Catalog/catalog.full.json
 *.zip
 SHA256SUMS.txt
