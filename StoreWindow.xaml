@@ -75,7 +75,13 @@
         </DataTemplate>
 
         <DataTemplate x:Key="CatalogCardTemplate">
-            <Border Margin="7" MinHeight="342" Background="#111511" BorderBrush="{Binding AccentBrush}" BorderThickness="1" CornerRadius="14" ClipToBounds="True">
+            <Border x:Name="CardShell" Margin="7" MinHeight="342" Background="#111511" BorderBrush="{Binding AccentBrush}" BorderThickness="1" CornerRadius="14" ClipToBounds="True" RenderTransformOrigin=".5,.5" Cursor="Hand">
+                <Border.RenderTransform>
+                    <ScaleTransform x:Name="CardScale" ScaleX="1" ScaleY="1"/>
+                </Border.RenderTransform>
+                <Border.Effect>
+                    <DropShadowEffect x:Name="CardGlow" Color="#7EFF00" BlurRadius="10" ShadowDepth="0" Opacity=".14"/>
+                </Border.Effect>
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="176"/>
@@ -128,6 +134,29 @@
                                 </LinearGradientBrush>
                             </Border.Background>
                         </Border>
+                        <Ellipse Width="250" Height="250" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-145,-90,0" IsHitTestVisible="False" Opacity=".42">
+                            <Ellipse.Fill>
+                                <RadialGradientBrush>
+                                    <GradientStop Color="#907EFF00" Offset="0"/>
+                                    <GradientStop Color="#007EFF00" Offset="1"/>
+                                </RadialGradientBrush>
+                            </Ellipse.Fill>
+                        </Ellipse>
+                        <Rectangle x:Name="CardShimmer" Width="90" Height="310" Opacity="0" IsHitTestVisible="False" HorizontalAlignment="Left" VerticalAlignment="Center">
+                            <Rectangle.Fill>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                    <GradientStop Color="#00FFFFFF" Offset="0"/>
+                                    <GradientStop Color="#38FFFFFF" Offset=".5"/>
+                                    <GradientStop Color="#00FFFFFF" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Rectangle.Fill>
+                            <Rectangle.RenderTransform>
+                                <TransformGroup>
+                                    <SkewTransform AngleX="-18"/>
+                                    <TranslateTransform x:Name="ShimmerTranslate" X="-130"/>
+                                </TransformGroup>
+                            </Rectangle.RenderTransform>
+                        </Rectangle>
                         <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10" Padding="8,4" CornerRadius="5" Background="#DF070B08" BorderBrush="{Binding AccentBrush}" BorderThickness="1">
                             <TextBlock Text="{Binding Badge}" Foreground="{Binding AccentBrush}" FontSize="9" FontWeight="Bold"/>
                         </Border>
@@ -202,6 +231,30 @@
                     </Grid>
                 </Grid>
             </Border>
+            <DataTemplate.Triggers>
+                <EventTrigger RoutedEvent="MouseEnter" SourceName="CardShell">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetName="CardScale" Storyboard.TargetProperty="ScaleX" To="1.025" Duration="0:0:.18"/>
+                            <DoubleAnimation Storyboard.TargetName="CardScale" Storyboard.TargetProperty="ScaleY" To="1.025" Duration="0:0:.18"/>
+                            <DoubleAnimation Storyboard.TargetName="CardGlow" Storyboard.TargetProperty="Opacity" To=".58" Duration="0:0:.2"/>
+                            <DoubleAnimation Storyboard.TargetName="CardGlow" Storyboard.TargetProperty="BlurRadius" To="24" Duration="0:0:.2"/>
+                            <DoubleAnimation Storyboard.TargetName="CardShimmer" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:.12" AutoReverse="True"/>
+                            <DoubleAnimation Storyboard.TargetName="ShimmerTranslate" Storyboard.TargetProperty="X" From="-130" To="520" Duration="0:0:.65"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+                <EventTrigger RoutedEvent="MouseLeave" SourceName="CardShell">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetName="CardScale" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:.2"/>
+                            <DoubleAnimation Storyboard.TargetName="CardScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:.2"/>
+                            <DoubleAnimation Storyboard.TargetName="CardGlow" Storyboard.TargetProperty="Opacity" To=".14" Duration="0:0:.2"/>
+                            <DoubleAnimation Storyboard.TargetName="CardGlow" Storyboard.TargetProperty="BlurRadius" To="10" Duration="0:0:.2"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </DataTemplate.Triggers>
         </DataTemplate>
 
         <DataTemplate x:Key="DownloadJobTemplate">
