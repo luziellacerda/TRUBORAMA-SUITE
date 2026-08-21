@@ -13,7 +13,7 @@ namespace TurboBoxManager;
 
 public partial class StoreWindow : Window, INotifyPropertyChanged
 {
-    private const int CatalogPageSize = 6;
+    private const int CatalogPageSize = 4;
 
     private readonly CatalogDownloadService _downloadService = new(new CatalogDownloadOptions
     {
