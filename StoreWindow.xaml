@@ -10,7 +10,12 @@
         ResizeMode="CanResize"
         Background="#070907"
         Foreground="#F4F7F1"
-        FontFamily="Segoe UI">
+        FontFamily="Segoe UI"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
+        TextOptions.TextHintingMode="Fixed">
 
     <Window.Resources>
         <Color x:Key="LimeColor">#9DFF00</Color>
@@ -75,13 +80,18 @@
         </DataTemplate>
 
         <DataTemplate x:Key="CatalogCardTemplate">
-            <Border x:Name="CardShell" Margin="7" MinHeight="342" Background="#111511" BorderBrush="{Binding AccentBrush}" BorderThickness="1" CornerRadius="14" ClipToBounds="True" RenderTransformOrigin=".5,.5" Cursor="Hand">
-                <Border.RenderTransform>
-                    <ScaleTransform x:Name="CardScale" ScaleX="1" ScaleY="1"/>
-                </Border.RenderTransform>
-                <Border.Effect>
-                    <DropShadowEffect x:Name="CardGlow" Color="#7EFF00" BlurRadius="10" ShadowDepth="0" Opacity=".14"/>
-                </Border.Effect>
+            <Grid Margin="7" MinHeight="342">
+                <Border x:Name="CardGlowSurface"
+                        Background="#111511"
+                        BorderBrush="{Binding AccentBrush}"
+                        BorderThickness="1"
+                        CornerRadius="14"
+                        IsHitTestVisible="False">
+                    <Border.Effect>
+                        <DropShadowEffect x:Name="CardGlow" Color="#7EFF00" BlurRadius="10" ShadowDepth="0" Opacity=".14"/>
+                    </Border.Effect>
+                </Border>
+                <Border x:Name="CardShell" Background="#111511" BorderBrush="{Binding AccentBrush}" BorderThickness="1" CornerRadius="14" ClipToBounds="True" Cursor="Hand">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="176"/>
@@ -96,7 +106,7 @@
                                IsHitTestVisible="False"/>
                         <Image x:Name="CardCoverImage"
                                Source="{Binding ImageSource, IsAsync=True}"
-                               Stretch="UniformToFill"
+                               Stretch="Uniform"
                                RenderOptions.BitmapScalingMode="HighQuality"
                                AutomationProperties.Name="{Binding ImageAltText}"
                                AutomationProperties.HelpText="Capa específica deste item">
@@ -230,13 +240,12 @@
                         </Grid>
                     </Grid>
                 </Grid>
-            </Border>
+                </Border>
+            </Grid>
             <DataTemplate.Triggers>
                 <EventTrigger RoutedEvent="MouseEnter" SourceName="CardShell">
                     <BeginStoryboard>
                         <Storyboard>
-                            <DoubleAnimation Storyboard.TargetName="CardScale" Storyboard.TargetProperty="ScaleX" To="1.025" Duration="0:0:.18"/>
-                            <DoubleAnimation Storyboard.TargetName="CardScale" Storyboard.TargetProperty="ScaleY" To="1.025" Duration="0:0:.18"/>
                             <DoubleAnimation Storyboard.TargetName="CardGlow" Storyboard.TargetProperty="Opacity" To=".58" Duration="0:0:.2"/>
                             <DoubleAnimation Storyboard.TargetName="CardGlow" Storyboard.TargetProperty="BlurRadius" To="24" Duration="0:0:.2"/>
                             <DoubleAnimation Storyboard.TargetName="CardShimmer" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:.12" AutoReverse="True"/>
@@ -247,8 +256,6 @@
                 <EventTrigger RoutedEvent="MouseLeave" SourceName="CardShell">
                     <BeginStoryboard>
                         <Storyboard>
-                            <DoubleAnimation Storyboard.TargetName="CardScale" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:.2"/>
-                            <DoubleAnimation Storyboard.TargetName="CardScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:.2"/>
                             <DoubleAnimation Storyboard.TargetName="CardGlow" Storyboard.TargetProperty="Opacity" To=".14" Duration="0:0:.2"/>
                             <DoubleAnimation Storyboard.TargetName="CardGlow" Storyboard.TargetProperty="BlurRadius" To="10" Duration="0:0:.2"/>
                         </Storyboard>

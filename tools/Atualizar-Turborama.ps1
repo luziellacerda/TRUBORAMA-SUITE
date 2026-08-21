@@ -137,6 +137,8 @@ try {
     Write-Host '4/6 Criando o inicializador seguro...'
     $bootstrapper = Join-Path $work 'bootstrapper'
     Copy-Item -LiteralPath $template -Destination $bootstrapper -Recurse -Force
+    Copy-Item -LiteralPath (Join-Path $repo 'Assets\turborama-app-icon.ico') `
+        -Destination (Join-Path $bootstrapper 'turborama-app-icon.ico') -Force
     $programPath = Join-Path $bootstrapper 'Program.cs'
     $program = [IO.File]::ReadAllText($programPath)
     $replacements = @{

@@ -19,6 +19,7 @@
     <Description>Turborama privado completo com catálogo e downloads</Description>
     <Company>LZ Games</Company>
     <Copyright>Copyright (c) LZ Games</Copyright>
+    <ApplicationIcon>turborama-app-icon.ico</ApplicationIcon>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>

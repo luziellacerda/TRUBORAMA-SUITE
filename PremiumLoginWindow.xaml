@@ -6,7 +6,9 @@
         WindowStartupLocation="CenterScreen" WindowStyle="None" ResizeMode="CanResize"
         Background="#050706" Foreground="#F5F7F5" FontFamily="Segoe UI"
         UseLayoutRounding="True" SnapsToDevicePixels="True"
-        TextOptions.TextFormattingMode="Display">
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
+        TextOptions.TextHintingMode="Fixed">
 
     <Window.Resources>
         <SolidColorBrush x:Key="Lime" Color="#73FF68"/>
@@ -143,7 +145,7 @@
 
         <!-- Exact image selected by the user; no generated overlays or effects are placed over the aircraft. -->
         <Image Grid.RowSpan="2" Stretch="UniformToFill" IsHitTestVisible="False"
-               RenderOptions.BitmapScalingMode="HighQuality" CacheMode="BitmapCache">
+               RenderOptions.BitmapScalingMode="HighQuality">
             <Image.Source>
                 <BitmapImage UriSource="Assets/f15-turborama-user-original-v13.png" CacheOption="OnLoad"/>
             </Image.Source>
