@@ -75,16 +75,23 @@
         </DataTemplate>
 
         <DataTemplate x:Key="CatalogCardTemplate">
-            <Border x:Name="CardShell" Margin="7" MinHeight="342" Background="#111511" BorderBrush="{Binding AccentBrush}" BorderThickness="1" CornerRadius="14" ClipToBounds="True" RenderTransformOrigin=".5,.5" Cursor="Hand">
+            <Border x:Name="CardShell" Margin="9" MinHeight="390" BorderBrush="{Binding AccentBrush}" BorderThickness="1.5" CornerRadius="16" ClipToBounds="True" RenderTransformOrigin=".5,.5" Cursor="Hand">
                 <Border.RenderTransform>
                     <ScaleTransform x:Name="CardScale" ScaleX="1" ScaleY="1"/>
                 </Border.RenderTransform>
                 <Border.Effect>
                     <DropShadowEffect x:Name="CardGlow" Color="#7EFF00" BlurRadius="10" ShadowDepth="0" Opacity=".14"/>
                 </Border.Effect>
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#171D17" Offset="0"/>
+                        <GradientStop Color="#0C100C" Offset=".58"/>
+                        <GradientStop Color="#141B12" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="176"/>
+                        <RowDefinition Height="205"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
@@ -157,13 +164,13 @@
                                 </TransformGroup>
                             </Rectangle.RenderTransform>
                         </Rectangle>
-                        <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10" Padding="8,4" CornerRadius="5" Background="#DF070B08" BorderBrush="{Binding AccentBrush}" BorderThickness="1">
+                        <Border Visibility="Collapsed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10" Padding="8,4" CornerRadius="5" Background="#DF070B08" BorderBrush="{Binding AccentBrush}" BorderThickness="1">
                             <TextBlock Text="{Binding Badge}" Foreground="{Binding AccentBrush}" FontSize="9" FontWeight="Bold"/>
                         </Border>
-                        <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10" Padding="8,4" CornerRadius="5" Background="#E0070B08">
+                        <Border Visibility="Collapsed" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10" Padding="8,4" CornerRadius="5" Background="#E0070B08">
                             <TextBlock Text="{Binding Size}" Foreground="#F4F7F1" FontSize="9" FontWeight="SemiBold"/>
                         </Border>
-                        <Grid VerticalAlignment="Bottom" Height="34" Margin="10,0,10,9">
+                        <Grid Visibility="Collapsed" VerticalAlignment="Bottom" Height="34" Margin="10,0,10,9">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom">
                                 <TextBlock Text="T U R B O R A M A" Foreground="White" FontSize="8" FontWeight="Bold"/>
                                 <Border Background="#C9090E09" BorderBrush="{Binding AccentBrush}" BorderThickness="1" CornerRadius="4" Padding="6,2" Margin="8,0,0,-3">
@@ -175,22 +182,25 @@
                         </Grid>
                     </Grid>
 
-                    <Grid Grid.Row="1" Margin="12,10,12,12">
+                    <Grid Grid.Row="1" Margin="16,13,16,15">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="6"/>
-                            <RowDefinition Height="38"/>
+                            <RowDefinition Height="42"/>
                         </Grid.RowDefinitions>
-                        <TextBlock Text="{Binding Title}" Foreground="White" FontSize="13" FontWeight="Bold" TextWrapping="Wrap" MaxHeight="36" TextTrimming="CharacterEllipsis"/>
-                        <TextBlock Grid.Row="1" Text="{Binding Subtitle}" Foreground="{StaticResource MutedBrush}" FontSize="10" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
-                        <DockPanel Grid.Row="2" Margin="0,8,0,0" LastChildFill="False">
-                            <TextBlock DockPanel.Dock="Left" Text="{Binding Version}" Foreground="{Binding AccentBrush}" FontSize="9" FontWeight="Bold"/>
-                            <TextBlock DockPanel.Dock="Right" Text="VERIFICADO" Foreground="#667063" FontSize="8" FontWeight="Bold"/>
-                        </DockPanel>
-                        <TextBlock x:Name="CardDownloadStatus" Grid.Row="3" Text="{Binding DownloadStatus}" Foreground="#98A493" FontSize="9" Margin="0,5,0,5" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding Title}" Foreground="White" FontSize="16" FontWeight="Bold" TextWrapping="Wrap" MaxHeight="42" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Grid.Row="1" Text="{Binding Subtitle}" Foreground="#AAB5A6" FontSize="11" Margin="0,5,0,0" TextTrimming="CharacterEllipsis"/>
+                        <Grid Grid.Row="2" Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition/></Grid.ColumnDefinitions>
+                            <Border Background="#1D2918" BorderBrush="#39502D" BorderThickness="1" CornerRadius="5" Padding="8,3"><TextBlock Text="{Binding Version}" Foreground="{Binding AccentBrush}" FontSize="9" FontWeight="Bold"/></Border>
+                            <Border Grid.Column="1" Background="#122319" BorderBrush="#27583B" BorderThickness="1" CornerRadius="5" Padding="8,3" Margin="7,0,0,0"><StackPanel Orientation="Horizontal"><Ellipse Width="5" Height="5" Fill="#65FF91" Margin="0,0,6,0"/><TextBlock Text="VERIFICADO" Foreground="#8BDAA4" FontSize="8" FontWeight="Bold"/></StackPanel></Border>
+                        </Grid>
+                        <Border Grid.Row="3" Background="#090D09" BorderBrush="#252D24" BorderThickness="1" CornerRadius="7" Padding="9,6" Margin="0,8,0,7">
+                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="12"/><ColumnDefinition/></Grid.ColumnDefinitions><Ellipse Width="6" Height="6" Fill="{Binding AccentBrush}" VerticalAlignment="Center"/><TextBlock x:Name="CardDownloadStatus" Grid.Column="1" Text="{Binding DownloadStatus}" Foreground="#B2BDAE" FontSize="9" TextTrimming="CharacterEllipsis"/></Grid>
+                        </Border>
                         <ProgressBar x:Name="CardDownloadProgress" Grid.Row="4" Minimum="0" Maximum="100" Value="{Binding ProgressPercentage, Mode=OneWay}" Foreground="{Binding AccentBrush}" Background="#222A20" BorderThickness="0" Height="4" VerticalAlignment="Center">
                             <ProgressBar.Style>
                                 <Style TargetType="ProgressBar">
@@ -424,7 +434,7 @@
                                                   VirtualizingPanel.VirtualizationMode="Recycling"
                                                   ScrollViewer.CanContentScroll="True"
                                                   AutomationProperties.Name="Pacotes disponíveis">
-                                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                     </ItemsControl>
                                 </ScrollViewer>
                                 <Border Visibility="{Binding CatalogEmptyVisibility}" Background="#0E120E" BorderBrush="#2A3227" BorderThickness="1" CornerRadius="14" Margin="0,11,0,0">
