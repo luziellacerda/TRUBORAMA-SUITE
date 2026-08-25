@@ -7,9 +7,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Turborama</AssemblyName>
     <RootNamespace>TurboBoxManager</RootNamespace>
-    <Version>1.6.2</Version>
-    <AssemblyVersion>1.6.2.0</AssemblyVersion>
-    <FileVersion>1.6.2.0</FileVersion>
+    <Version>1.7.0</Version>
+    <AssemblyVersion>1.7.0.0</AssemblyVersion>
+    <FileVersion>1.7.0.0</FileVersion>
     <Product>Turborama</Product>
     <Company>Turborama</Company>
     <Description>Central Turborama de sistemas, biblioteca e downloads.</Description>

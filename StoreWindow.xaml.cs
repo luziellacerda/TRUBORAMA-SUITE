@@ -1253,8 +1253,12 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         {
             var fileName = categoryId?.ToLowerInvariant() switch
             {
+                "system-tools" => "Turborama-background-system-tools.mp4",
+                "playstation-2" or "playstation-2-br"
+                    => "Turborama-background-ps2.mp4",
                 "playstation-4" => "Turborama-background-ps4.mp4",
                 "playstation-5" => "Turborama-background-ps5.mp4",
+                "sega-saturn" => "Turborama-background-sega-saturn.mp4",
                 "xbox" or "xbox-360" or "xbox-one" or "xbox-series"
                     => "Turborama-background-xbox-one-x.mp4",
                 "nintendo-switch" => "Turborama-background-nintendo.mp4",

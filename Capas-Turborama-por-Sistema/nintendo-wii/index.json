@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "systemId": "nintendo-wii",
+  "displayName": "Nintendo Wii",
+  "shortCode": "WII",
+  "coverCount": 9,
+  "items": [
+    {
+      "id": "fa2bf5c78f998084f82f237687f27363",
+      "title": "Billy the Wizard - Rocket Broomstick Racing [RBZE5Z]",
+      "fileName": "fa2bf5c78f998084f82f237687f27363.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/fa2bf5c78f998084f82f237687f27363.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 521450,
+      "sha256": "91abc75d4b0eb55842a42f890f02128599bf54ced68b86f29e9089f07782014c"
+    },
+    {
+      "id": "917d96d510a6b2829a20a7437df3a875",
+      "title": "Call of Duty - Black Ops (USA)",
+      "fileName": "917d96d510a6b2829a20a7437df3a875.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/917d96d510a6b2829a20a7437df3a875.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 538448,
+      "sha256": "dd78adce45ca557df5854af42674cf327b413d0a35875c45f3cfe5a85f5a36fa"
+    },
+    {
+      "id": "e480065486f6a4e307d29f8375aa6ef1",
+      "title": "Donkey Kong Country Returns",
+      "fileName": "e480065486f6a4e307d29f8375aa6ef1.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/e480065486f6a4e307d29f8375aa6ef1.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 523522,
+      "sha256": "3c5ccba6ef14b817391ba6a72c08e24bb1e9f29f4e105b506740b6f99117959b"
+    },
+    {
+      "id": "73e9ce3464919b8476ea7094565e3593",
+      "title": "Legend of Zelda, The - Skyward Sword (USA) (En,Fr,Es)",
+      "fileName": "73e9ce3464919b8476ea7094565e3593.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/73e9ce3464919b8476ea7094565e3593.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 692682,
+      "sha256": "76b3b4cfd11ec561b5b4c0a0ecff7a5d007ef804b911d0d86c82f670d303a755"
+    },
+    {
+      "id": "de6e67859d8e71bd1a78266e9d048aa4",
+      "title": "MarioKartWii.ini",
+      "fileName": "de6e67859d8e71bd1a78266e9d048aa4.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/de6e67859d8e71bd1a78266e9d048aa4.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 386200,
+      "sha256": "68777b66c420baac3f8bab993f8c77a7e56f625cd8dcee2d36b35166d6eaf66f"
+    },
+    {
+      "id": "8701f6faa7f51b896400788d11ce9411",
+      "title": "Need for Speed - Carbon (USA)",
+      "fileName": "8701f6faa7f51b896400788d11ce9411.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/8701f6faa7f51b896400788d11ce9411.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 626398,
+      "sha256": "b0c9f919925f65c54f2c44a78e4f328c661fc14d56f040602b1f791007e0d26a"
+    },
+    {
+      "id": "0117325cf818f7c9bcc9f87ee2707875",
+      "title": "New SUPER MARIO BROS.side",
+      "fileName": "0117325cf818f7c9bcc9f87ee2707875.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/0117325cf818f7c9bcc9f87ee2707875.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 424733,
+      "sha256": "93c7c5f9367588888e8e1eaa9a51e00f2f2edd13609d681408bc0fa869e23638"
+    },
+    {
+      "id": "0593e163bb530a33165cb6d1ee2653ca",
+      "title": "Super Mario Galaxy (USA) (En,Fr,Es)",
+      "fileName": "0593e163bb530a33165cb6d1ee2653ca.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/0593e163bb530a33165cb6d1ee2653ca.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 464927,
+      "sha256": "7f50ad82587e60804df7750063cd9a6c96750db9e25f99c041626ff4003e305d"
+    },
+    {
+      "id": "75706b131c2efc926b874e318cfa71a1",
+      "title": "Super Mario Galaxy 2 (USA) (En,Fr,Es)",
+      "fileName": "75706b131c2efc926b874e318cfa71a1.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/75706b131c2efc926b874e318cfa71a1.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 494726,
+      "sha256": "e6fb25440ad1bd8902b6f33c08942e79a7ce8c3c5bb4cff34ed03781eb8de510"
+    }
+  ]
+}

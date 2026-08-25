@@ -4,7 +4,7 @@ Central desktop WPF para organizar sistemas retrô, catálogo, biblioteca e down
 
 ![Tela de login da Turborama](docs/images/login.png)
 
-## Versão 1.6.2
+## Versão 1.7.0
 
 - Windows 10/11 x64;
 - login e interface Turborama;
@@ -26,7 +26,7 @@ O acesso ainda é demonstrativo: qualquer chave não vazia abre a interface. No 
 
 ## Download para teste
 
-Baixe o pacote pronto em [Releases — Turborama 1.6.0](https://github.com/luziellacerda/TRUBORAMA-SUITE/releases/tag/v1.6.0) e confira o SHA-256 publicado junto ao ZIP.
+Baixe o pacote pronto em [Releases — Turborama 1.7.0](https://github.com/luziellacerda/TRUBORAMA-SUITE/releases/tag/v1.7.0) e confira o SHA-256 publicado junto ao executável.
 
 As 850 capas completas, o fallback global e os 45 ícones de sistema acompanham o pacote. A pasta `Assets/Catalog/Images` contém exatamente 851 imagens; os 45 pacotes de Jogos retrô usam pôsteres lossless em 2:3.
 

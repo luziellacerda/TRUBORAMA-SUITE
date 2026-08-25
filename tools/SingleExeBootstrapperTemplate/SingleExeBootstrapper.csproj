@@ -11,10 +11,10 @@
     <DebugSymbols>false</DebugSymbols>
     <AssemblyName>Turborama-Launcher</AssemblyName>
     <RootNamespace>TurboramaBootstrapper</RootNamespace>
-    <Version>1.6.2</Version>
-    <AssemblyVersion>1.6.2.0</AssemblyVersion>
-    <FileVersion>1.6.2.0</FileVersion>
-    <InformationalVersion>1.6.2-private-single-exe</InformationalVersion>
+    <Version>1.7.0</Version>
+    <AssemblyVersion>1.7.0.0</AssemblyVersion>
+    <FileVersion>1.7.0.0</FileVersion>
+    <InformationalVersion>1.7.0-private-single-exe</InformationalVersion>
     <Product>Turborama</Product>
     <Description>Turborama privado completo com catálogo e downloads</Description>
     <Company>LZ Games</Company>

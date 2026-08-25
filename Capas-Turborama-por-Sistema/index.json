@@ -1,0 +1,162 @@
+{
+  "schemaVersion": 1,
+  "generatedFrom": "../Assets/Catalog/catalog.json",
+  "systemCount": 22,
+  "coverCount": 850,
+  "systems": [
+    {
+      "id": "system-tools",
+      "displayName": "Sistema e utilitários",
+      "shortCode": "SYS",
+      "coverCount": 2,
+      "manifest": "system-tools/index.json"
+    },
+    {
+      "id": "emulators",
+      "displayName": "Emuladores",
+      "shortCode": "EMU",
+      "coverCount": 17,
+      "manifest": "emulators/index.json"
+    },
+    {
+      "id": "retro-games",
+      "displayName": "Jogos retrô",
+      "shortCode": "RET",
+      "coverCount": 45,
+      "manifest": "retro-games/index.json"
+    },
+    {
+      "id": "nintendo-3ds",
+      "displayName": "Nintendo 3DS",
+      "shortCode": "3DS",
+      "coverCount": 23,
+      "manifest": "nintendo-3ds/index.json"
+    },
+    {
+      "id": "gamecube",
+      "displayName": "Nintendo GameCube",
+      "shortCode": "GC",
+      "coverCount": 32,
+      "manifest": "gamecube/index.json"
+    },
+    {
+      "id": "playstation-1",
+      "displayName": "PlayStation 1",
+      "shortCode": "PS1",
+      "coverCount": 119,
+      "manifest": "playstation-1/index.json"
+    },
+    {
+      "id": "playstation-2",
+      "displayName": "PlayStation 2",
+      "shortCode": "PS2",
+      "coverCount": 57,
+      "manifest": "playstation-2/index.json"
+    },
+    {
+      "id": "playstation-2-br",
+      "displayName": "PlayStation 2 • BR",
+      "shortCode": "P2BR",
+      "coverCount": 50,
+      "manifest": "playstation-2-br/index.json"
+    },
+    {
+      "id": "playstation-3",
+      "displayName": "PlayStation 3",
+      "shortCode": "PS3",
+      "coverCount": 29,
+      "manifest": "playstation-3/index.json"
+    },
+    {
+      "id": "playstation-4",
+      "displayName": "PlayStation 4",
+      "shortCode": "PS4",
+      "coverCount": 24,
+      "manifest": "playstation-4/index.json"
+    },
+    {
+      "id": "playstation-5",
+      "displayName": "PlayStation 5",
+      "shortCode": "PS5",
+      "coverCount": 55,
+      "manifest": "playstation-5/index.json"
+    },
+    {
+      "id": "psp",
+      "displayName": "PSP",
+      "shortCode": "PSP",
+      "coverCount": 21,
+      "manifest": "psp/index.json"
+    },
+    {
+      "id": "ps-vita",
+      "displayName": "PS Vita",
+      "shortCode": "VITA",
+      "coverCount": 23,
+      "manifest": "ps-vita/index.json"
+    },
+    {
+      "id": "sega-saturn",
+      "displayName": "Sega Saturn",
+      "shortCode": "SAT",
+      "coverCount": 31,
+      "manifest": "sega-saturn/index.json"
+    },
+    {
+      "id": "nintendo-switch",
+      "displayName": "Nintendo Switch",
+      "shortCode": "NSW",
+      "coverCount": 83,
+      "manifest": "nintendo-switch/index.json"
+    },
+    {
+      "id": "nintendo-wii",
+      "displayName": "Nintendo Wii",
+      "shortCode": "WII",
+      "coverCount": 9,
+      "manifest": "nintendo-wii/index.json"
+    },
+    {
+      "id": "nintendo-wii-u",
+      "displayName": "Nintendo Wii U",
+      "shortCode": "WIIU",
+      "coverCount": 9,
+      "manifest": "nintendo-wii-u/index.json"
+    },
+    {
+      "id": "windows",
+      "displayName": "Windows",
+      "shortCode": "WIN",
+      "coverCount": 98,
+      "manifest": "windows/index.json"
+    },
+    {
+      "id": "xbox",
+      "displayName": "Xbox",
+      "shortCode": "XBOX",
+      "coverCount": 54,
+      "manifest": "xbox/index.json"
+    },
+    {
+      "id": "xbox-360",
+      "displayName": "Xbox 360",
+      "shortCode": "X360",
+      "coverCount": 24,
+      "manifest": "xbox-360/index.json"
+    },
+    {
+      "id": "xbox-one",
+      "displayName": "Xbox One",
+      "shortCode": "XB1",
+      "coverCount": 18,
+      "manifest": "xbox-one/index.json"
+    },
+    {
+      "id": "xbox-series",
+      "displayName": "Xbox Series",
+      "shortCode": "XS",
+      "coverCount": 27,
+      "manifest": "xbox-series/index.json"
+    }
+  ]
+}

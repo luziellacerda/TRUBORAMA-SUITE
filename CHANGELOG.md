@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.7.0 — 2026-08-25
+
+- Central de downloads com a capa exata de cada jogo em andamento ou preservado;
+- botão de download com pulso neon leve e varredura laser acelerada por cache de bitmap;
+- vídeos novos integrados para Sistema e utilitários, PlayStation 2 e SEGA Saturn;
+- índices versionados das 850 capas em `Capas-Turborama-por-Sistema`;
+- lote PSP finalizado com 21 fontes aprovadas, integradas diretamente sem recorte ou redimensionamento;
+- Ghost of Sparta restaurado pela fonte aprovada e Ghost Rider concluída sem elementos duplicados;
+- validação automatizada de dimensões, fonte aprovada e SHA-256 das cópias PSP.
+
 ## 1.6.0 — 2026-08-20
 
 - catálogo ampliado para 22 categorias e 850 itens identificados;

@@ -1,0 +1,459 @@
+{
+  "schemaVersion": 1,
+  "systemId": "retro-games",
+  "displayName": "Jogos retrô",
+  "shortCode": "RET",
+  "coverCount": 45,
+  "items": [
+    {
+      "id": "06dd41e4f20e06358854ea408a527c5b",
+      "title": "Arcade",
+      "fileName": "06dd41e4f20e06358854ea408a527c5b.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/06dd41e4f20e06358854ea408a527c5b.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 1157299,
+      "sha256": "559446b6354e3161d57f3e41bf8d6ecf032da9a953f2f79e434673fd56e491d1"
+    },
+    {
+      "id": "a0fa214c4ba7900cb3e5f5f93b03c434",
+      "title": "atari2600",
+      "fileName": "a0fa214c4ba7900cb3e5f5f93b03c434.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/a0fa214c4ba7900cb3e5f5f93b03c434.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 998236,
+      "sha256": "36a2313404c18afb4cc1eb12d5fffe73d00cb970cb4c554ded88905c8b088eff"
+    },
+    {
+      "id": "024bf0731df29bf69ec8e69491ee0194",
+      "title": "atari7800",
+      "fileName": "024bf0731df29bf69ec8e69491ee0194.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/024bf0731df29bf69ec8e69491ee0194.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 925430,
+      "sha256": "1cdb03b421a8ba213fa2d454a6647010308b474f4b86277bccfeec17a882838e"
+    },
+    {
+      "id": "a8c41dac772fe65dec2b981fadd7b171",
+      "title": "atomiswave",
+      "fileName": "a8c41dac772fe65dec2b981fadd7b171.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/a8c41dac772fe65dec2b981fadd7b171.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 1010527,
+      "sha256": "87652e175f582b9df84ebcebbf9c92916a776317aa5696df6fa8a4508ef72119"
+    },
+    {
+      "id": "f62f55e1cf036d18c5f49f917826878f",
+      "title": "Capcom 1",
+      "fileName": "f62f55e1cf036d18c5f49f917826878f.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/f62f55e1cf036d18c5f49f917826878f.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 1144860,
+      "sha256": "610434d1bda7b50f3089060a7471e3b9d20ca8cffa2b3eb86f2b5567098ba610"
+    },
+    {
+      "id": "65f49873f653efd7fe1dd90655725f05",
+      "title": "Capcom 2",
+      "fileName": "65f49873f653efd7fe1dd90655725f05.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/65f49873f653efd7fe1dd90655725f05.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 1025884,
+      "sha256": "9939ed929bbf2118e87e1513f21bb653ec50a9a6a1c224f1f30723c0451a148b"
+    },
+    {
+      "id": "0dfad3f4b9bc693f226e60efd08e3822",
+      "title": "Capcom 3",
+      "fileName": "0dfad3f4b9bc693f226e60efd08e3822.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/0dfad3f4b9bc693f226e60efd08e3822.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 1126473,
+      "sha256": "68c08a992b5a09cb15f321ac922be2b5db9d2808478da0c99a3861ba136f8888"
+    },
+    {
+      "id": "26bd034725f7eb39d253423620030dc7",
+      "title": "colecovision",
+      "fileName": "26bd034725f7eb39d253423620030dc7.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/26bd034725f7eb39d253423620030dc7.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 956497,
+      "sha256": "0f53c691e5eeeaf2c9fddf5a21b5ae94f67a9ae8f54aa617189d3e6c25028855"
+    },
+    {
+      "id": "2a26f76db24874f8c53749bc07ff2f8e",
+      "title": "Dreamcast",
+      "fileName": "2a26f76db24874f8c53749bc07ff2f8e.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/2a26f76db24874f8c53749bc07ff2f8e.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 960017,
+      "sha256": "05fda4e0c4c05b0e3a65421062221c366827232682b23f998a00ff6dde55ba3a"
+    },
+    {
+      "id": "d348643c67127ed318a092bbbbeea322",
+      "title": "Famicon disk system",
+      "fileName": "d348643c67127ed318a092bbbbeea322.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/d348643c67127ed318a092bbbbeea322.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 983464,
+      "sha256": "bd2878f9903a054e876949d1d98d4b335560167c159859f2412c1af6cc5909d5"
+    },
+    {
+      "id": "24017ce00420dc620ff2aa450d4d1125",
+      "title": "fbneo",
+      "fileName": "24017ce00420dc620ff2aa450d4d1125.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/24017ce00420dc620ff2aa450d4d1125.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 1058928,
+      "sha256": "fab28eab41ceeb1db7e6fbd00cea48b4f79ef220d01f4abc49056455aae53aa5"
+    },
+    {
+      "id": "cf3dd769ee22b9dd6bd65f0ba5dabbf0",
+      "title": "gameandwatch",
+      "fileName": "cf3dd769ee22b9dd6bd65f0ba5dabbf0.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/cf3dd769ee22b9dd6bd65f0ba5dabbf0.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 929052,
+      "sha256": "4a5a9637a2a42e181d4e3ad1223f2fb00d485814ec3320f8502dbae7b519e05f"
+    },
+    {
+      "id": "9f8c1e89915bc22c3864d24f57eb188f",
+      "title": "gameboy",
+      "fileName": "9f8c1e89915bc22c3864d24f57eb188f.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/9f8c1e89915bc22c3864d24f57eb188f.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 837232,
+      "sha256": "aa689574bad9f14027d985fce6274ebf94ff14b103e43fc2aff6fca40780514c"
+    },
+    {
+      "id": "aa28453c4bedc6d9c13ee5b164e12a99",
+      "title": "Gameboy Advanced",
+      "fileName": "aa28453c4bedc6d9c13ee5b164e12a99.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/aa28453c4bedc6d9c13ee5b164e12a99.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 899695,
+      "sha256": "045ce21516484cfd7b1659218f17103f66a25a6dcae14827f9b253ca93bf6c59"
+    },
+    {
+      "id": "706970f4c52ddc44cb736b594eb39ee2",
+      "title": "Gameboy color",
+      "fileName": "706970f4c52ddc44cb736b594eb39ee2.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/706970f4c52ddc44cb736b594eb39ee2.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 926211,
+      "sha256": "2dcde51935920b50bc2cede1b410d471b0a37310533a07bb33af4bf0ccd0313a"
+    },
+    {
+      "id": "6925b710469d641432e0ccf27257e070",
+      "title": "gamegear",
+      "fileName": "6925b710469d641432e0ccf27257e070.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/6925b710469d641432e0ccf27257e070.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 912171,
+      "sha256": "41d42b5ae993894089c83a282d9a257a29a0bf62be0d5634a3bc213846910a27"
+    },
+    {
+      "id": "7c1f5d91f7df9ab699f0a9b2c8579650",
+      "title": "jaguar",
+      "fileName": "7c1f5d91f7df9ab699f0a9b2c8579650.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/7c1f5d91f7df9ab699f0a9b2c8579650.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 919676,
+      "sha256": "fd8a0afec7f31c0ab5957727f9140c292657db9bf47ac41bc871ec6d0dd8f5e0"
+    },
+    {
+      "id": "95053bc97e884d28673b542078222180",
+      "title": "Mame",
+      "fileName": "95053bc97e884d28673b542078222180.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/95053bc97e884d28673b542078222180.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 1067933,
+      "sha256": "6d5ebfc4acccb84a26a70a88dd2b04178e5d0a092c71388cff00c24b412272ff"
+    },
+    {
+      "id": "194e852fd237069b4f69ba1927371c5e",
+      "title": "Master system",
+      "fileName": "194e852fd237069b4f69ba1927371c5e.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/194e852fd237069b4f69ba1927371c5e.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 1016568,
+      "sha256": "a60f26a39122febf61017667f4a5042f3e9bd4ec67f05b6d106358fbbc51fb52"
+    },
+    {
+      "id": "024f0c5e1d41076d4c8a184252519c74",
+      "title": "Master system - português",
+      "fileName": "024f0c5e1d41076d4c8a184252519c74.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/024f0c5e1d41076d4c8a184252519c74.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 1033455,
+      "sha256": "46e18f2f9b511318cf34184bcbf42887eed4f23c047558a017ce4dc948c53ebb"
+    },
+    {
+      "id": "e40b4b32538a2fa0421cada2aa563bc3",
+      "title": "megadrive",
+      "fileName": "e40b4b32538a2fa0421cada2aa563bc3.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/e40b4b32538a2fa0421cada2aa563bc3.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 976722,
+      "sha256": "a0133421d515624c80b663b86ee7031be5f5f0719ffa703abfe265e522a0408a"
+    },
+    {
+      "id": "7fe64f6cdfddcd4d4a0061897a5adda9",
+      "title": "megadrivebr",
+      "fileName": "7fe64f6cdfddcd4d4a0061897a5adda9.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/7fe64f6cdfddcd4d4a0061897a5adda9.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 972370,
+      "sha256": "3917f8a22097dbaf9853163dcc71ab10cb3a6fdb59008afad86e9381309f2cca"
+    },
+    {
+      "id": "3d7cc8e6cab99045ca6fda67c98285ef",
+      "title": "model2",
+      "fileName": "3d7cc8e6cab99045ca6fda67c98285ef.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/3d7cc8e6cab99045ca6fda67c98285ef.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 993285,
+      "sha256": "b53c924f34e72eb3c9d5119e99feb231ba330fad38a1c61f970f946c8d13796c"
+    },
+    {
+      "id": "5defaaf20c099e421ac7650513928f68",
+      "title": "model3",
+      "fileName": "5defaaf20c099e421ac7650513928f68.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/5defaaf20c099e421ac7650513928f68.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 980121,
+      "sha256": "a56915aacc0b3c32d8906215f146bb6a86f7d2cb623403ed5a0f4c58ef047c2c"
+    },
+    {
+      "id": "9086ec1a6c3b9bc5b6ce792842d51278",
+      "title": "msx2",
+      "fileName": "9086ec1a6c3b9bc5b6ce792842d51278.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/9086ec1a6c3b9bc5b6ce792842d51278.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 946295,
+      "sha256": "697e72b9d42a815dfe5296265585209a884ec6ccf00eabaeffbdac22d26abb5b"
+    },
+    {
+      "id": "392bd490ef4995fc8a28f3bc83ffea07",
+      "title": "naomi",
+      "fileName": "392bd490ef4995fc8a28f3bc83ffea07.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/392bd490ef4995fc8a28f3bc83ffea07.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 974448,
+      "sha256": "370d6b6b959dc8ac88fdc515a5d7fdeec5ff2a199a146ddc2d5e5cb38e6eb9fd"
+    },
+    {
+      "id": "5684bc4cf46234d4000e9313d0f798b6",
+      "title": "Neo geo pocket",
+      "fileName": "5684bc4cf46234d4000e9313d0f798b6.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/5684bc4cf46234d4000e9313d0f798b6.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 921948,
+      "sha256": "f6af483ae62c17ceb6ebe1035e380dc3a4b85cae35d25940066be3434fdff1c4"
+    },
+    {
+      "id": "c925b4b4f9e304987f73f91ce6903a79",
+      "title": "Neo geo pocket color",
+      "fileName": "c925b4b4f9e304987f73f91ce6903a79.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/c925b4b4f9e304987f73f91ce6903a79.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 1056307,
+      "sha256": "f152c0c6b98e355057148ba4fb0af45ba3355067939ee219098f50d3e9ec675a"
+    },
+    {
+      "id": "2ee15b9e606401e983548b3ab50ef577",
+      "title": "neogeo",
+      "fileName": "2ee15b9e606401e983548b3ab50ef577.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/2ee15b9e606401e983548b3ab50ef577.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 1051781,
+      "sha256": "38659ff963ff4e9c5c48a98f7a1d888f3354e1b04289cb8740cc380e6198ccb9"
+    },
+    {
+      "id": "1b1945631404247aa8142017ad2cae1d",
+      "title": "neogeocd",
+      "fileName": "1b1945631404247aa8142017ad2cae1d.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/1b1945631404247aa8142017ad2cae1d.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 907440,
+      "sha256": "dbe6d91b35cbe81ffd8ac9ad2f6fb7c2b43852c4c7a50e781a60b532b025d92f"
+    },
+    {
+      "id": "338e68fbc0c76f7ac47bd2c1f09349a2",
+      "title": "Nintendinho ( nes )",
+      "fileName": "338e68fbc0c76f7ac47bd2c1f09349a2.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/338e68fbc0c76f7ac47bd2c1f09349a2.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 1021427,
+      "sha256": "3202f2656349f60d5dd9b587ca293ab5da02e0d4d31e4685081a6b223e7790c8"
+    },
+    {
+      "id": "34f240aa037536c21f26f2fbc809df7a",
+      "title": "Nintendo 3ds",
+      "fileName": "34f240aa037536c21f26f2fbc809df7a.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/34f240aa037536c21f26f2fbc809df7a.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 1010544,
+      "sha256": "59f6f9722f5423fce416317ca9d4a9ef8f18234c6798f405efba3fcfb34a63ec"
+    },
+    {
+      "id": "bd228881732fca8fece60591036efd31",
+      "title": "Nintendo 64",
+      "fileName": "bd228881732fca8fece60591036efd31.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/bd228881732fca8fece60591036efd31.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 855467,
+      "sha256": "337edae728e2286b3ce38a1356476d2c95c47ee487860043fe8e19ef2db4ae56"
+    },
+    {
+      "id": "8afd5bc6acf8295b20eac474c0c5b4eb",
+      "title": "Nintendo 64  - portugues",
+      "fileName": "8afd5bc6acf8295b20eac474c0c5b4eb.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/8afd5bc6acf8295b20eac474c0c5b4eb.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 918710,
+      "sha256": "7dfc6c38fc762f4c606a7be495530b31ef438b71ec5244a8ffd5e11e7586d2cb"
+    },
+    {
+      "id": "9421dd44b900c9b8c0dfef4fcd8d9186",
+      "title": "Nintendo ds",
+      "fileName": "9421dd44b900c9b8c0dfef4fcd8d9186.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/9421dd44b900c9b8c0dfef4fcd8d9186.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 837288,
+      "sha256": "627804311e3a508887829a2ee9c834ac098ae669c5e0955b990bdd8572c60cab"
+    },
+    {
+      "id": "91895e79ed1e98ebfdbbadb30c6a5e19",
+      "title": "Odyssey 2",
+      "fileName": "91895e79ed1e98ebfdbbadb30c6a5e19.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/91895e79ed1e98ebfdbbadb30c6a5e19.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 874395,
+      "sha256": "31c810949f91fea74e947b5aa0a4978881263f40f156168fb8d9ac2b897155ae"
+    },
+    {
+      "id": "132878ef366258c1877b73cc4109fd86",
+      "title": "pcengine",
+      "fileName": "132878ef366258c1877b73cc4109fd86.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/132878ef366258c1877b73cc4109fd86.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 938618,
+      "sha256": "de6154ca8bc4178fb661e878084c9e190837684dc390f56f5f2dfd99db3dc56f"
+    },
+    {
+      "id": "2f07dd96e8e9f990c9b0764a81bd9761",
+      "title": "pcenginecd",
+      "fileName": "2f07dd96e8e9f990c9b0764a81bd9761.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/2f07dd96e8e9f990c9b0764a81bd9761.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 883230,
+      "sha256": "97d28e9514396e0f956905a6460a3fe34b0ac0ef09c767f8a7914bc170b8ce7b"
+    },
+    {
+      "id": "052ee8ef7a9394d34415db80f5508fe7",
+      "title": "sega32x",
+      "fileName": "052ee8ef7a9394d34415db80f5508fe7.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/052ee8ef7a9394d34415db80f5508fe7.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 931987,
+      "sha256": "f2adad2d438b30fff08d55810fef007e3fb02251032e265972933bd7ad17c493"
+    },
+    {
+      "id": "ce76bd51b7f0f8fcf7bce68725c30783",
+      "title": "sg1000",
+      "fileName": "ce76bd51b7f0f8fcf7bce68725c30783.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/ce76bd51b7f0f8fcf7bce68725c30783.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 945191,
+      "sha256": "7869f8e4038b5199946ab4f8acea4d96abda3a316d8a7405dd1d880e4b556f83"
+    },
+    {
+      "id": "db53c1e82b2763927e9233c609ceefaf",
+      "title": "sufami",
+      "fileName": "db53c1e82b2763927e9233c609ceefaf.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/db53c1e82b2763927e9233c609ceefaf.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 1025130,
+      "sha256": "544a5fed88920e24ba3d1456eec17c80bfdb411125bc0d0de6ecc855612142dc"
+    },
+    {
+      "id": "d077fc407cdd0905903cef2e1548f621",
+      "title": "Super nintendo",
+      "fileName": "d077fc407cdd0905903cef2e1548f621.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/d077fc407cdd0905903cef2e1548f621.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 929121,
+      "sha256": "aa5c8b515e5a7b7ce8b55553a5ccf4d7d4eae270ad240af84bb80589ef1d1ccb"
+    },
+    {
+      "id": "a242e8f52abcd785f1cdccf98eede8ce",
+      "title": "Super nintendo portugues",
+      "fileName": "a242e8f52abcd785f1cdccf98eede8ce.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/a242e8f52abcd785f1cdccf98eede8ce.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 891114,
+      "sha256": "c1594c9c4688e6e0a17f46286739c55dbf0cb0792874d957a08353db49e076d9"
+    },
+    {
+      "id": "3dd6aceff47bf496baa2eab0433af276",
+      "title": "supergrafx",
+      "fileName": "3dd6aceff47bf496baa2eab0433af276.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/3dd6aceff47bf496baa2eab0433af276.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 901304,
+      "sha256": "0c2467f316f54ee9f9b6a5cb26f816c9285e20ab4d3ba2b5c46bf918c9c54439"
+    },
+    {
+      "id": "70065c3c55f2d95c857444c546a4776e",
+      "title": "triforce",
+      "fileName": "70065c3c55f2d95c857444c546a4776e.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/70065c3c55f2d95c857444c546a4776e.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 995395,
+      "sha256": "4db396ff89dfb7f4b20fe0bbfce3b8a05ee6d7b6450cdb1026a503e609ee05a0"
+    }
+  ]
+}

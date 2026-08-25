@@ -1,0 +1,239 @@
+{
+  "schemaVersion": 1,
+  "systemId": "nintendo-3ds",
+  "displayName": "Nintendo 3DS",
+  "shortCode": "3DS",
+  "coverCount": 23,
+  "items": [
+    {
+      "id": "6be87f82e562ac93b10ed99b4e2b243d",
+      "title": "Ace Combat - Assault Horizon Legacy (US)",
+      "fileName": "6be87f82e562ac93b10ed99b4e2b243d.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/6be87f82e562ac93b10ed99b4e2b243d.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 554817,
+      "sha256": "9aa768e880a241ba0a2937497ebb57eb1ff5252bad6f87f610cdea559279429f"
+    },
+    {
+      "id": "2a3d6bb4c414d5349b2e4b57774abc25",
+      "title": "Adventure Time - Finn and Jake Investigations (US)",
+      "fileName": "2a3d6bb4c414d5349b2e4b57774abc25.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/2a3d6bb4c414d5349b2e4b57774abc25.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 482263,
+      "sha256": "45827eeb6cf1bfcbeb33942856e6c458b8c4a727091f31be1c81e7d789abd96e"
+    },
+    {
+      "id": "671bc046219fa8445e538e9b8a35cc08",
+      "title": "Adventure Time - Hey Ice King! Why'd You Steal Our Garbage!! (US)",
+      "fileName": "671bc046219fa8445e538e9b8a35cc08.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/671bc046219fa8445e538e9b8a35cc08.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 567193,
+      "sha256": "2b33fbc4ca7b1014da54807d072e6785bca60dbe89bc1ae1727a539e9f0dcf02"
+    },
+    {
+      "id": "2c83ecbece6223d68cc35af09ac2a76e",
+      "title": "Alien Chaos 3D (Europe) (En,Fr,De,Es,It) (eShop) Decrypted",
+      "fileName": "2c83ecbece6223d68cc35af09ac2a76e.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/2c83ecbece6223d68cc35af09ac2a76e.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 468838,
+      "sha256": "26c0aab914e458a9ec52ab64faf6d3777662f3d0a2bf1b984901089c9e3d381a"
+    },
+    {
+      "id": "2cebbdcb319aa52061c3034cffccc697",
+      "title": "Asphalt 3D (EUR) (En,Fr,Ge,It,Es) Decrypted",
+      "fileName": "2cebbdcb319aa52061c3034cffccc697.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/2cebbdcb319aa52061c3034cffccc697.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 480239,
+      "sha256": "a39cfef54953c5c90b00fa5cf2b79ecdccaa47823e49996ee722b9650949df2e"
+    },
+    {
+      "id": "222a74987ec7240f5e92d87149deec52",
+      "title": "Ben 10 - Galactic Racing (US)",
+      "fileName": "222a74987ec7240f5e92d87149deec52.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/222a74987ec7240f5e92d87149deec52.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 537884,
+      "sha256": "12ff818f1cafb8d6d15dee5b293b735ca90881f9bce99b4049831423394551c8"
+    },
+    {
+      "id": "f91f7bb887cc49cf84c43c23593a980d",
+      "title": "Ben 10 - Omniverse (US)",
+      "fileName": "f91f7bb887cc49cf84c43c23593a980d.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/f91f7bb887cc49cf84c43c23593a980d.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 486869,
+      "sha256": "d53f74914638c917854794b806725e952d4183817bc1f751b31eb9b6534309af"
+    },
+    {
+      "id": "b124533544669efc45dff304d8087453",
+      "title": "Ben 10 - Omniverse 2 (US)",
+      "fileName": "b124533544669efc45dff304d8087453.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/b124533544669efc45dff304d8087453.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 489080,
+      "sha256": "96f9e5fbfeedd2b8cec5c939c5ceca29a9bbd0f865479489bd25c100ab31e676"
+    },
+    {
+      "id": "83332dff3dccb81e8b5081a18221b025",
+      "title": "Pokemon Alpha Sapphire (US)",
+      "fileName": "83332dff3dccb81e8b5081a18221b025.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/83332dff3dccb81e8b5081a18221b025.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 520498,
+      "sha256": "461d0d9f37036397c36515b91439eb070959cf7f7b1f64eb1ed17357cbd6bac3"
+    },
+    {
+      "id": "a5d5a4964194114cd516b6d2ecb05860",
+      "title": "Pokemon Art Academy (US)",
+      "fileName": "a5d5a4964194114cd516b6d2ecb05860.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/a5d5a4964194114cd516b6d2ecb05860.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 524743,
+      "sha256": "9eaf7a61df623180a7fcb7a92f3ba9fbd93320e7adfa9ab30eaf01eceb5bb531"
+    },
+    {
+      "id": "3f32b94bc5d2219681dd776d08dece97",
+      "title": "Pokemon Moon (US)",
+      "fileName": "3f32b94bc5d2219681dd776d08dece97.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/3f32b94bc5d2219681dd776d08dece97.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 540373,
+      "sha256": "32eedce7fb8d4fceb72f142217f2412318a5729d7a597ce8af3c71a3fada5a61"
+    },
+    {
+      "id": "72bfe8c4586ca57f3b5fe1dbefa11f1d",
+      "title": "Pokemon Mystery Dungeon - Gates to Infinity (US)",
+      "fileName": "72bfe8c4586ca57f3b5fe1dbefa11f1d.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/72bfe8c4586ca57f3b5fe1dbefa11f1d.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 542138,
+      "sha256": "b815db6ba9274ec26af7c745941241e0695b232a04270d86939bbd9f92248d94"
+    },
+    {
+      "id": "ca112c1720cd03df55b814b1ddb26f3c",
+      "title": "Pokemon Omega Ruby (US)",
+      "fileName": "ca112c1720cd03df55b814b1ddb26f3c.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/ca112c1720cd03df55b814b1ddb26f3c.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 496624,
+      "sha256": "98f5957a1aeb382fffc40ea79c2f92c68ad72a5318d14c3aae20de07ef6d717f"
+    },
+    {
+      "id": "d2c4a4a74100a04d0463313155c27a61",
+      "title": "Pokemon Rumble World (US)",
+      "fileName": "d2c4a4a74100a04d0463313155c27a61.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/d2c4a4a74100a04d0463313155c27a61.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 537696,
+      "sha256": "6d09b161d65526ea786c8e32878c471fc0155911995071d71a7694b365056676"
+    },
+    {
+      "id": "f5bfe862b88ee5d4b0737e666c5c6903",
+      "title": "Pokemon Sun (US)",
+      "fileName": "f5bfe862b88ee5d4b0737e666c5c6903.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/f5bfe862b88ee5d4b0737e666c5c6903.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 486095,
+      "sha256": "0c922b55d546fc9ce251b9171c3d9faa59c8ce9431ccdc7394544023da5d8c16"
+    },
+    {
+      "id": "19d48a50a0c426aa8d7808124adbae26",
+      "title": "Pokemon Super Mystery Dungeon (US)",
+      "fileName": "19d48a50a0c426aa8d7808124adbae26.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/19d48a50a0c426aa8d7808124adbae26.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 565518,
+      "sha256": "ca931af5ab65ea710c7a1f7b02bd0570143aa061910c6a514914ceabf60b609f"
+    },
+    {
+      "id": "0275e9833e24b6d0ab7eecac62b44130",
+      "title": "Pokemon Ultra Moon (US)",
+      "fileName": "0275e9833e24b6d0ab7eecac62b44130.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/0275e9833e24b6d0ab7eecac62b44130.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 528559,
+      "sha256": "34b2f4aaaff6fe01939ae858f1d86271b53faea40a4710fbef60f85918c800db"
+    },
+    {
+      "id": "1b7ce5cb86d64c8995e529d96b4fc6b8",
+      "title": "Pokemon Ultra Sun (US)",
+      "fileName": "1b7ce5cb86d64c8995e529d96b4fc6b8.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/1b7ce5cb86d64c8995e529d96b4fc6b8.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 534915,
+      "sha256": "c4999365a368194d056cffd15471dfe31f09c4bd54e03a03d5a61a58f4e682e6"
+    },
+    {
+      "id": "3c3089f4f5b92c78db2018f99441c223",
+      "title": "Pokemon X (US)",
+      "fileName": "3c3089f4f5b92c78db2018f99441c223.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/3c3089f4f5b92c78db2018f99441c223.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 467691,
+      "sha256": "f0f338d400a2670ce2936813049504e49d59d7ac1acdfa3313a6c9eb842d5e6a"
+    },
+    {
+      "id": "bf64c14a0f72bf9f7796603a9dd66497",
+      "title": "Pokemon Y (US)",
+      "fileName": "bf64c14a0f72bf9f7796603a9dd66497.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/bf64c14a0f72bf9f7796603a9dd66497.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 466542,
+      "sha256": "17d99ce88d84b2b3aea7bb42a8e645027d68f7d1cb534a4fd466f299c56ad9ac"
+    },
+    {
+      "id": "2715617a7918a8f5b5bd9ad6a9ff4002",
+      "title": "Rayman 3D (Europe) (En,Fr,De,Es,It)",
+      "fileName": "2715617a7918a8f5b5bd9ad6a9ff4002.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/2715617a7918a8f5b5bd9ad6a9ff4002.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 463654,
+      "sha256": "55945e246bcff78c3ce9434eca6106af194dfc7410699d482b1df4ee40e9915a"
+    },
+    {
+      "id": "90c1cd81bec4cb2549c6004121963074",
+      "title": "Super Mario 3D Land (Europe) (En,Fr,De,Es,It,Nl,Pt,Ru)",
+      "fileName": "90c1cd81bec4cb2549c6004121963074.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/90c1cd81bec4cb2549c6004121963074.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 460163,
+      "sha256": "cead8647fb3ea9ed3b52710ef56573477e85b831dd4ff0c1186cb59f7d07055b"
+    },
+    {
+      "id": "fa07177d087bdc98de11393bbf1e6509",
+      "title": "Yoshi's New Island (Europe) (En,Fr,De,Es,It,Nl,Pt,Ru) Decrypted",
+      "fileName": "fa07177d087bdc98de11393bbf1e6509.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/fa07177d087bdc98de11393bbf1e6509.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 508152,
+      "sha256": "7d3158985ce82f63134314ee919a1aaac0f1d664edfb1251423534bd5d2f32bc"
+    }
+  ]
+}

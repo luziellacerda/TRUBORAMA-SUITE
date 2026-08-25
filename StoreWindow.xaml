@@ -93,6 +93,102 @@
           </Setter.Value>
         </Setter>
       </Style>
+      <Style x:Key="DownloadNeonButtonStyle" TargetType="{x:Type Button}" BasedOn="{StaticResource PrimaryButtonStyle}">
+        <Setter Property="Template">
+          <Setter.Value>
+            <ControlTemplate TargetType="{x:Type Button}">
+              <Grid Margin="2" ClipToBounds="False">
+                <Border x:Name="NeonAura"
+                        Margin="-1"
+                        CornerRadius="10"
+                        BorderBrush="{DynamicResource CurrentSystemAccentBrush}"
+                        BorderThickness="1"
+                        Opacity=".44"
+                        IsHitTestVisible="False"
+                        CacheMode="BitmapCache">
+                  <Border.Effect>
+                    <DropShadowEffect Color="{DynamicResource CurrentSystemAccentColor}"
+                                      BlurRadius="9"
+                                      ShadowDepth="0"
+                                      Opacity=".62" />
+                  </Border.Effect>
+                </Border>
+                <Border x:Name="Surface"
+                        Background="{TemplateBinding Control.Background}"
+                        BorderBrush="{DynamicResource CurrentSystemBrightBrush}"
+                        BorderThickness="1"
+                        CornerRadius="9"
+                        Padding="{TemplateBinding Control.Padding}"
+                        ClipToBounds="True">
+                  <Grid ClipToBounds="True">
+                    <Rectangle x:Name="LaserSweep"
+                               Width="48"
+                               Margin="-52,0,0,0"
+                               HorizontalAlignment="Left"
+                               Opacity="0"
+                               IsHitTestVisible="False"
+                               CacheMode="BitmapCache">
+                      <Rectangle.Fill>
+                        <LinearGradientBrush StartPoint="0,.5" EndPoint="1,.5">
+                          <GradientStop Color="#00FFFFFF" Offset="0" />
+                          <GradientStop Color="#A8FFFFFF" Offset=".48" />
+                          <GradientStop Color="#00FFFFFF" Offset="1" />
+                        </LinearGradientBrush>
+                      </Rectangle.Fill>
+                      <Rectangle.RenderTransform>
+                        <TranslateTransform x:Name="LaserTranslate" X="0" />
+                      </Rectangle.RenderTransform>
+                    </Rectangle>
+                    <ContentPresenter HorizontalAlignment="{TemplateBinding Control.HorizontalContentAlignment}"
+                                      VerticalAlignment="Center" />
+                  </Grid>
+                </Border>
+              </Grid>
+              <ControlTemplate.Triggers>
+                <Trigger Property="UIElement.IsVisible" Value="True">
+                  <Trigger.EnterActions>
+                    <BeginStoryboard x:Name="DownloadNeonPulse">
+                      <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                        <DoubleAnimation Storyboard.TargetName="NeonAura"
+                                         Storyboard.TargetProperty="Opacity"
+                                         From=".30" To=".72" Duration="0:0:1.15" />
+                      </Storyboard>
+                    </BeginStoryboard>
+                    <BeginStoryboard x:Name="DownloadLaserSweep">
+                      <Storyboard RepeatBehavior="Forever">
+                        <DoubleAnimation Storyboard.TargetName="LaserSweep"
+                                         Storyboard.TargetProperty="Opacity"
+                                         From="0" To=".82" Duration="0:0:.18"
+                                         AutoReverse="True" />
+                        <DoubleAnimation Storyboard.TargetName="LaserTranslate"
+                                         Storyboard.TargetProperty="X"
+                                         From="0" To="290" Duration="0:0:1.65"
+                                         BeginTime="0:0:.15" />
+                      </Storyboard>
+                    </BeginStoryboard>
+                  </Trigger.EnterActions>
+                  <Trigger.ExitActions>
+                    <RemoveStoryboard BeginStoryboardName="DownloadNeonPulse" />
+                    <RemoveStoryboard BeginStoryboardName="DownloadLaserSweep" />
+                  </Trigger.ExitActions>
+                </Trigger>
+                <Trigger Property="UIElement.IsMouseOver" Value="True">
+                  <Setter TargetName="Surface" Property="Border.Background" Value="{DynamicResource CurrentSystemBrightBrush}" />
+                  <Setter TargetName="NeonAura" Property="Opacity" Value=".92" />
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                  <Setter TargetName="Surface" Property="UIElement.Opacity" Value=".76" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                  <Setter TargetName="Surface" Property="UIElement.Opacity" Value=".34" />
+                  <Setter TargetName="NeonAura" Property="Visibility" Value="Collapsed" />
+                  <Setter TargetName="LaserSweep" Property="Visibility" Value="Collapsed" />
+                </Trigger>
+              </ControlTemplate.Triggers>
+            </ControlTemplate>
+          </Setter.Value>
+        </Setter>
+      </Style>
       <Style x:Key="SecondaryButtonStyle" TargetType="{x:Type Button}">
         <Setter Property="MinHeight" Value="42" />
         <Setter Property="Padding" Value="16,0" />
@@ -538,7 +634,7 @@
               <Grid Row="1" Margin="8,7">
                 <Button Name="CardDownloadButton" Content="{Binding DownloadActionLabel}" Tag="{Binding Id}" AutomationProperties.Name="{Binding DownloadActionLabel}" AutomationProperties.HelpText="{Binding Title}" Click="DownloadItem_Click">
                   <FrameworkElement.Style>
-                    <Style TargetType="{x:Type Button}" BasedOn="{StaticResource PrimaryButtonStyle}">
+                    <Style TargetType="{x:Type Button}" BasedOn="{StaticResource DownloadNeonButtonStyle}">
                       <Setter Property="Visibility" Value="Visible" />
                       <Style.Triggers>
                         <DataTrigger Value="True" Binding="{Binding CanPause}">
@@ -794,7 +890,7 @@
                   AutomationProperties.Name="{Binding DownloadActionLabel}"
                   AutomationProperties.HelpText="{Binding Title}">
             <Button.Style>
-              <Style TargetType="{x:Type Button}" BasedOn="{StaticResource PrimaryButtonStyle}">
+              <Style TargetType="{x:Type Button}" BasedOn="{StaticResource DownloadNeonButtonStyle}">
                 <Setter Property="Height" Value="20" />
                 <Setter Property="MinHeight" Value="20" />
                 <Setter Property="Padding" Value="6,0" />
@@ -851,12 +947,32 @@
         <Border Background="#101510" BorderBrush="#293228" BorderThickness="1" CornerRadius="12" Margin="0,0,0,10" Padding="15,13">
           <Grid>
             <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="48" />
+              <ColumnDefinition Width="78" />
               <ColumnDefinition Width="*" />
               <ColumnDefinition Width="220" />
             </Grid.ColumnDefinitions>
-            <Border Width="40" Height="40" CornerRadius="10" Background="#172312" BorderBrush="#3B542E" BorderThickness="1" VerticalAlignment="Top">
-              <TextBlock Text="⇩" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource LimeBrush}" />
+            <Border Width="68"
+                    Height="102"
+                    CornerRadius="8"
+                    Background="#070A07"
+                    BorderBrush="{Binding Item.AccentBrush}"
+                    BorderThickness="1"
+                    VerticalAlignment="Center"
+                    ClipToBounds="True"
+                    AutomationProperties.Name="{Binding Item.ImageAltText}">
+              <Grid>
+                <TextBlock Text="⇩"
+                           FontSize="18"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Foreground="{Binding Item.AccentBrush}"
+                           Opacity=".42" />
+                <Image Source="{Binding Item.ImageSource, IsAsync=True, Converter={StaticResource CatalogThumbnailConverter}, ConverterParameter=160}"
+                       Stretch="UniformToFill"
+                       RenderOptions.BitmapScalingMode="HighQuality"
+                       SnapsToDevicePixels="True"
+                       AutomationProperties.Name="{Binding Item.ImageAltText}" />
+              </Grid>
             </Border>
             <Grid Column="1" Margin="12,0,18,0">
               <Grid.RowDefinitions>
@@ -890,7 +1006,7 @@
               </Button>
               <Button Name="DownloadJobResumeButton" Content="CONTINUAR" AutomationProperties.Name="Continuar download preservado" Tag="{Binding}" AutomationProperties.HelpText="{Binding Title}" Click="ResumeDownloadJob_Click">
                 <FrameworkElement.Style>
-                  <Style TargetType="{x:Type Button}" BasedOn="{StaticResource PrimaryButtonStyle}">
+                  <Style TargetType="{x:Type Button}" BasedOn="{StaticResource DownloadNeonButtonStyle}">
                     <Setter Property="Visibility" Value="Collapsed" />
                     <Style.Triggers>
                       <DataTrigger Value="True" Binding="{Binding CanResume}">
