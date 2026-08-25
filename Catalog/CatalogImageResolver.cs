@@ -12,15 +12,22 @@ public sealed class CatalogImageResolver
 {
     private readonly string _manifestDirectory;
     private readonly string _allowedAssetRoot;
+    private readonly bool _usePackResources;
     private readonly ConcurrentDictionary<string, string> _cache = new(StringComparer.Ordinal);
 
-    public CatalogImageResolver(string manifestPath, string? fallbackImage)
+    public CatalogImageResolver(
+        string manifestPath,
+        string? fallbackImage,
+        bool usePackResources = false)
     {
         var fullManifestPath = Path.GetFullPath(manifestPath);
         _manifestDirectory = Path.GetDirectoryName(fullManifestPath)
             ?? throw new ArgumentException("O manifesto precisa ter uma pasta válida.", nameof(manifestPath));
         _allowedAssetRoot = Directory.GetParent(_manifestDirectory)?.FullName ?? _manifestDirectory;
-        FallbackImageSource = ResolveLocal(fallbackImage) ?? string.Empty;
+        _usePackResources = usePackResources;
+        FallbackImageSource = usePackResources
+            ? ResolvePackResource(fallbackImage) ?? string.Empty
+            : ResolveLocal(fallbackImage) ?? string.Empty;
     }
 
     public string FallbackImageSource { get; }
@@ -35,6 +42,9 @@ public sealed class CatalogImageResolver
 
     private string ResolveCore(string imageReference)
     {
+        if (_usePackResources)
+            return ResolvePackResource(imageReference) ?? FallbackImageSource;
+
         if (Uri.TryCreate(imageReference, UriKind.Absolute, out var absoluteUri))
         {
             if (absoluteUri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
@@ -47,6 +57,26 @@ public sealed class CatalogImageResolver
         }
 
         return ResolveLocal(imageReference) ?? FallbackImageSource;
+    }
+
+    private static string? ResolvePackResource(string? imageReference)
+    {
+        if (string.IsNullOrWhiteSpace(imageReference)) return null;
+        try
+        {
+            var normalized = imageReference.Trim().Replace('\\', '/');
+            if (normalized.StartsWith("/", StringComparison.Ordinal)
+                || Uri.TryCreate(normalized, UriKind.Absolute, out _)
+                || normalized.Split('/').Any(segment =>
+                    segment.Length == 0 || segment is "." or ".."))
+                return null;
+
+            return $"pack://application:,,,/Assets/Catalog/{normalized}";
+        }
+        catch (Exception exception) when (exception is ArgumentException or UriFormatException)
+        {
+            return null;
+        }
     }
 
     private string? ResolveLocal(string? imageReference)

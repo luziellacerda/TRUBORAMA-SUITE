@@ -7,19 +7,33 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Turborama</AssemblyName>
     <RootNamespace>TurboBoxManager</RootNamespace>
-    <Version>1.6.0</Version>
-    <AssemblyVersion>1.6.0.0</AssemblyVersion>
-    <FileVersion>1.6.0.0</FileVersion>
+    <Version>1.6.2</Version>
+    <AssemblyVersion>1.6.2.0</AssemblyVersion>
+    <FileVersion>1.6.2.0</FileVersion>
     <Product>Turborama</Product>
     <Company>Turborama</Company>
     <Description>Central Turborama de sistemas, biblioteca e downloads.</Description>
     <ApplicationIcon>Assets\turborama-app-icon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Optimize Condition="'$(Configuration)' == 'Release'">true</Optimize>
+    <DebugType Condition="'$(Configuration)' == 'Release'">None</DebugType>
+    <DebugSymbols Condition="'$(Configuration)' == 'Release'">false</DebugSymbols>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(PrivateCatalogResourcePath)' != '' and '$(PrivateCatalogKeySourcePath)' != ''">
+    <DefineConstants>$(DefineConstants);PRIVATE_CATALOG_EMBEDDED</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="SharpCompress">
+      <HintPath>lib\SharpCompress.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
   <ItemGroup>
     <Compile Remove="tools\**\*.cs" />
     <Compile Remove="tests\**\*.cs" />
-    <Content Include="Assets\Catalog\**\*.*">
+    <Content Include="Assets\Catalog\**\*.*"
+             Exclude="Assets\Catalog\platform-descriptions.json;Assets\Catalog\SystemVideos\system-videos.json;Assets\Catalog\SystemVideos\system-video-integrity.json"
+             Condition="'$(PrivateCatalogResourcePath)' == ''">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
       <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
@@ -27,5 +41,18 @@
     <Resource Include="Assets\f15-turborama-user-original-v13.png" />
     <Resource Include="Assets\turborama-logo-v3.png" />
     <Resource Include="Assets\turborama-app-icon.ico" />
+    <EmbeddedResource Include="Assets\Catalog\platform-descriptions.json"
+                      LogicalName="Turborama.PlatformDescriptions.json" />
+    <EmbeddedResource Include="Assets\Catalog\SystemVideos\system-videos.json"
+                      LogicalName="Turborama.SystemVideos.json" />
+    <EmbeddedResource Include="Assets\Catalog\SystemVideos\system-video-integrity.json"
+                      LogicalName="Turborama.SystemVideoIntegrity.json" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(PrivateCatalogResourcePath)' != '' and '$(PrivateCatalogKeySourcePath)' != ''">
+    <EmbeddedResource Include="$(PrivateCatalogResourcePath)" LogicalName="Turborama.PrivateCatalog.bin" />
+    <Compile Include="$(PrivateCatalogKeySourcePath)" Link="Generated\PrivateCatalogSecrets.g.cs" />
+    <Resource Include="Assets\Catalog\Images\*.*" />
+    <Resource Include="Assets\Catalog\SystemIcons\*.png" />
+    <Resource Include="Assets\Catalog\MenuIcons\*.png" />
   </ItemGroup>
 </Project>

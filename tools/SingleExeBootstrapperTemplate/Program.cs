@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Diagnostics;
 using System.IO.Compression;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -16,10 +17,15 @@ internal static class Program
     private const string ExpectedTreeSha256 = "__EXPECTED_TREE_SHA256__";
     private const string ExpectedMainExeSha256 = "__EXPECTED_MAIN_EXE_SHA256__";
     private const string MarkerName = ".turborama-package.sha256";
+    private const string PackageRootSettingName = "package-root.txt";
+    private const long RequiredFreeSpaceMarginBytes = 128L * 1024L * 1024L;
     private const int TrailerSize = 56;
     private const int TrailerSearchBytes = 4 * 1024 * 1024;
     private static readonly byte[] TrailerMagic = Encoding.ASCII.GetBytes("TURBORAMA-PKG-V1");
     private static readonly StringComparer PathComparer = StringComparer.OrdinalIgnoreCase;
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "MessageBoxW", ExactSpelling = true)]
+    private static extern int ShowNativeMessage(nint window, string text, string caption, uint type);
 
     [STAThread]
     private static int Main()
@@ -34,14 +40,12 @@ internal static class Program
             if (string.IsNullOrWhiteSpace(localAppData))
                 throw new InvalidOperationException("LOCALAPPDATA indisponível.");
 
-            // Hook exclusivo deste protótipo para QA em uma pasta limpa e isolada.
+            // Hook exclusivo para QA em uma pasta limpa e isolada.
             string? testRoot = Environment.GetEnvironmentVariable("TURBORAMA_BOOTSTRAPPER_TEST_ROOT");
-            string packageBase = string.IsNullOrWhiteSpace(testRoot)
-                ? Path.Combine(localAppData, "Turborama", "Packages")
-                : testRoot;
-            packageBase = Path.GetFullPath(packageBase);
-            Directory.CreateDirectory(packageBase);
-            RejectReparsePoint(packageBase);
+            string packageBase = ResolvePackageBase(localAppData, testRoot);
+            string volumeRoot = Path.GetPathRoot(packageBase)
+                ?? throw new InvalidOperationException("Não foi possível localizar o disco do cache.");
+            CreateSafeDirectory(volumeRoot, packageBase);
 
             string packageRoot = CanonicalChild(
                 packageBase,
@@ -99,8 +103,184 @@ internal static class Program
         catch (Exception ex)
         {
             TryWriteEmergencyLog(ex);
+            TryShowLaunchError(ex);
             return 1;
         }
+    }
+
+    private static string ResolvePackageBase(string localAppData, string? testRoot)
+    {
+        if (!string.IsNullOrWhiteSpace(testRoot))
+            return Path.GetFullPath(testRoot);
+
+        string launcherRoot = Path.GetFullPath(Path.Combine(localAppData, "Turborama", "Launcher"));
+        string defaultBase = Path.GetFullPath(Path.Combine(localAppData, "Turborama", "Packages"));
+        var candidates = new List<string>();
+
+        AddPackageBaseCandidate(candidates, ReadPersistedPackageBase(launcherRoot));
+        AddPackageBaseCandidate(candidates, defaultBase);
+
+        string? defaultDriveRoot = Path.GetPathRoot(defaultBase);
+        foreach (DriveInfo drive in GetReadyFixedDrives()
+                     .OrderByDescending(item => GetAvailableFreeSpace(item.RootDirectory.FullName)))
+        {
+            if (drive.RootDirectory.FullName.Equals(defaultDriveRoot, StringComparison.OrdinalIgnoreCase))
+                continue;
+            AddPackageBaseCandidate(
+                candidates,
+                Path.Combine(drive.RootDirectory.FullName, "Turborama", "Packages"));
+        }
+
+        string packageRelative = Path.Combine(PackageVersion, PayloadSha256.ToLowerInvariant());
+        foreach (string candidate in candidates)
+        {
+            try
+            {
+                if (ValidateInstalledPackage(CanonicalChild(candidate, packageRelative)))
+                {
+                    TryPersistPackageBase(launcherRoot, candidate, defaultBase);
+                    return candidate;
+                }
+            }
+            catch
+            {
+                // Um cache inválido não impede a procura por outro disco saudável.
+            }
+        }
+
+        long requiredBytes = checked(ExpectedContentBytes + RequiredFreeSpaceMarginBytes);
+        foreach (string candidate in candidates)
+        {
+            if (GetAvailableFreeSpace(candidate) < requiredBytes)
+                continue;
+            TryPersistPackageBase(launcherRoot, candidate, defaultBase);
+            return candidate;
+        }
+
+        throw new IOException(
+            $"Não há espaço suficiente para abrir o Turborama. Libere pelo menos {FormatBytes(requiredBytes)} " +
+            "em um disco fixo e tente novamente.");
+    }
+
+    private static void AddPackageBaseCandidate(List<string> candidates, string? candidate)
+    {
+        if (string.IsNullOrWhiteSpace(candidate)) return;
+        try
+        {
+            string canonical = Path.GetFullPath(candidate);
+            if (!IsReadyFixedDrivePath(canonical)
+                || candidates.Contains(canonical, StringComparer.OrdinalIgnoreCase))
+                return;
+            candidates.Add(canonical);
+        }
+        catch (Exception exception) when (exception is ArgumentException
+                                           or IOException
+                                           or NotSupportedException
+                                           or UnauthorizedAccessException)
+        {
+        }
+    }
+
+    private static string? ReadPersistedPackageBase(string launcherRoot)
+    {
+        try
+        {
+            string settingPath = Path.Combine(launcherRoot, PackageRootSettingName);
+            var info = new FileInfo(settingPath);
+            if (!info.Exists || info.Length <= 0 || info.Length > 2048)
+                return null;
+            string value = File.ReadAllText(settingPath, Encoding.UTF8).Trim();
+            return string.IsNullOrWhiteSpace(value) ? null : Path.GetFullPath(value);
+        }
+        catch (Exception exception) when (exception is ArgumentException
+                                           or IOException
+                                           or NotSupportedException
+                                           or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    private static void TryPersistPackageBase(string launcherRoot, string packageBase, string defaultBase)
+    {
+        try
+        {
+            string settingPath = Path.Combine(launcherRoot, PackageRootSettingName);
+            if (packageBase.Equals(defaultBase, StringComparison.OrdinalIgnoreCase))
+            {
+                if (File.Exists(settingPath)) File.Delete(settingPath);
+                return;
+            }
+
+            string volumeRoot = Path.GetPathRoot(launcherRoot)
+                ?? throw new IOException("Disco do perfil local indisponível.");
+            CreateSafeDirectory(volumeRoot, launcherRoot);
+            string temporaryPath = settingPath + ".tmp-" + Guid.NewGuid().ToString("N");
+            File.WriteAllText(temporaryPath, packageBase + Environment.NewLine, new UTF8Encoding(false));
+            File.Move(temporaryPath, settingPath, overwrite: true);
+        }
+        catch
+        {
+            // Persistência é uma otimização; o seletor automático roda novamente se falhar.
+        }
+    }
+
+    private static IEnumerable<DriveInfo> GetReadyFixedDrives()
+    {
+        try
+        {
+            return DriveInfo.GetDrives()
+                .Where(drive => drive.DriveType == DriveType.Fixed && IsDriveReady(drive))
+                .ToArray();
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    private static bool IsDriveReady(DriveInfo drive)
+    {
+        try { return drive.IsReady; }
+        catch { return false; }
+    }
+
+    private static bool IsReadyFixedDrivePath(string path)
+    {
+        try
+        {
+            string root = Path.GetPathRoot(Path.GetFullPath(path))
+                ?? throw new IOException("Caminho sem disco.");
+            var drive = new DriveInfo(root);
+            return drive.DriveType == DriveType.Fixed && drive.IsReady;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static long GetAvailableFreeSpace(string path)
+    {
+        try
+        {
+            string root = Path.GetPathRoot(Path.GetFullPath(path))
+                ?? throw new IOException("Caminho sem disco.");
+            var drive = new DriveInfo(root);
+            return drive.IsReady ? drive.AvailableFreeSpace : -1;
+        }
+        catch
+        {
+            return -1;
+        }
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        double gib = bytes / (1024d * 1024d * 1024d);
+        return gib >= 1
+            ? $"{gib:0.0} GB"
+            : $"{bytes / (1024d * 1024d):0} MB";
     }
 
     private static PayloadLocation LocateAndVerifyPayload(string launcherPath)
@@ -409,6 +589,36 @@ internal static class Program
         {
             // Sem prompt: a falha de logging não deve gerar outra falha visível.
         }
+    }
+
+    private static void TryShowLaunchError(Exception exception)
+    {
+        try
+        {
+            string message = IsDiskFull(exception)
+                ? "O disco usado para abrir o Turborama ficou sem espaço. Libere espaço ou conecte um disco fixo com espaço disponível e tente novamente."
+                : exception.Message;
+            ShowNativeMessage(
+                0,
+                $"Não foi possível abrir o Turborama.\n\n{message}",
+                "Turborama",
+                0x00000010u);
+        }
+        catch
+        {
+            // O log continua disponível mesmo se o Windows não puder exibir a mensagem.
+        }
+    }
+
+    private static bool IsDiskFull(Exception exception)
+    {
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            int code = current.HResult & 0xFFFF;
+            if (code is 0x27 or 0x70)
+                return true;
+        }
+        return false;
     }
 
     private readonly record struct PayloadLocation(long Offset, long Length);

@@ -20,15 +20,26 @@ public sealed class CatalogDownloadJob : INotifyPropertyChanged, IDisposable
     public string StatusText => Item.DownloadStatus;
     public string LocalFilePath => Item.LocalFilePath;
     public bool CanCancel => Item.CanCancel;
+    public bool CanPause => Item.CanPause;
+    public bool CanResume => Item.CanResume;
+    public bool CanDiscard => Item.CanDiscard;
+    public bool CanRetryExtraction => Item.CanRetryExtraction;
     public bool CanOpen => Item.CanOpen;
 
     public string StateLabel => State switch
     {
         CatalogDownloadState.Queued => "Na fila",
         CatalogDownloadState.Downloading => "Baixando",
+        CatalogDownloadState.WaitingForNetwork => "Aguardando internet",
+        CatalogDownloadState.Paused => "Pausado",
+        CatalogDownloadState.Verifying => "Verificando",
+        CatalogDownloadState.Extracting => "Descompactando",
+        CatalogDownloadState.AwaitingExtractionLocation => "Sem espaço",
+        CatalogDownloadState.ExtractionFailed => "Extração falhou",
         CatalogDownloadState.Completed => "Concluído",
         CatalogDownloadState.Failed => "Falhou",
         CatalogDownloadState.Canceled => "Cancelado",
+        CatalogDownloadState.Discarded => "Removido",
         _ => "Pronto"
     };
 
@@ -42,6 +53,10 @@ public sealed class CatalogDownloadJob : INotifyPropertyChanged, IDisposable
                 OnPropertyChanged(nameof(State));
                 OnPropertyChanged(nameof(StateLabel));
                 OnPropertyChanged(nameof(CanCancel));
+                OnPropertyChanged(nameof(CanPause));
+                OnPropertyChanged(nameof(CanResume));
+                OnPropertyChanged(nameof(CanDiscard));
+                OnPropertyChanged(nameof(CanRetryExtraction));
                 OnPropertyChanged(nameof(CanOpen));
                 break;
             case nameof(CatalogItem.ProgressPercentage):
@@ -56,6 +71,18 @@ public sealed class CatalogDownloadJob : INotifyPropertyChanged, IDisposable
                 break;
             case nameof(CatalogItem.CanCancel):
                 OnPropertyChanged(nameof(CanCancel));
+                break;
+            case nameof(CatalogItem.CanPause):
+                OnPropertyChanged(nameof(CanPause));
+                break;
+            case nameof(CatalogItem.CanResume):
+                OnPropertyChanged(nameof(CanResume));
+                break;
+            case nameof(CatalogItem.CanDiscard):
+                OnPropertyChanged(nameof(CanDiscard));
+                break;
+            case nameof(CatalogItem.CanRetryExtraction):
+                OnPropertyChanged(nameof(CanRetryExtraction));
                 break;
             case nameof(CatalogItem.CanOpen):
                 OnPropertyChanged(nameof(CanOpen));

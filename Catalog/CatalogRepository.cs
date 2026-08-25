@@ -11,13 +11,20 @@ public sealed class CatalogRepository
     private readonly IReadOnlyList<CatalogItem> _items;
     private readonly IReadOnlyDictionary<string, CatalogItem> _itemsById;
 
-    private CatalogRepository(CatalogManifest manifest, string manifestPath)
+    private CatalogRepository(
+        CatalogManifest manifest,
+        string manifestPath,
+        bool usePackResources = false)
     {
         _manifest = manifest;
         Validate(manifest);
 
-        var imageResolver = new CatalogImageResolver(manifestPath, manifest.DefaultImage);
-        _items = MaterializeItems(manifest, imageResolver);
+        var imageResolver = new CatalogImageResolver(
+            manifestPath,
+            manifest.DefaultImage,
+            usePackResources);
+        var descriptions = CatalogGameDescriptionStore.Load(manifestPath);
+        _items = MaterializeItems(manifest, imageResolver, descriptions);
         _itemsById = _items.ToDictionary(item => item.Id, StringComparer.OrdinalIgnoreCase);
     }
 
@@ -29,13 +36,22 @@ public sealed class CatalogRepository
     public static CatalogRepository Load(string manifestPath)
     {
         using var stream = File.OpenRead(manifestPath);
-        var manifest = JsonSerializer.Deserialize<CatalogManifest>(stream, new JsonSerializerOptions
+        return Load(stream, manifestPath);
+    }
+
+    public static CatalogRepository Load(
+        Stream manifestStream,
+        string resourceBaseManifestPath,
+        bool usePackResources = false)
+    {
+        ArgumentNullException.ThrowIfNull(manifestStream);
+        var manifest = JsonSerializer.Deserialize<CatalogManifest>(manifestStream, new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,
             ReadCommentHandling = JsonCommentHandling.Skip
         }) ?? throw new InvalidDataException("O manifesto do catálogo está vazio.");
 
-        return new CatalogRepository(manifest, manifestPath);
+        return new CatalogRepository(manifest, resourceBaseManifestPath, usePackResources);
     }
 
     public CatalogItem? FindById(string itemId) =>
@@ -64,7 +80,8 @@ public sealed class CatalogRepository
 
     private static IReadOnlyList<CatalogItem> MaterializeItems(
         CatalogManifest manifest,
-        CatalogImageResolver imageResolver)
+        CatalogImageResolver imageResolver,
+        IReadOnlyDictionary<string, string> descriptions)
     {
         var definitions = manifest.Items.Count > 0
             ? manifest.Items
@@ -104,13 +121,17 @@ public sealed class CatalogRepository
                 Size = displaySize,
                 Version = definition.Version,
                 Keywords = $"{category.DisplayName} {category.ShortCode} {definition.Keywords}",
+                Description = FirstNonEmpty(
+                    definition.Description,
+                    descriptions.GetValueOrDefault(definition.Id) ?? string.Empty),
                 SystemCode = category.ShortCode,
                 SystemGlyph = category.Glyph,
                 Order = definition.Order,
                 AccentBrush = category.AccentBrush,
                 DownloadUrl = downloadUrl,
                 Sha256 = checksum,
-                DownloadFileExtension = fileExtension
+                DownloadFileExtension = fileExtension,
+                Extract = definition.Extract
             };
         }).ToArray();
     }

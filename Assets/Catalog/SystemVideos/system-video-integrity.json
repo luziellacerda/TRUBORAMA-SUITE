@@ -1,0 +1,154 @@
+{
+  "3ds.mp4": {
+    "sha256": "723ce69d3f2e5deb24a301978d78be9897fb78380190e55d30103992d94d1069",
+    "length": 188819
+  },
+  "arcade-1.mp4": {
+    "sha256": "49745bdec4bbf5294f36d2fbf36d3863a6590fa5afe377b08377a881a7c5a5c4",
+    "length": 335352
+  },
+  "arcade-2.mp4": {
+    "sha256": "9551b011e607274fe64731f85ae171318b80275b80a8d657d37e0703a97a45d5",
+    "length": 120503
+  },
+  "arcade-3.mp4": {
+    "sha256": "302217e2ac0c878cff555f8f889099887a6be1064affcd8f920bc46b82442f24",
+    "length": 118712
+  },
+  "atari-family.mp4": {
+    "sha256": "5186de08fe3313dccc5b891588587f118c7b0526d9447f1940bc391d27b153fc",
+    "length": 756564
+  },
+  "atari2600-1.mp4": {
+    "sha256": "2ded10b021a8b8ea66d3e66a098ae4cd84eaddfc5b73a29b9ccee03a9ba3a15b",
+    "length": 68349
+  },
+  "atari2600-2.mp4": {
+    "sha256": "c240b0d179cc21de97c5c4151c706d852e7373d21601e7984474d99936e0741d",
+    "length": 126916
+  },
+  "atari7800.mp4": {
+    "sha256": "d61a9697180ad1a45542015f2eb6f85253919a2d684035774863c8c4251f90ef",
+    "length": 27696
+  },
+  "dreamcast-1.mp4": {
+    "sha256": "b7fd66deefa3f6cb3b84d3b6bef611bcb2b6be13e65e78cd09063e6746448f48",
+    "length": 762591
+  },
+  "dreamcast-2.mp4": {
+    "sha256": "f0eb7b02c4f97dfd428c3612cd71e1046ad9b013bf222782fcb14249c7628e11",
+    "length": 2302408
+  },
+  "fba-1.mp4": {
+    "sha256": "d642126f51e052a70f801fb98ee45e3027ec561a15592c74abccd8a0f04f77d5",
+    "length": 248137
+  },
+  "fba-2.mp4": {
+    "sha256": "f814e662e563f41d57080855ac18cdf88ffc26d6583a407fd0f0c648e4d09528",
+    "length": 571215
+  },
+  "fba-3.mp4": {
+    "sha256": "dd54674b28da873c27d5263f934b100261321c55e050b3681fcbb76e3a0c9a32",
+    "length": 112557
+  },
+  "gameboy-2.mp4": {
+    "sha256": "ddc280e272cb39249f30d273dd64e19f4593e4fb56e2a8a7890b00e20b4a916f",
+    "length": 76802
+  },
+  "gameboy-3.mp4": {
+    "sha256": "3a49a38fe0e3c389088400d6c75659cc1a115b9d3e3ac31b3caec94208f5dc1d",
+    "length": 37379
+  },
+  "gamecube.mp4": {
+    "sha256": "6dab4a6c5db9b43d62cc2d10dcc868a3e3c8f395deeaad2b2ced84ed26839599",
+    "length": 50983
+  },
+  "gba.mp4": {
+    "sha256": "55cc877dd5e2a23a618435901635cd1c2e20e52cd27c89b55454cc7269c15ee8",
+    "length": 606747
+  },
+  "gbc.mp4": {
+    "sha256": "a7873d72f9deb49a7864816c33319608a67990964da7ca06c601915c9b9d9c66",
+    "length": 47329
+  },
+  "mame.mp4": {
+    "sha256": "3ba48bbd1c1cada9620c658db373954a069912534339d92fd6121dfb106bfdf8",
+    "length": 167894
+  },
+  "mastersystem-1.mp4": {
+    "sha256": "45424242a675e0634c3580598e8089cceef7aa847f45ca98964f8428d1da3840",
+    "length": 271686
+  },
+  "mastersystem-2.mp4": {
+    "sha256": "a804423298f19ddb37268d3f39637c906fa18c27c956776bb3aab57654d5498b",
+    "length": 58419
+  },
+  "mastersystem-3.mp4": {
+    "sha256": "79f947370391b09ae8aba327789c4b17445884bda80eccc2c5a4677ad93b355e",
+    "length": 82584
+  },
+  "megadrive.mp4": {
+    "sha256": "77aa5e6cee726f6b8eec92fe36d6e6d44f28aa0dad58372f78a3570282b696de",
+    "length": 471213
+  },
+  "msx.mp4": {
+    "sha256": "d175f5a4487a8ff336bca269d11e38e13e3ca05910496de87f6947d11da1218e",
+    "length": 110775
+  },
+  "n64.mp4": {
+    "sha256": "16c732537860610024186514e3d02dc34697101f67f03abfec1b0747842fcb6a",
+    "length": 11890
+  },
+  "nds.mp4": {
+    "sha256": "4489aeb9281a2822985847fce096d7a748a8e31da9c8fb1ec0809a5d299a7675",
+    "length": 125141
+  },
+  "neogeo-1.mp4": {
+    "sha256": "0f354fa9bfb0a572e814a5e2967b6a7fc1bc78950e504f06a77ffab1cbfe25da",
+    "length": 118263
+  },
+  "neogeo-2.mp4": {
+    "sha256": "d29d818b38f3f70ee3c06f5ea11780afa9b737a032dc3116c15fde71b9d98a93",
+    "length": 55961
+  },
+  "neogeo-3.mp4": {
+    "sha256": "7ad05f1bb74520a67fc7e94ed0604795acd82b29a6f991034d5239091a7dc378",
+    "length": 80397
+  },
+  "neogeocd.mp4": {
+    "sha256": "f12acbcacaf21cb1acffdf5549e1cff7c22a02822918349934d00fb4d8ecd708",
+    "length": 1463768
+  },
+  "nes-1.mp4": {
+    "sha256": "ce6efe9c941d8b2249a84fdc8f9d0b8bcfebf419a607b46ceef5bd160af57735",
+    "length": 193059
+  },
+  "nes-2.mp4": {
+    "sha256": "9c30060537f79924466568291aafaa7848fd19a6a95e8fdb8910b680dd7076e3",
+    "length": 101426
+  },
+  "pcengine-1.mp4": {
+    "sha256": "245157a6f38e8f4a38773e374202304aba87a78939c3e731a51fabfb761cce08",
+    "length": 66250
+  },
+  "pcengine-2.mp4": {
+    "sha256": "399494866cee389a8551301c4f65495bf415f025166c436aa15ec6c82f426917",
+    "length": 52006
+  },
+  "pcengine-3.mp4": {
+    "sha256": "f26b9cdb98e8b46bfd5109b41e266ba9cd8da60feaf6c7f08cbdd1920f1af134",
+    "length": 84974
+  },
+  "sega32x.mp4": {
+    "sha256": "2427fb8102c1cf44a481f342a82372eda27b4c85bb0dc52044e983f6388bb9ef",
+    "length": 265333
+  },
+  "snes-1.mp4": {
+    "sha256": "502123f3affc82ab66c0a9388c08478d37fdcefb1d82473a86b1d099faa823d7",
+    "length": 149260
+  },
+  "snes-2.mp4": {
+    "sha256": "93ab52040d16db76ebdc8e32b56be4d622c5da81b03467c7d3fd27f38e69fb64",
+    "length": 119355
+  }
+}

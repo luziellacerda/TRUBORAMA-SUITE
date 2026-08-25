@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<catalog categoryId="retro-games" category="Jogos retrô">
+  <game id="34f240aa037536c21f26f2fbc809df7a" title="Nintendo 3ds">
+    <description>A Nintendo 3DS, lançada em 2011, é uma consola portátil conhecida pelo seu ecrã 3D sem óculos. Oferece uma ampla variedade de jogos e funcionalidades interativas, incluindo comunicação sem fios e realidade aumentada, proporcionando uma experiência de jogo única e versátil. Com funcionalidades adicionais como reprodução de música, navegação na Internet e fotografia em 3D, a sua biblioteca oferece uma variedade de jogos incluindo títulos de franquias famosas como Mario, Zelda e Pokémon.</description>
+  </game>
+  <game id="06dd41e4f20e06358854ea408a527c5b" title="Arcade">
+    <description>Os jogos de arcade eram máquinas de entretenimento com moedas encontradas normalmente em locais públicos, como arcades, bares e parques de diversão. Essas máquinas apresentavam uma ampla variedade de gêneros de jogos, incluindo jogos clássicos de arcade, jogos de corrida, jogos de luta e muito mais. Os jogadores inseriam moedas ou fichas para jogar e geralmente competiam por pontuações altas ou prêmios.</description>
+  </game>
+  <game id="a0fa214c4ba7900cb3e5f5f93b03c434" title="atari2600">
+    <description>O Atari 2600 é um console de videogame lançado em 1977 pela Atari, Inc. É considerado um dos primeiros consoles de videogame bem-sucedidos e ajudou a popularizar os jogos eletrônicos em todo o mundo. Com uma biblioteca de jogos de mais de 500 títulos, o Atari 2600 foi um dos consoles mais populares da sua época.</description>
+  </game>
+  <game id="024bf0731df29bf69ec8e69491ee0194" title="atari7800">
+    <description>O Atari 7800 é um console de videogame lançado em 1986 pela Atari. Foi projetado para competir com o Nintendo Entertainment System e o SEGA Master System. Oferece compatibilidade com o Atari 2600 e apresenta melhorias gráficas e sonoras em comparação com seu antecessor.</description>
+  </game>
+  <game id="a8c41dac772fe65dec2b981fadd7b171" title="atomiswave">
+    <description>Atomiswave é uma placa de arcade lançada pela Sammy Corporation em 2003, baseado nas especificações técnicas do SEGA Dreamcast (portanto, em termos técnicos, levemente inferior à SEGA NAOMI).</description>
+  </game>
+  <game id="26bd034725f7eb39d253423620030dc7" title="colecovision">
+    <description>ColecoVision é um console de videogame lançado em 1982 pela Coleco Industries. Possui um design exclusivo com controladores removíveis que podem ser girados para acomodar jogadores destros ou canhotos. O sistema também possuía um processador gráfico poderoso e um chip de som, o que permitia visuais e efeitos sonoros de alta qualidade. ColecoVision era conhecido por sua biblioteca de portes de arcade, incluindo Donkey Kong, Zaxxon e Ms. Pac-Man.</description>
+  </game>
+  <game id="f62f55e1cf036d18c5f49f917826878f" title="Capcom 1">
+    <description>O CP System (CPシステム, shīpī shisutemu, conhecido como CPS abreviadamente e retroativamente como CPS-1) é uma placa de sistema de arcade desenvolvida pela Capcom que executava software de jogos armazenado em placas filhas removíveis. Mais de duas dezenas de títulos de arcade foram lançados para o CPS-1, antes da Capcom transferir o desenvolvimento de jogos para o seu sucessor, o CP System II. Entre os 33 títulos lançados para o CP System original estão Street Fighter II: The World Warrior e suas duas primeiras sequências, Street Fighter II: Champion Edition e Street Fighter II: Hyper Fighting.</description>
+  </game>
+  <game id="65f49873f653efd7fe1dd90655725f05" title="Capcom 2">
+    <description>O CP System II (CPシステムII, shīpī shisutemu tsū) ou CPS-2 é uma placa de sistema de arcade que a Capcom usou pela primeira vez em 1993 para Super Street Fighter II. Foi o sucessor do seu sistema CP System anterior e do hardware de arcade Capcom Power System Changer e foi sucedido pelo hardware CP System III em 1996, do qual o CPS-2 sobreviveria por mais de quatro anos. O sistema de arcade teve novos lançamentos até o final de 2003, terminando com o Hyper Street Fighter II.</description>
+  </game>
+  <game id="0dfad3f4b9bc693f226e60efd08e3822" title="Capcom 3">
+    <description>O CP System III (CPシステムIII, shīpī shisutemu surī) ou CPS-3 é uma placa de sistema de arcade que foi usada pela primeira vez pela Capcom em 1996 com o jogo arcade Red Earth. Foi o segundo sucessor do hardware de arcade CP System, seguindo o CP System II. Seria a última placa de sistema proprietária que a Capcom produziria antes de passar para a plataforma Naomi baseada em Dreamcast.</description>
+  </game>
+  <game id="2a26f76db24874f8c53749bc07ff2f8e" title="Dreamcast">
+    <description>A Dreamcast foi lançada em 1998 pela SEGA como o primeiro console de videogame de sexta geração. Destacou-se por seu desempenho gráfico e sonoro, e por incluir um modem para conexão à internet. Apesar de seu sucesso inicial, a Dreamcast não conseguiu competir com o PlayStation 2 da Sony e o Xbox da Microsoft e foi descontinuada em 2001. No entanto, ainda é apreciada por muitos fãs de videogames como um console inovador e avançado para sua época.</description>
+  </game>
+  <game id="24017ce00420dc620ff2aa450d4d1125" title="fbneo">
+    <description>O Final Burn Neo foi criado como uma versão melhorada do popular emulador Final Burn Alpha e pode emular jogos de arcade de uma ampla gama de sistemas, como Neo Geo, Capcom CPS-1 e CPS-2, entre outros.</description>
+  </game>
+  <game id="d348643c67127ed318a092bbbbeea322" title="Famicon disk system">
+    <description>Este acessório era utilizado no Nintendo Entertainment System. A sua distribuição ocorreu somente no Japão, mas não foi bem sucedida devido aos problemas a que esse tipo de mídia (disquete) está sujeita.</description>
+  </game>
+  <game id="cf3dd769ee22b9dd6bd65f0ba5dabbf0" title="gameandwatch">
+    <description>É uma linha de consoles portáteis produzida pela Nintendo entre 1980 e 1991, criado pelo designer Gunpei Yokoi. Foi a segunda linha de aparelhos de jogos eletrônicos da Nintendo (a primeira foi o Color TV Game).</description>
+  </game>
+  <game id="6925b710469d641432e0ccf27257e070" title="gamegear">
+    <description>A Game Gear da SEGA foi uma consola portátil lançada em 1990 que competiu diretamente com a Game Boy da Nintendo. Possuía uma tela colorida retroiluminada e tinha mais poder de processamento do que a sua concorrente. Embora a Game Gear não tenha alcançado o sucesso comercial da Game Boy, teve uma sólida biblioteca de jogos, incluindo títulos como Sonic the Hedgehog, Shining Force ou Shinobi. Também teve uma série de acessórios, como uma TV portátil e um adaptador para jogos de Master System.</description>
+  </game>
+  <game id="9f8c1e89915bc22c3864d24f57eb188f" title="gameboy">
+    <description>O Nintendo Game Boy é um console de jogos portátil lançado em 1989. Foi o primeiro console portátil com uma tela em escala de cinza e se tornou um sucesso comercial ao oferecer uma ampla variedade de jogos, incluindo clássicos como Super Mario Land e Tetris. O console teve várias atualizações, incluindo o Game Boy Color e o Game Boy Advance, mas o original continua sendo um dos consoles portáteis mais icônicos de todos os tempos.</description>
+  </game>
+  <game id="aa28453c4bedc6d9c13ee5b164e12a99" title="Gameboy Advanced">
+    <description>O Game Boy Advance (GBA) foi lançado em 2001 como sucessor do Game Boy Color. O console apresentava uma tela LCD colorida e maior capacidade de processamento, o que permitia maior qualidade gráfica e sonora nos jogos. Além disso, incluía uma nova opção de conectividade sem fio para jogar com outros jogadores. O console teve uma ampla biblioteca de jogos, incluindo títulos de franquias populares como Super Mario, Pokémon e The Legend of Zelda, e se tornou um dos consoles portáteis mais vendidos de todos os tempos. O GBA também teve uma série de atualizações, como o GBA SP e o Game Boy Micro.</description>
+  </game>
+  <game id="706970f4c52ddc44cb736b594eb39ee2" title="Gameboy color">
+    <description>A Game Boy Color foi lançada pela Nintendo em 1998 como uma atualização da Game Boy original. O console apresentava uma tela colorida. Também incluía uma maior potência de processamento que permitia uma melhor qualidade sonora nos jogos. Além disso, era compatível com os jogos do Game Boy original, o que a tornava uma opção muito atraente. A Game Boy Color tinha uma ampla biblioteca de jogos, incluindo títulos de franquias populares como Super Mario, Pokémon e The Legend of Zelda.</description>
+  </game>
+  <game id="7c1f5d91f7df9ab699f0a9b2c8579650" title="jaguar">
+    <description>O Atari Jaguar é um console de videogame lançado em 1993 e é o último console lançado no mercado pela Atari. As características da máquina eram impressionantes para a época, operando em 64 bits quando a concorrência ainda estava nos 16 bits. Utilizava cartuchos de jogos, embora posteriormente tenha sido lançada a unidade de CD, a Atari Jaguar CD. O Jaguar foi um fracasso de vendas, estima-se que não foram vendidas mais de duzentas e cinquenta mil unidades.</description>
+  </game>
+  <game id="95053bc97e884d28673b542078222180" title="Mame">
+    <description>M.A.M.E. (Multiple Arcade Machine Emulator) é um software emulador de código aberto que permite aos usuários jogar e desfrutar de jogos de arcade clássicos em computadores e outros dispositivos. Ele pode emular uma grande variedade de sistemas de arcade antigos, incluindo jogos da década de 1970 até a de 2000. O software é capaz de emular a funcionalidade das placas originais com o objetivo de preservar décadas de história dos jogos de arcade, que de outra forma seriam perdidas ou esquecidas.</description>
+  </game>
+  <game id="194e852fd237069b4f69ba1927371c5e" title="Master system">
+    <description>A SEGA Master System (também conhecida como Mark III no Japão) foi um console de videogame lançado pela SEGA em 1985. Foi o sucessor do SG-1000 e concorreu com o NES da Nintendo. Tinha um processador Zilog Z80 de 4 MHz, 8 KB de RAM e uma paleta de 32 cores na tela. O console foi popular na Europa e América do Sul, mas não teve tanto sucesso no Japão ou na América do Norte. Alguns dos títulos mais populares são Alex Kidd in Miracle World, Wonder Boy III: The Dragon's Trap e Phantasy Star.</description>
+  </game>
+  <game id="024f0c5e1d41076d4c8a184252519c74" title="Master system - português">
+    <description>A SEGA Master System (também conhecida como Mark III no Japão) foi um console de videogame lançado pela SEGA em 1985. Foi o sucessor do SG-1000 e concorreu com o NES da Nintendo. Tinha um processador Zilog Z80 de 4 MHz, 8 KB de RAM e uma paleta de 32 cores na tela. O console foi popular na Europa e América do Sul, mas não teve tanto sucesso no Japão ou na América do Norte. Alguns dos títulos mais populares são Alex Kidd in Miracle World, Wonder Boy III: The Dragon's Trap e Phantasy Star.</description>
+  </game>
+  <game id="e40b4b32538a2fa0421cada2aa563bc3" title="megadrive">
+    <description>O Mega Drive, conhecido como Genesis em diferentes regiões da América, é o console de quarta geração lançado pela SEGA em 1988 no Japão e em 1989 nos Estados Unidos. É o sucessor do Master System e competiu com o SNES da Nintendo. Foi um dos consoles mais populares de sua época e contava com um processador Motorola 68000 a 7,67 MHz e 64 KB de memória RAM. Ao longo de sua vida, foram lançados mais de 900 títulos, entre os quais se destacam Sonic the Hedgehog, Phantasy Star IV e Streets of Rage 2, entre outros.</description>
+  </game>
+  <game id="7fe64f6cdfddcd4d4a0061897a5adda9" title="megadrivebr">
+    <description>O Mega Drive, conhecido como Genesis em diferentes regiões da América, é o console de quarta geração lançado pela SEGA em 1988 no Japão e em 1989 nos Estados Unidos. É o sucessor do Master System e competiu com o SNES da Nintendo. Foi um dos consoles mais populares de sua época e contava com um processador Motorola 68000 a 7,67 MHz e 64 KB de memória RAM. Ao longo de sua vida, foram lançados mais de 900 títulos, entre os quais se destacam Sonic the Hedgehog, Phantasy Star IV e Streets of Rage 2, entre outros.</description>
+  </game>
+  <game id="3d7cc8e6cab99045ca6fda67c98285ef" title="model2">
+    <description>O Sega Model 2 foi uma placa de arcade lançada em 1993 e criada para acelerar gráficos poligonais com texturas. O hardware marcou a transição da Sega para ambientes 3D mais fluidos. Daytona USA, Virtua Fighter 2 e Sega Rally Championship estão entre seus jogos mais representativos. A plataforma teve grande presença nos fliperamas durante a década de 1990 e influenciou conversões para consoles domésticos.</description>
+  </game>
+  <game id="5defaaf20c099e421ac7650513928f68" title="model3">
+    <description>O Sega Model 3 foi apresentado em 1996 como uma evolução avançada das placas 3D da Sega. Sua tecnologia permitiu cenários maiores, veículos detalhados e movimentos mais suaves nos arcades. Scud Race, Daytona USA 2, Sega Rally 2 e Star Wars Trilogy Arcade demonstraram sua força. O sistema permanece lembrado como um dos pontos máximos do hardware dedicado para fliperamas.</description>
+  </game>
+  <game id="9086ec1a6c3b9bc5b6ce792842d51278" title="msx2">
+    <description>MSX é um padrão de microcomputador doméstico de 8 bits comercializado durante os anos 1980 e início dos anos 1990. Foi definido por Kazuhiko Nishi e apresentado em 27 de junho de 1983 no Japão. Também teve sucesso na Europa (Espanha, França e Países Baixos), no Brasil, no Chile, na Argentina, em Cuba e na União Soviética, onde milhares de unidades foram compradas pelas autoridades educacionais para equipar escolas. É praticamente desconhecido nos Estados Unidos.</description>
+  </game>
+  <game id="bd228881732fca8fece60591036efd31" title="Nintendo 64">
+    <description>O Nintendo 64, lançado em 1996, foi um console de videogame de 64 bits que teve um grande impacto na indústria, apesar de competir diretamente com o primeiro PlayStation da Sony. Oferecia gráficos 3D impressionantes para a época e um controle inovador com joystick central e botões laterais. A Nintendo vendeu mais de 32 milhões de unidades em todo o mundo e apresentou alguns dos jogos mais populares de todos os tempos, como Super Mario 64, The Legend of Zelda: Ocarina of Time e GoldenEye 007.</description>
+  </game>
+  <game id="8afd5bc6acf8295b20eac474c0c5b4eb" title="Nintendo 64  - portugues">
+    <description>O Nintendo 64, lançado em 1996, foi um console de videogame de 64 bits que teve um grande impacto na indústria, apesar de competir diretamente com o primeiro PlayStation da Sony. Oferecia gráficos 3D impressionantes para a época e um controle inovador com joystick central e botões laterais. A Nintendo vendeu mais de 32 milhões de unidades em todo o mundo e apresentou alguns dos jogos mais populares de todos os tempos, como Super Mario 64, The Legend of Zelda: Ocarina of Time e GoldenEye 007.</description>
+  </game>
+  <game id="392bd490ef4995fc8a28f3bc83ffea07" title="naomi">
+    <description>O SEGA NAOMI (sigla para New Arcade Operation Machine Idea, em português Nova ideia em operação de máquina arcade) é uma placa de arcade baseada na tecnologia utilizada no SEGA Dreamcast.</description>
+  </game>
+  <game id="9421dd44b900c9b8c0dfef4fcd8d9186" title="Nintendo ds">
+    <description>A Nintendo DS é uma consola portátil lançada pela Nintendo em 2004. É caracterizada pelo seu design dobrável com duas telas que lembra a Game and Watch dos anos 80. Com uma tela superior maior e uma tela inferior sensível ao toque para controlar jogos com uma caneta stylus, permitia que os usuários interagissem com jogos de maneiras diferentes e criativas. Possui uma ampla variedade de jogos, desde títulos clássicos da Nintendo até jogos de terceiros de diferentes gêneros. Ao longo de sua vida útil, a Nintendo DS foi atualizada com diferentes modelos, como o DS Lite e o Nintendo DSi, que introduziram melhorias em termos de design, tela e recursos adicionais. Mais de 154 milhões de unidades foram vendidas em todo o mundo, tornando-a uma das consoles portáteis mais vendidas da história.</description>
+  </game>
+  <game id="2ee15b9e606401e983548b3ab50ef577" title="neogeo">
+    <description>Neo-Geo é o nome de um sistema de 16 bits baseado em cartuchos para arcades e consoles domésticos, lançado em 1990 pela empresa japonesa de jogos eletrônicos SNK. A tecnologia do sistema oferecia gráficos 2D e qualidade de som muito superiores às oferecidas por outros sistemas caseiros da época, mas a um preço muito elevado para a maioria, 700 dólares, e entre 200 e 1000 dólares por cartucho. O console tinha uma biblioteca impressionante de jogos, com títulos notáveis como Metal Slug, Samurai Shodown e The King of Fighters, entre outros.</description>
+  </game>
+  <game id="1b1945631404247aa8142017ad2cae1d" title="neogeocd">
+    <description>O Neo Geo CD é um console lançado pela SNK Corporation em 1994 como uma versão mais acessível de seu console de cartuchos Neo Geo AES. Utilizava CDs em vez de cartuchos, o que tornava os jogos mais acessíveis. Mantinha a mesma potência e qualidade gráfica da versão de cartuchos, o que a tornava uma opção atraente; no entanto, a velocidade de carregamento dos jogos era perceptivelmente mais lenta e às vezes afetava a experiência de jogo. Apesar de sua potência e biblioteca de jogos, não conseguiu alcançar o sucesso comercial de outros consoles de sua época.</description>
+  </game>
+  <game id="338e68fbc0c76f7ac47bd2c1f09349a2" title="Nintendinho ( nes )">
+    <description>O Nintendo Entertainment System (NES), também conhecido como Famicom no Japão, foi um console de videogame lançado pela Nintendo em 1985 na América do Norte e 1986 na Europa, alcançando grande sucesso com mais de 60 milhões de unidades vendidas em todo o mundo. O NES é conhecido por alguns dos jogos mais icônicos de todos os tempos, como Super Mario Bros., The Legend of Zelda e Metroid. Também popularizou o controle com o uso do direcional em forma de cruz e botões de ação, que se tornou o design padrão para controles de videogame desde então.</description>
+  </game>
+  <game id="5684bc4cf46234d4000e9313d0f798b6" title="Neo geo pocket">
+    <description>É um console de videogame portátil que foi lançado pela SNK no Japão, em 28 de novembro de 1998, para combater o Game Boy da Nintendo, no entanto foi fabricado por pouco tempo (pouco mais de 1 ano).</description>
+  </game>
+  <game id="c925b4b4f9e304987f73f91ce6903a79" title="Neo geo pocket color">
+    <description>O Neo Geo Pocket Color é um console de jogos portátil lançado pela SNK em 1998. Possui uma tela colorida e um sistema baseado em cartuchos para reproduzir jogos. O console foi projetado para competir com o Nintendo Game Boy Color, mas tinha uma biblioteca de jogos menor devido ao suporte limitado de terceiros. Apesar de sua curta vida útil, o Neo Geo Pocket Color continua sendo apreciado pelos entusiastas de jogos retrô por sua construção sólida e sua biblioteca única de jogos.</description>
+  </game>
+  <game id="91895e79ed1e98ebfdbbadb30c6a5e19" title="Odyssey 2">
+    <description>Foi um console de vídeo games bastante popular nos anos 70 e 80. O console foi criado em 1978 pela empresa Magnavox / Philips como evolução do console da Magnavox anterior, o Magnavox Odyssey.</description>
+  </game>
+  <game id="132878ef366258c1877b73cc4109fd86" title="pcengine">
+    <description>A PC Engine, também conhecida como TurboGrafx-16 na América do Norte, é uma consola lançada pela NEC Corporation e pela Hudson Soft em 1987 no Japão e em 1989 na América do Norte. Conhecida por ser uma das primeiras consolas de 16 bits, destacou-se por oferecer gráficos coloridos e de alta qualidade em comparação com as consolas de 8 bits da sua época. Uma característica distintiva foi o seu uso de cartões HuCard, também conhecidos como TurboChips na América do Norte, em vez de cartuchos maiores. Apesar da sua popularidade no Japão, a TurboGrafx-16 teve um sucesso limitado na América do Norte em comparação com concorrentes como a NES e a SEGA Megadrive</description>
+  </game>
+  <game id="2f07dd96e8e9f990c9b0764a81bd9761" title="pcenginecd">
+    <description>O CD do PC Engine, também conhecido como TurboGrafx-CD, é um acessório para o console do PC Engine que permite jogar em formato de CD-ROM. Foi lançado na década de 1980 e oferecia maior capacidade de armazenamento, cinemática de maior qualidade e música em comparação com jogos em cartões HuCard tradicionais. Embora tivesse sucesso limitado na América do Norte, o CD do PC Engine era popular no Japão e apresentava uma biblioteca diversificada de jogos, incluindo títulos de destaque como "Ys Book" e "Castlevania: Rondo of Blood".</description>
+  </game>
+  <game id="052ee8ef7a9394d34415db80f5508fe7" title="sega32x">
+    <description>O Mega Drive 32X, também conhecido como SEGA 32X (na América) ou Super 32X (no Japão), é um periférico lançado pela SEGA em 1994, que oferecia uma expansão de 32 bits para o console SEGA Mega Drive de 16 bits. Foi uma tentativa de prolongar a vida útil do console SEGA Mega Drive original, adicionando capacidades de processamento e gráficos aprimorados. Embora oferecesse algumas experiências de jogo impressionantes, o 32X não obteve o sucesso comercial esperado e foi descontinuado logo após o lançamento.</description>
+  </game>
+  <game id="ce76bd51b7f0f8fcf7bce68725c30783" title="sg1000">
+    <description>O SG-1000 foi um console de videogame da terceira geração, lançado pela SEGA em 1981 (na sua versão de testes) e em 1983 (para o mercado japonês). Este console não obteve grande representatividade. Porém, seu sucessor (o Master System) alcançou grande sucesso no mercado dos consoles.</description>
+  </game>
+  <game id="d077fc407cdd0905903cef2e1548f621" title="Super nintendo">
+    <description>O Super Nintendo Entertainment System (SNES) foi um console de jogos de vídeo de 16 bits lançado pela Nintendo em 1990. Foi o sucessor do Nintendo Entertainment System (NES) original e foi projetado para competir com outros consoles de 16 bits da época, como o SEGA Mega Drive, com o qual teve uma grande rivalidade. Italiano: Il Super Nintendo Entertainment System (SNES) è stata una console per videogiochi a 16 bit rilasciata dalla Nintendo nel 1990. Era il successore del Nintendo Entertainment System (NES) originale e fu progettato per competere con altre console a 16 bit dell'epoca, come il SEGA Mega Drive, con cui aveva una grande rivalità.</description>
+  </game>
+  <game id="a242e8f52abcd785f1cdccf98eede8ce" title="Super nintendo portugues">
+    <description>O Super Nintendo Entertainment System (SNES) foi um console de jogos de vídeo de 16 bits lançado pela Nintendo em 1990. Foi o sucessor do Nintendo Entertainment System (NES) original e foi projetado para competir com outros consoles de 16 bits da época, como o SEGA Mega Drive, com o qual teve uma grande rivalidade. Italiano: Il Super Nintendo Entertainment System (SNES) è stata una console per videogiochi a 16 bit rilasciata dalla Nintendo nel 1990. Era il successore del Nintendo Entertainment System (NES) originale e fu progettato per competere con altre console a 16 bit dell'epoca, come il SEGA Mega Drive, con cui aveva una grande rivalità.</description>
+  </game>
+  <game id="db53c1e82b2763927e9233c609ceefaf" title="sufami">
+    <description>O SuFami Turbo, muitas vezes comparado ao Aladdin Deck Enhancer, é um acessório lançado pela Bandai para o sistema Super Famicom da Nintendo e foi lançado em 1996.</description>
+  </game>
+  <game id="3dd6aceff47bf496baa2eab0433af276" title="supergrafx">
+    <description>O SuperGrafx é um console de videogame lançado pela NEC Corporation em 1989 no Japão. Foi uma versão aprimorada do popular console PC Engine, também conhecido como TurboGrafx-16 na América do Norte. O SuperGrafx visava oferecer um desempenho gráfico e sonoro aprimorado em comparação com seu antecessor. No entanto, apesar de suas melhorias técnicas, o console não conseguiu alcançar o sucesso esperado devido à sua curta vida útil no mercado e ao lançamento simultâneo de outros consoles concorrentes.</description>
+  </game>
+  <game id="70065c3c55f2d95c857444c546a4776e" title="triforce">
+    <description>The Triforce is an arcade board developed in a joint venture between SEGA, Nintendo, and Namco. It is based upon the Nintendo GameCube video game console to reduce development costs, and allowed for arcade ports of home console games, and vice versa. It is named after the magical, often sought-after object in Nintendo's popular The Legend of Zelda series.</description>
+  </game>
+</catalog>

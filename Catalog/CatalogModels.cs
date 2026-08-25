@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Globalization;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 using System.Windows.Media;
@@ -39,6 +40,23 @@ public sealed class CatalogCategory : INotifyPropertyChanged
 
     [JsonIgnore]
     public SolidColorBrush AccentBrush => _accentBrush ??= CreateBrush(Accent);
+
+    [JsonIgnore]
+    public string MenuIconSource
+    {
+        get
+        {
+            var filePath = Path.Combine(
+                AppContext.BaseDirectory,
+                "Assets",
+                "Catalog",
+                "MenuIcons",
+                $"{Id}.png");
+            return File.Exists(filePath)
+                ? new Uri(filePath).AbsoluteUri
+                : $"pack://application:,,,/Assets/Catalog/MenuIcons/{Id}.png";
+        }
+    }
 
     [JsonIgnore]
     public bool IsSelected
@@ -82,9 +100,11 @@ public sealed class CatalogItemDefinition
     public string Size { get; init; } = string.Empty;
     public string Version { get; init; } = string.Empty;
     public string Keywords { get; init; } = string.Empty;
+    public string Description { get; init; } = string.Empty;
     public string DownloadUrl { get; init; } = string.Empty;
     public string Sha256 { get; init; } = string.Empty;
     public string DownloadFileExtension { get; init; } = string.Empty;
+    public bool Extract { get; init; }
     public int Order { get; init; }
 }
 
@@ -115,9 +135,16 @@ public enum CatalogDownloadState
     Idle,
     Queued,
     Downloading,
+    WaitingForNetwork,
+    Paused,
+    Verifying,
+    Extracting,
+    AwaitingExtractionLocation,
+    ExtractionFailed,
     Completed,
     Failed,
-    Canceled
+    Canceled,
+    Discarded
 }
 
 public sealed class CatalogItem : INotifyPropertyChanged
@@ -129,6 +156,7 @@ public sealed class CatalogItem : INotifyPropertyChanged
     private long? _totalBytes;
     private string _downloadStatus = "Pronto para baixar";
     private string _localFilePath = string.Empty;
+    private string _archiveFilePath = string.Empty;
 
     public string Id { get; init; } = string.Empty;
     public string CategoryId { get; init; } = string.Empty;
@@ -142,6 +170,7 @@ public sealed class CatalogItem : INotifyPropertyChanged
     public string Size { get; init; } = string.Empty;
     public string Version { get; init; } = string.Empty;
     public string Keywords { get; init; } = string.Empty;
+    public string Description { get; init; } = string.Empty;
     public string SystemCode { get; init; } = string.Empty;
     public string SystemGlyph { get; init; } = string.Empty;
     public int Order { get; init; }
@@ -149,6 +178,7 @@ public sealed class CatalogItem : INotifyPropertyChanged
     public string DownloadUrl { get; init; } = string.Empty;
     public string Sha256 { get; init; } = string.Empty;
     public string DownloadFileExtension { get; init; } = string.Empty;
+    public bool Extract { get; init; }
 
     public string ImageSource
     {
@@ -170,8 +200,14 @@ public sealed class CatalogItem : INotifyPropertyChanged
             _downloadState = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(IsDownloading));
+            OnPropertyChanged(nameof(IsBusy));
             OnPropertyChanged(nameof(CanCancel));
+            OnPropertyChanged(nameof(CanPause));
+            OnPropertyChanged(nameof(CanResume));
+            OnPropertyChanged(nameof(CanDiscard));
+            OnPropertyChanged(nameof(CanRetryExtraction));
             OnPropertyChanged(nameof(CanDownload));
+            OnPropertyChanged(nameof(CanOpen));
             OnPropertyChanged(nameof(DownloadActionLabel));
         }
     }
@@ -196,6 +232,9 @@ public sealed class CatalogItem : INotifyPropertyChanged
             if (_bytesReceived == value) return;
             _bytesReceived = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(CanResume));
+            OnPropertyChanged(nameof(CanDiscard));
+            OnPropertyChanged(nameof(DownloadActionLabel));
         }
     }
 
@@ -233,18 +272,56 @@ public sealed class CatalogItem : INotifyPropertyChanged
         }
     }
 
-    public bool IsDownloading => DownloadState is CatalogDownloadState.Queued or CatalogDownloadState.Downloading;
-    public bool CanCancel => IsDownloading;
-    public bool CanDownload => !IsDownloading;
+    public string ArchiveFilePath
+    {
+        get => _archiveFilePath;
+        private set
+        {
+            if (_archiveFilePath == value) return;
+            _archiveFilePath = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(CanDiscard));
+            OnPropertyChanged(nameof(CanRetryExtraction));
+        }
+    }
+
+    public bool IsDownloading => DownloadState is CatalogDownloadState.Queued
+        or CatalogDownloadState.Downloading
+        or CatalogDownloadState.WaitingForNetwork;
+    public bool IsBusy => IsDownloading || DownloadState is CatalogDownloadState.Verifying
+        or CatalogDownloadState.Extracting;
+    public bool CanPause => IsDownloading;
+    public bool CanCancel => CanPause;
+    public bool CanResume => DownloadState is CatalogDownloadState.Paused
+        or CatalogDownloadState.Canceled
+        or CatalogDownloadState.Failed;
+    public bool CanDiscard => !IsBusy
+        && DownloadState is not (CatalogDownloadState.Completed or CatalogDownloadState.Discarded)
+        && (BytesReceived > 0
+            || ArchiveFilePath.Length > 0
+            || DownloadState == CatalogDownloadState.Paused);
+    public bool CanRetryExtraction => !IsBusy
+        && Extract
+        && ArchiveFilePath.Length > 0
+        && DownloadState is CatalogDownloadState.AwaitingExtractionLocation
+            or CatalogDownloadState.ExtractionFailed;
+    public bool CanDownload => !IsBusy;
     public bool CanOpen => DownloadState == CatalogDownloadState.Completed && LocalFilePath.Length > 0;
 
     public string DownloadActionLabel => DownloadState switch
     {
-        CatalogDownloadState.Queued => "NA FILA • CANCELAR",
-        CatalogDownloadState.Downloading => $"{ProgressPercentage:0}% • CANCELAR",
-        CatalogDownloadState.Completed => "ABRIR ARQUIVO  ✓",
+        CatalogDownloadState.Queued => "NA FILA • PAUSAR",
+        CatalogDownloadState.Downloading => $"{ProgressPercentage:0}% • PAUSAR",
+        CatalogDownloadState.WaitingForNetwork => "SEM INTERNET • PAUSAR",
+        CatalogDownloadState.Paused => "CONTINUAR DOWNLOAD",
+        CatalogDownloadState.Verifying => "VERIFICANDO...",
+        CatalogDownloadState.Extracting => "DESCOMPACTANDO...",
+        CatalogDownloadState.AwaitingExtractionLocation => "ESCOLHER OUTRO HD",
+        CatalogDownloadState.ExtractionFailed => "TENTAR EXTRAÇÃO",
+        CatalogDownloadState.Completed => "ABRIR PASTA  ✓",
+        CatalogDownloadState.Failed when BytesReceived > 0 => "CONTINUAR DOWNLOAD",
         CatalogDownloadState.Failed => "REPETIR DOWNLOAD",
-        CatalogDownloadState.Canceled => "TENTAR NOVAMENTE",
+        CatalogDownloadState.Canceled => "CONTINUAR DOWNLOAD",
         _ => "BAIXAR PACOTE  ↓"
     };
 
@@ -259,7 +336,7 @@ public sealed class CatalogItem : INotifyPropertyChanged
     {
         DownloadState = state;
         DownloadStatus = status;
-        if (state is CatalogDownloadState.Idle or CatalogDownloadState.Queued)
+        if (state == CatalogDownloadState.Idle)
             UpdateDownloadProgress(0, null);
     }
 
@@ -281,9 +358,63 @@ public sealed class CatalogItem : INotifyPropertyChanged
     internal void CompleteDownload(string localFilePath)
     {
         LocalFilePath = localFilePath;
+        ArchiveFilePath = Extract ? localFilePath : string.Empty;
         ProgressPercentage = 100;
         DownloadState = CatalogDownloadState.Completed;
         DownloadStatus = "Download concluído e verificado";
+    }
+
+    internal void RestoreDownload(long bytesReceived, long? totalBytes, bool isPaused)
+    {
+        UpdateDownloadProgress(bytesReceived, totalBytes);
+        DownloadState = isPaused ? CatalogDownloadState.Paused : CatalogDownloadState.Queued;
+        DownloadStatus = isPaused
+            ? $"Pausado em {FormatBytes(bytesReceived)} — pronto para continuar"
+            : $"Retomando de {FormatBytes(bytesReceived)}";
+    }
+
+    internal void PauseDownload(string status = "Download pausado — o progresso foi preservado") =>
+        SetDownloadState(CatalogDownloadState.Paused, status);
+
+    internal void WaitForNetwork(TimeSpan retryDelay) =>
+        SetDownloadState(
+            CatalogDownloadState.WaitingForNetwork,
+            $"Sem internet — nova tentativa em {Math.Max(1, (int)Math.Ceiling(retryDelay.TotalSeconds))} s");
+
+    internal void BeginVerification() =>
+        SetDownloadState(CatalogDownloadState.Verifying, "Verificando o arquivo baixado");
+
+    internal void MarkArchiveReady(string archivePath)
+    {
+        ArchiveFilePath = archivePath;
+        LocalFilePath = archivePath;
+        ProgressPercentage = 100;
+        SetDownloadState(CatalogDownloadState.Verifying, "Download concluído — preparando extração");
+    }
+
+    internal void BeginExtraction() =>
+        SetDownloadState(CatalogDownloadState.Extracting, "Descompactando automaticamente");
+
+    internal void AwaitExtractionLocation(string status) =>
+        SetDownloadState(CatalogDownloadState.AwaitingExtractionLocation, status);
+
+    internal void FailExtraction(string status) =>
+        SetDownloadState(CatalogDownloadState.ExtractionFailed, status);
+
+    internal void CompleteExtraction(string extractionPath)
+    {
+        LocalFilePath = extractionPath;
+        ArchiveFilePath = string.Empty;
+        ProgressPercentage = 100;
+        SetDownloadState(CatalogDownloadState.Completed, "Download e extração concluídos");
+    }
+
+    internal void DiscardDownload()
+    {
+        LocalFilePath = string.Empty;
+        ArchiveFilePath = string.Empty;
+        UpdateDownloadProgress(0, null);
+        SetDownloadState(CatalogDownloadState.Discarded, "Download removido pelo cliente");
     }
 
     private static string FormatBytes(long bytes) => bytes switch
@@ -296,6 +427,20 @@ public sealed class CatalogItem : INotifyPropertyChanged
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+}
+
+public sealed class LibrarySystemSummary
+{
+    public required CatalogCategory Category { get; init; }
+    public string CategoryId => Category.Id;
+    public string DisplayName => Category.DisplayName;
+    public string ShortCode => Category.ShortCode;
+    public string MenuIconSource => Category.MenuIconSource;
+    public SolidColorBrush AccentBrush => Category.AccentBrush;
+    public Color AccentColor => Category.AccentBrush.Color;
+    public required string CoverImageSource { get; init; }
+    public required int ItemCount { get; init; }
+    public string CountLabel => ItemCount == 1 ? "1 jogo" : $"{ItemCount} jogos";
 }
 
 public sealed record CatalogQueryResult(
