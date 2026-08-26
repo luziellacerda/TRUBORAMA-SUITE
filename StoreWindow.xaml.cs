@@ -10,6 +10,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -869,16 +870,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         }
 
         StopRetroUniversalVideo();
-        var player = new MediaElement
-        {
-            LoadedBehavior = MediaState.Manual,
-            UnloadedBehavior = MediaState.Manual,
-            IsMuted = true,
-            Volume = 0,
-            Stretch = Stretch.UniformToFill,
-            Focusable = false,
-            IsHitTestVisible = false
-        };
+        var player = CreateResponsiveBackgroundVideoPlayer(host);
         player.MediaEnded += RetroUniversalVideo_MediaEnded;
         player.MediaFailed += RetroUniversalVideo_MediaFailed;
         _retroUniversalVideoPlayer = player;
@@ -1004,18 +996,9 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             return;
 
         CloseRetroSystemVideoCore(clearFallback: false);
-        var player = new MediaElement
-        {
-            LoadedBehavior = MediaState.Manual,
-            UnloadedBehavior = MediaState.Manual,
-            IsMuted = true,
-            Volume = 0,
-            Stretch = Stretch.UniformToFill,
-            Opacity = 0,
-            Focusable = false,
-            IsHitTestVisible = false,
-            Tag = generation
-        };
+        var player = CreateResponsiveBackgroundVideoPlayer(playerHost);
+        player.Opacity = 0;
+        player.Tag = generation;
         player.MediaOpened += RetroSystemVideo_MediaOpened;
         player.MediaEnded += RetroSystemVideo_MediaEnded;
         player.MediaFailed += RetroSystemVideo_MediaFailed;
@@ -1038,6 +1021,43 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             Debug.WriteLine($"Vídeo de sistema indisponível: {exception.Message}");
             CloseRetroSystemVideoCore(clearFallback: false);
         }
+    }
+
+    private static MediaElement CreateResponsiveBackgroundVideoPlayer(FrameworkElement host)
+    {
+        var player = new MediaElement
+        {
+            LoadedBehavior = MediaState.Manual,
+            UnloadedBehavior = MediaState.Manual,
+            IsMuted = true,
+            Volume = 0,
+            Stretch = Stretch.UniformToFill,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Focusable = false,
+            IsHitTestVisible = false,
+            SnapsToDevicePixels = true,
+            UseLayoutRounding = true
+        };
+
+        // MediaElement may otherwise keep its native video dimensions during a
+        // resize. Following the viewport explicitly keeps every aspect ratio
+        // framed as a full-bleed background without stretching the image.
+        player.SetBinding(
+            WidthProperty,
+            new Binding(nameof(ActualWidth))
+            {
+                Source = host,
+                Mode = BindingMode.OneWay
+            });
+        player.SetBinding(
+            HeightProperty,
+            new Binding(nameof(ActualHeight))
+            {
+                Source = host,
+                Mode = BindingMode.OneWay
+            });
+        return player;
     }
 
     private void RetroSystemVideo_MediaOpened(object? sender, RoutedEventArgs e)
@@ -1258,6 +1278,8 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                     => "Turborama-background-ps2.mp4",
                 "playstation-4" => "Turborama-background-ps4.mp4",
                 "playstation-5" => "Turborama-background-ps5.mp4",
+                "psp" => "Turborama-background-psp.mp4",
+                "ps-vita" => "Turborama-background-ps-vita.mp4",
                 "sega-saturn" => "Turborama-background-sega-saturn.mp4",
                 "xbox" or "xbox-360" or "xbox-one" or "xbox-series"
                     => "Turborama-background-xbox-one-x.mp4",

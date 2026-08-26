@@ -10,7 +10,7 @@
       "title": "Alien Trilogy (U)",
       "fileName": "9b45ee8285f1936e8d2577db91e615fa.jpg",
       "catalogImage": "../../Assets/Catalog/Images/9b45ee8285f1936e8d2577db91e615fa.jpg",
-      "organizedImage": null,
+      "organizedImage": "9b45ee8285f1936e8d2577db91e615fa.jpg",
       "sourceImage": null,
       "bytes": 405289,
       "sha256": "873cc51e7dcaaacd74c17ce4c473b7b34e9e19ee9aa3724efd5902de0a71dc72"
@@ -20,7 +20,7 @@
       "title": "Area 51 (USA)",
       "fileName": "4d67dc3d431cc4d9147cbaaea5d6c1e0.jpg",
       "catalogImage": "../../Assets/Catalog/Images/4d67dc3d431cc4d9147cbaaea5d6c1e0.jpg",
-      "organizedImage": null,
+      "organizedImage": "4d67dc3d431cc4d9147cbaaea5d6c1e0.jpg",
       "sourceImage": null,
       "bytes": 474013,
       "sha256": "d136342b0371ca3c7e24b44df709f7887be95481f2fe86482afffcfa331a06ec"
@@ -30,7 +30,7 @@
       "title": "Castlevania Symphony of the Night",
       "fileName": "202ae9a17b5f456db545d2e4cb821156.jpg",
       "catalogImage": "../../Assets/Catalog/Images/202ae9a17b5f456db545d2e4cb821156.jpg",
-      "organizedImage": null,
+      "organizedImage": "202ae9a17b5f456db545d2e4cb821156.jpg",
       "sourceImage": null,
       "bytes": 572952,
       "sha256": "8dd03901cfee6a9799e0e8d5992bd9cd346e82624bc32751e18ec8195ab96c84"
@@ -40,7 +40,7 @@
       "title": "Christmas NiGHTS into Dreams... (USA)",
       "fileName": "09e04365a14881538c098374a263d3bf.jpg",
       "catalogImage": "../../Assets/Catalog/Images/09e04365a14881538c098374a263d3bf.jpg",
-      "organizedImage": null,
+      "organizedImage": "09e04365a14881538c098374a263d3bf.jpg",
       "sourceImage": null,
       "bytes": 421965,
       "sha256": "51f1511a74172c3703f3f97328974d608c6364ee66af381992324c93912e6a81"
@@ -50,7 +50,7 @@
       "title": "Courier Crisis",
       "fileName": "a00a0c64f99af0c08e9e22e444e188ca.jpg",
       "catalogImage": "../../Assets/Catalog/Images/a00a0c64f99af0c08e9e22e444e188ca.jpg",
-      "organizedImage": null,
+      "organizedImage": "a00a0c64f99af0c08e9e22e444e188ca.jpg",
       "sourceImage": null,
       "bytes": 448191,
       "sha256": "d9bad05651ccffa1c4a938410e25df8fa7f7487960a22a1e80548f55d5976cb9"
@@ -60,7 +60,7 @@
       "title": "Daytona USA - Championship Circuit Edition (USA)",
       "fileName": "73cfe7b3a721322e4dc3c7dde46ba3a4.jpg",
       "catalogImage": "../../Assets/Catalog/Images/73cfe7b3a721322e4dc3c7dde46ba3a4.jpg",
-      "organizedImage": null,
+      "organizedImage": "73cfe7b3a721322e4dc3c7dde46ba3a4.jpg",
       "sourceImage": null,
       "bytes": 462487,
       "sha256": "a891fc625ec7c68d7d328cb0af73c030053e01f12ae327513ef71a947d3da62c"
@@ -70,7 +70,7 @@
       "title": "Daytona USA (USA)",
       "fileName": "b65bd1af5f050b4dd30f40a90b98f8b7.jpg",
       "catalogImage": "../../Assets/Catalog/Images/b65bd1af5f050b4dd30f40a90b98f8b7.jpg",
-      "organizedImage": null,
+      "organizedImage": "b65bd1af5f050b4dd30f40a90b98f8b7.jpg",
       "sourceImage": null,
       "bytes": 447198,
       "sha256": "8d3f31df9d02f2fdde98212967cf2bec674ac21bdd804740e527e23ad0ce26fb"
@@ -80,7 +80,7 @@
       "title": "Dragon Force",
       "fileName": "79242df67cdaf5dcc3d0c88d4145730a.jpg",
       "catalogImage": "../../Assets/Catalog/Images/79242df67cdaf5dcc3d0c88d4145730a.jpg",
-      "organizedImage": null,
+      "organizedImage": "79242df67cdaf5dcc3d0c88d4145730a.jpg",
       "sourceImage": null,
       "bytes": 484421,
       "sha256": "6b9177282a1657007f61d1cdc0011e8991a4a6a0236d37938e7461c7cc93f9b0"
@@ -90,7 +90,7 @@
       "title": "Guardian Heroes",
       "fileName": "44b267c34bae1ac82b993c11d82e9cd4.jpg",
       "catalogImage": "../../Assets/Catalog/Images/44b267c34bae1ac82b993c11d82e9cd4.jpg",
-      "organizedImage": null,
+      "organizedImage": "44b267c34bae1ac82b993c11d82e9cd4.jpg",
       "sourceImage": null,
       "bytes": 471259,
       "sha256": "5bf6b48e5d82a4b9357e142d10648f5c39666882a78482791952c65e17550b3f"
@@ -100,7 +100,7 @@
       "title": "Mega Man 8 (USA)",
       "fileName": "e32a0b8e3e600780fba40ca487fe95a8.jpg",
       "catalogImage": "../../Assets/Catalog/Images/e32a0b8e3e600780fba40ca487fe95a8.jpg",
-      "organizedImage": null,
+      "organizedImage": "e32a0b8e3e600780fba40ca487fe95a8.jpg",
       "sourceImage": null,
       "bytes": 441433,
       "sha256": "9e36439d5940d3bf20ef47018c7ee5dee82c0da8946f272d0185c8c7bbabb4e1"
@@ -110,7 +110,7 @@
       "title": "Mr. Bones (USA) (Disc 1)",
       "fileName": "fd3dcad3920e825a3223649fa71a1219.jpg",
       "catalogImage": "../../Assets/Catalog/Images/fd3dcad3920e825a3223649fa71a1219.jpg",
-      "organizedImage": null,
+      "organizedImage": "fd3dcad3920e825a3223649fa71a1219.jpg",
       "sourceImage": null,
       "bytes": 469801,
       "sha256": "9a7a0c25b5b471b694d75d640fedd3e8421a886fa90dee9f768017b38ab6acfd"
@@ -120,7 +120,7 @@
       "title": "Mr. Bones (USA) (Disc 2)",
       "fileName": "0d6186b119800ff3a2d3c27affe92d33.jpg",
       "catalogImage": "../../Assets/Catalog/Images/0d6186b119800ff3a2d3c27affe92d33.jpg",
-      "organizedImage": null,
+      "organizedImage": "0d6186b119800ff3a2d3c27affe92d33.jpg",
       "sourceImage": null,
       "bytes": 470634,
       "sha256": "59eb540dae4b9a81e4686485782e2c55fc91219e2b3b140e86c34f267151b32c"
@@ -130,7 +130,7 @@
       "title": "NiGHTS Into Dreams... (1996)(Samsung)(KR).chd",
       "fileName": "b25a82070f02d339d330245023dc8304.jpg",
       "catalogImage": "../../Assets/Catalog/Images/b25a82070f02d339d330245023dc8304.jpg",
-      "organizedImage": null,
+      "organizedImage": "b25a82070f02d339d330245023dc8304.jpg",
       "sourceImage": null,
       "bytes": 473990,
       "sha256": "365f93d88c7f18ad1a2b2a8105916a824db5dcac224cdd0ae6afe287cc3c44b3"
@@ -140,7 +140,7 @@
       "title": "Panzer Dragoon",
       "fileName": "178a13108aa57bd40b4442e4730cf768.jpg",
       "catalogImage": "../../Assets/Catalog/Images/178a13108aa57bd40b4442e4730cf768.jpg",
-      "organizedImage": null,
+      "organizedImage": "178a13108aa57bd40b4442e4730cf768.jpg",
       "sourceImage": null,
       "bytes": 397983,
       "sha256": "3d3cd265f17534b324b14868bb2d0119d13e187fb6b2aa131e2b9e860bba838e"
@@ -150,7 +150,7 @@
       "title": "Panzer Dragoon II Zwei",
       "fileName": "071cb65c0df8f1aedef1593854be38dd.jpg",
       "catalogImage": "../../Assets/Catalog/Images/071cb65c0df8f1aedef1593854be38dd.jpg",
-      "organizedImage": null,
+      "organizedImage": "071cb65c0df8f1aedef1593854be38dd.jpg",
       "sourceImage": null,
       "bytes": 491014,
       "sha256": "c438d6603a4b3f4af4881abdf47821ed4c29b9aec100a78c6525587ac38087f7"
@@ -160,7 +160,7 @@
       "title": "Quake (USA)",
       "fileName": "df1b30725a6bc7dd611e99aadd33a830.jpg",
       "catalogImage": "../../Assets/Catalog/Images/df1b30725a6bc7dd611e99aadd33a830.jpg",
-      "organizedImage": null,
+      "organizedImage": "df1b30725a6bc7dd611e99aadd33a830.jpg",
       "sourceImage": null,
       "bytes": 442744,
       "sha256": "ec057dd80050c035e83ebd777a98366fcc5791b99d1380fea0a5c99504f04540"
@@ -170,7 +170,7 @@
       "title": "Resident Evil (USA)",
       "fileName": "74873929205dca967e565295171ae4b0.jpg",
       "catalogImage": "../../Assets/Catalog/Images/74873929205dca967e565295171ae4b0.jpg",
-      "organizedImage": null,
+      "organizedImage": "74873929205dca967e565295171ae4b0.jpg",
       "sourceImage": null,
       "bytes": 400799,
       "sha256": "0d390597b127f67023a8330a14d55325564eb45e1d4d8b52f5a685c097aca580"
@@ -180,7 +180,7 @@
       "title": "Shinobi Legions (USA)",
       "fileName": "305a19d5457704c9a75992ff144416d2.jpg",
       "catalogImage": "../../Assets/Catalog/Images/305a19d5457704c9a75992ff144416d2.jpg",
-      "organizedImage": null,
+      "organizedImage": "305a19d5457704c9a75992ff144416d2.jpg",
       "sourceImage": null,
       "bytes": 449493,
       "sha256": "c119522b3e5600e9d1b1720e2f703566cbcdbc9b478eb6c3bcd5ca8da510671f"
@@ -190,7 +190,7 @@
       "title": "Slam 'N Jam '96 featuring Magic & Kareem (USA)",
       "fileName": "d9d6cf6a837d4619849ada57501c8e3d.jpg",
       "catalogImage": "../../Assets/Catalog/Images/d9d6cf6a837d4619849ada57501c8e3d.jpg",
-      "organizedImage": null,
+      "organizedImage": "d9d6cf6a837d4619849ada57501c8e3d.jpg",
       "sourceImage": null,
       "bytes": 485612,
       "sha256": "d6da07a3e37b86e88cdd9fcc7d8525b74d6b18fd57d1aa2d3d7a84ee20822b35"
@@ -200,7 +200,7 @@
       "title": "Sonic Jam (USA)",
       "fileName": "ee5582089727aecae17cf25f711a30f8.jpg",
       "catalogImage": "../../Assets/Catalog/Images/ee5582089727aecae17cf25f711a30f8.jpg",
-      "organizedImage": null,
+      "organizedImage": "ee5582089727aecae17cf25f711a30f8.jpg",
       "sourceImage": null,
       "bytes": 496049,
       "sha256": "a94e1ca23d75700d40278a634eb1f4e4ef31a67f92495a9c76cfcbb11773ceba"
@@ -210,7 +210,7 @@
       "title": "Sonic R",
       "fileName": "e188e8912c43db8b4c3469a9a9b97431.jpg",
       "catalogImage": "../../Assets/Catalog/Images/e188e8912c43db8b4c3469a9a9b97431.jpg",
-      "organizedImage": null,
+      "organizedImage": "e188e8912c43db8b4c3469a9a9b97431.jpg",
       "sourceImage": null,
       "bytes": 450333,
       "sha256": "13b649c71c600706bf80aba25ac411f1e4b0e50bb9e1b70688a9524e70217e4e"
@@ -220,7 +220,7 @@
       "title": "Street Fighter - The Movie (USA)",
       "fileName": "d54f0ee1bc7e08b1899e3e2e5833587e.jpg",
       "catalogImage": "../../Assets/Catalog/Images/d54f0ee1bc7e08b1899e3e2e5833587e.jpg",
-      "organizedImage": null,
+      "organizedImage": "d54f0ee1bc7e08b1899e3e2e5833587e.jpg",
       "sourceImage": null,
       "bytes": 499862,
       "sha256": "1f8d2193427e736e60df0ba39b92336ec8d2e1f9fdb3495ef0b8db092704a562"
@@ -230,7 +230,7 @@
       "title": "Thunder Force V (Japan)",
       "fileName": "3c100f25e816d11d3c7804357f8a75cb.jpg",
       "catalogImage": "../../Assets/Catalog/Images/3c100f25e816d11d3c7804357f8a75cb.jpg",
-      "organizedImage": null,
+      "organizedImage": "3c100f25e816d11d3c7804357f8a75cb.jpg",
       "sourceImage": null,
       "bytes": 443527,
       "sha256": "9eb7985153b5b308a3ab7787c18afb45594d3d6a7cbbf51563e6c452e05f3bd7"
@@ -240,7 +240,7 @@
       "title": "Tomb Raider (1996)(U.S. Gold USA)(US) - [4S]",
       "fileName": "f29fa4c41c7483e50d440f37516103ee.jpg",
       "catalogImage": "../../Assets/Catalog/Images/f29fa4c41c7483e50d440f37516103ee.jpg",
-      "organizedImage": null,
+      "organizedImage": "f29fa4c41c7483e50d440f37516103ee.jpg",
       "sourceImage": null,
       "bytes": 441704,
       "sha256": "9ed4354f385807c0f2960c686a28ca186a837936875e7a12f8726f7af7158cb7"
@@ -250,7 +250,7 @@
       "title": "Ultimate Mortal Kombat 3 (USA)",
       "fileName": "f128ebdc3fed298b78f29a6d9c99ddaf.jpg",
       "catalogImage": "../../Assets/Catalog/Images/f128ebdc3fed298b78f29a6d9c99ddaf.jpg",
-      "organizedImage": null,
+      "organizedImage": "f128ebdc3fed298b78f29a6d9c99ddaf.jpg",
       "sourceImage": null,
       "bytes": 508903,
       "sha256": "9e38b1b0b71dc9481b06877c75083a5196091462c78d481df79037fe0f4f6d2a"
@@ -260,7 +260,7 @@
       "title": "Virtua Fighter 2 (1995)(Sega of America)(US) - [P1H]",
       "fileName": "1655f686058742350eee78f21752a253.jpg",
       "catalogImage": "../../Assets/Catalog/Images/1655f686058742350eee78f21752a253.jpg",
-      "organizedImage": null,
+      "organizedImage": "1655f686058742350eee78f21752a253.jpg",
       "sourceImage": null,
       "bytes": 490383,
       "sha256": "ab4e55a249a07ce7cc887fb144c55c1288fbbdcf8aa6bf33fbb390baf6f44d3e"
@@ -270,7 +270,7 @@
       "title": "Virtua Fighter Remix (USA)",
       "fileName": "10321232df57371d099609cc99209246.jpg",
       "catalogImage": "../../Assets/Catalog/Images/10321232df57371d099609cc99209246.jpg",
-      "organizedImage": null,
+      "organizedImage": "10321232df57371d099609cc99209246.jpg",
       "sourceImage": null,
       "bytes": 507032,
       "sha256": "bfcb5d2a34df932094de4d5f95f46843ea9365b93eda982cbb8a8aa463cce243"
@@ -280,7 +280,7 @@
       "title": "Virtual Casino (USA)",
       "fileName": "e599960c8b44b244995679f58987c36a.jpg",
       "catalogImage": "../../Assets/Catalog/Images/e599960c8b44b244995679f58987c36a.jpg",
-      "organizedImage": null,
+      "organizedImage": "e599960c8b44b244995679f58987c36a.jpg",
       "sourceImage": null,
       "bytes": 511507,
       "sha256": "cd94e2f6a6e4ddab0757eed98b92dbd0ccade42fa055778c708f41ea1fd89ff4"
@@ -290,7 +290,7 @@
       "title": "WarCraft II - The Dark Saga (Europe) (En,Fr,De,Es,It)",
       "fileName": "ff109ba7f148c45564c87eee16f36416.jpg",
       "catalogImage": "../../Assets/Catalog/Images/ff109ba7f148c45564c87eee16f36416.jpg",
-      "organizedImage": null,
+      "organizedImage": "ff109ba7f148c45564c87eee16f36416.jpg",
       "sourceImage": null,
       "bytes": 464763,
       "sha256": "02dc04d000b768a99894e64dbfe2563f1849eb8e4171ebdc8f40f8cafb037ca3"
@@ -300,7 +300,7 @@
       "title": "WipEout (1996)(Sega of America)(US)",
       "fileName": "2dd6b98c6f7c0e331b0f12cb6bded597.jpg",
       "catalogImage": "../../Assets/Catalog/Images/2dd6b98c6f7c0e331b0f12cb6bded597.jpg",
-      "organizedImage": null,
+      "organizedImage": "2dd6b98c6f7c0e331b0f12cb6bded597.jpg",
       "sourceImage": null,
       "bytes": 418177,
       "sha256": "97b7dc9084bbddfd82eaa55eb3bfe2a4933426fc2d66333e167ed5200a621535"
@@ -310,7 +310,7 @@
       "title": "WipEout (USA)",
       "fileName": "8d11bd583c96f0299200edcbd8bdbf16.jpg",
       "catalogImage": "../../Assets/Catalog/Images/8d11bd583c96f0299200edcbd8bdbf16.jpg",
-      "organizedImage": null,
+      "organizedImage": "8d11bd583c96f0299200edcbd8bdbf16.jpg",
       "sourceImage": null,
       "bytes": 396488,
       "sha256": "99261c2e704d45e3fefa924edf31319f40abdb7db4de3f23a93ae13c432ef464"

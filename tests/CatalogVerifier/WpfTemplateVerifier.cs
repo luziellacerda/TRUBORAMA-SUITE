@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
 
@@ -56,6 +57,7 @@ internal static class WpfTemplateVerifier
                 window.Dispatcher.Invoke(
                     () => window.UpdateLayout(),
                     DispatcherPriority.ApplicationIdle);
+                VerifyResponsiveBackgroundVideo(window);
                 window.Close();
                 window = null;
                 application.Shutdown();
@@ -83,5 +85,51 @@ internal static class WpfTemplateVerifier
             throw new InvalidOperationException(
                 "O catálogo WPF falhou ao criar os templates reais.",
                 failure);
+    }
+
+    private static void VerifyResponsiveBackgroundVideo(StoreWindow window)
+    {
+        if (window.FindName("RetroSystemVideoBackground") is not Grid background
+            || window.FindName("RetroUniversalVideoPlayerHost") is not Grid host)
+            throw new InvalidDataException("A área responsiva do vídeo de fundo não foi criada.");
+        if (!background.ClipToBounds
+            || !host.ClipToBounds
+            || host.HorizontalAlignment != HorizontalAlignment.Stretch
+            || host.VerticalAlignment != VerticalAlignment.Stretch)
+            throw new InvalidDataException("O vídeo de fundo precisa preencher e recortar a área disponível.");
+
+        var factory = typeof(StoreWindow).GetMethod(
+                          "CreateResponsiveBackgroundVideoPlayer",
+                          BindingFlags.Static | BindingFlags.NonPublic)
+                      ?? throw new MissingMethodException(
+                          nameof(StoreWindow),
+                          "CreateResponsiveBackgroundVideoPlayer");
+        var player = factory.Invoke(null, [host]) as MediaElement
+                     ?? throw new InvalidDataException("O player responsivo não pôde ser criado.");
+        host.Children.Add(player);
+        try
+        {
+            foreach (var (width, height) in new[] { (1080d, 680d), (1600d, 900d) })
+            {
+                window.Width = width;
+                window.Height = height;
+                window.UpdateLayout();
+
+                if (player.Stretch != Stretch.UniformToFill
+                    || Math.Abs(player.Width - host.ActualWidth) > 0.5
+                    || Math.Abs(player.Height - host.ActualHeight) > 0.5
+                    || Math.Abs(host.ActualWidth - background.ActualWidth) > 0.5
+                    || Math.Abs(host.ActualHeight - background.ActualHeight) > 0.5)
+                    throw new InvalidDataException(
+                        $"O vídeo de fundo não acompanhou a janela em {width:0}×{height:0}: " +
+                        $"player={player.Width:0.##}×{player.Height:0.##}, " +
+                        $"host={host.ActualWidth:0.##}×{host.ActualHeight:0.##}, " +
+                        $"fundo={background.ActualWidth:0.##}×{background.ActualHeight:0.##}.");
+            }
+        }
+        finally
+        {
+            host.Children.Remove(player);
+        }
     }
 }

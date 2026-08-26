@@ -10,320 +10,320 @@
       "title": "Blood Rayne",
       "fileName": "6c21590d12fc5ac5f9123d5a1ab99b0c.jpg",
       "catalogImage": "../../Assets/Catalog/Images/6c21590d12fc5ac5f9123d5a1ab99b0c.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 435387,
-      "sha256": "ebd27eeb5764bb740a2dd556800e6c1060da9822c7109cd77e8962cf12eb6b1d"
+      "organizedImage": "6c21590d12fc5ac5f9123d5a1ab99b0c.jpg",
+      "sourceImage": "sources/6c21590d12fc5ac5f9123d5a1ab99b0c.png",
+      "bytes": 497070,
+      "sha256": "e66880bb665d4a382ded23371bdc046fcb97c3a7d10181f3915abba74c4c178e"
     },
     {
       "id": "b310008a6e75d27269b60626ef8bb7d5",
       "title": "Bloody Roar - Primal Fury (Europe)",
       "fileName": "b310008a6e75d27269b60626ef8bb7d5.jpg",
       "catalogImage": "../../Assets/Catalog/Images/b310008a6e75d27269b60626ef8bb7d5.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 483211,
-      "sha256": "dceb7d762958a52ed4310822a1f9f3d0f667c54c4f69463272d3f3d48406e6ac"
+      "organizedImage": "b310008a6e75d27269b60626ef8bb7d5.jpg",
+      "sourceImage": "sources/b310008a6e75d27269b60626ef8bb7d5.png",
+      "bytes": 617452,
+      "sha256": "27fefa079e02e0012a2c67ac9822695390943755bda2e04f7de2d77ea52c3dce"
     },
     {
       "id": "8f102b270130495af05dbf62844c2fef",
       "title": "Disney's PK Out of the Shadows",
       "fileName": "8f102b270130495af05dbf62844c2fef.jpg",
       "catalogImage": "../../Assets/Catalog/Images/8f102b270130495af05dbf62844c2fef.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 500487,
-      "sha256": "2346fd695b883cc20b1a3c8c127a730ceedd3f5b586f6efdfaa6cdc29d78bc12"
+      "organizedImage": "8f102b270130495af05dbf62844c2fef.jpg",
+      "sourceImage": "sources/8f102b270130495af05dbf62844c2fef.png",
+      "bytes": 448133,
+      "sha256": "929d39fe147df742a696ce0013ff84801b3d0fbbb0076a739d012eaae8dbf42e"
     },
     {
       "id": "41074f782280ed77ee814c50ade007a9",
       "title": "Harry Potter and the Chamber of Secrets",
       "fileName": "41074f782280ed77ee814c50ade007a9.jpg",
       "catalogImage": "../../Assets/Catalog/Images/41074f782280ed77ee814c50ade007a9.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 531961,
-      "sha256": "faa54460fb085aacd836389ec83b6aaf3b6b1c159547101f0ab9b5f71257b142"
+      "organizedImage": "41074f782280ed77ee814c50ade007a9.jpg",
+      "sourceImage": "sources/41074f782280ed77ee814c50ade007a9.png",
+      "bytes": 436518,
+      "sha256": "b37f03e8041297a510cfbd81d263a8882ff5da6c0e45a29875fd83583dbe0672"
     },
     {
       "id": "0a44fd4cb0bf59376c74136bbd94e3a7",
       "title": "Luigi's Mansion (Europe) (En,Fr,De,Es,It)",
       "fileName": "0a44fd4cb0bf59376c74136bbd94e3a7.jpg",
       "catalogImage": "../../Assets/Catalog/Images/0a44fd4cb0bf59376c74136bbd94e3a7.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 472774,
-      "sha256": "b9712fe5dd470733b30b6171ab70b90bfacbb791af5a92761d96e70be0664792"
+      "organizedImage": "0a44fd4cb0bf59376c74136bbd94e3a7.jpg",
+      "sourceImage": "sources/0a44fd4cb0bf59376c74136bbd94e3a7.png",
+      "bytes": 468884,
+      "sha256": "a7883c3c2a65d63faa3159608bb17e2b0e94802500f3598fa3707d6726ffb82c"
     },
     {
       "id": "6c31aaa67e6d558d64971fa87cd81e4d",
       "title": "Mario Kart - Double Dash!! (Europe) (En,Fr,De,Es,It)",
       "fileName": "6c31aaa67e6d558d64971fa87cd81e4d.jpg",
       "catalogImage": "../../Assets/Catalog/Images/6c31aaa67e6d558d64971fa87cd81e4d.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 500468,
-      "sha256": "631aa2d1bb8764c90992c38d424ecd1150ccf467990cd4de2ce5972fae4915ba"
+      "organizedImage": "6c31aaa67e6d558d64971fa87cd81e4d.jpg",
+      "sourceImage": "sources/6c31aaa67e6d558d64971fa87cd81e4d.png",
+      "bytes": 441317,
+      "sha256": "c7fb9d92230340d42d147ad0907198736201ab787c1950bb6a20203a511e104e"
     },
     {
       "id": "731b7d8ba242b924607a49020c524593",
       "title": "Mario Party 7 (Europe) (En,Fr,De,Es,It)",
       "fileName": "731b7d8ba242b924607a49020c524593.jpg",
       "catalogImage": "../../Assets/Catalog/Images/731b7d8ba242b924607a49020c524593.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 540749,
-      "sha256": "1d0adf098b4fc0e18ffdb3214cd1fe9d29d20659586c473e5d5624b3bc84c203"
+      "organizedImage": "731b7d8ba242b924607a49020c524593.jpg",
+      "sourceImage": "sources/731b7d8ba242b924607a49020c524593.png",
+      "bytes": 429945,
+      "sha256": "c736bdebe5b41dcef2587136b9b19d2af6666beba68493d2118f696af58492b7"
     },
     {
       "id": "1f3ea6641045ec83b05b6153e24f41c9",
       "title": "Mario Sunshine",
       "fileName": "1f3ea6641045ec83b05b6153e24f41c9.jpg",
       "catalogImage": "../../Assets/Catalog/Images/1f3ea6641045ec83b05b6153e24f41c9.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 530058,
-      "sha256": "f8d048bbca5a4f80f3b9562a4a18642b7fcf85f90cc0c6efe79fad880fc23c9f"
+      "organizedImage": "1f3ea6641045ec83b05b6153e24f41c9.jpg",
+      "sourceImage": "sources/1f3ea6641045ec83b05b6153e24f41c9.png",
+      "bytes": 494911,
+      "sha256": "8b660341794258468960e375d859f4f6a1e35f46ae8733fe1c0b40ae601f8385"
     },
     {
       "id": "43d5e2863732816703c45f450c8b9949",
       "title": "Metroid Prime",
       "fileName": "43d5e2863732816703c45f450c8b9949.jpg",
       "catalogImage": "../../Assets/Catalog/Images/43d5e2863732816703c45f450c8b9949.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 467940,
-      "sha256": "32ff11034dac415e358b375c0fb320f37ad5ec2f822c8fcd4ea2fe68fbc39bbc"
+      "organizedImage": "43d5e2863732816703c45f450c8b9949.jpg",
+      "sourceImage": "sources/43d5e2863732816703c45f450c8b9949.png",
+      "bytes": 575502,
+      "sha256": "45151d5232a7982947821f9cf5424c3bc4f675590765f4d601ec85f2f1b5cbbe"
     },
     {
       "id": "51ee3067f95662b0e077f39209955155",
       "title": "need for speed underground 2",
       "fileName": "51ee3067f95662b0e077f39209955155.jpg",
       "catalogImage": "../../Assets/Catalog/Images/51ee3067f95662b0e077f39209955155.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 498011,
-      "sha256": "f7587916123b5a424ad18f21ba01e774b2caee8291235781db515c5c045e2621"
+      "organizedImage": "51ee3067f95662b0e077f39209955155.jpg",
+      "sourceImage": "sources/51ee3067f95662b0e077f39209955155.png",
+      "bytes": 559189,
+      "sha256": "191aabc80b9955459456b811518bfc690c7c05eefa1c56b1711a597ba4b716b2"
     },
     {
       "id": "9c6cc17beb68e64d1ea67732216180ce",
       "title": "Paper Mario The Thousand Year Door",
       "fileName": "9c6cc17beb68e64d1ea67732216180ce.jpg",
       "catalogImage": "../../Assets/Catalog/Images/9c6cc17beb68e64d1ea67732216180ce.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 555630,
-      "sha256": "70c6ebbba20d301fa06c452fca4494c20a10ff6b9dfae4aa591183af57d7369e"
+      "organizedImage": "9c6cc17beb68e64d1ea67732216180ce.jpg",
+      "sourceImage": "sources/9c6cc17beb68e64d1ea67732216180ce.png",
+      "bytes": 474022,
+      "sha256": "0a29ef28b4b458c5c8e96bc063621147abe926e06bb8c8dd687114c33e4ae932"
     },
     {
       "id": "47a58d0fcf4e8eee3c81871e30c20c2e",
       "title": "Phantasy Star Online Episode I & II",
       "fileName": "47a58d0fcf4e8eee3c81871e30c20c2e.jpg",
       "catalogImage": "../../Assets/Catalog/Images/47a58d0fcf4e8eee3c81871e30c20c2e.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 562825,
-      "sha256": "b1a77d0b33d5fa1fa2d0ccc2d24e324abe69b3cd7e2ff0775a240baa997c15b3"
+      "organizedImage": "47a58d0fcf4e8eee3c81871e30c20c2e.jpg",
+      "sourceImage": "sources/47a58d0fcf4e8eee3c81871e30c20c2e.png",
+      "bytes": 573909,
+      "sha256": "ee4df59f4fca863edf2e4f6927ab6724a50046a46f1f085d65392771bd803831"
     },
     {
       "id": "03473f12283eca9a8a0fdd3b5afe1214",
       "title": "Pikmin 2",
       "fileName": "03473f12283eca9a8a0fdd3b5afe1214.jpg",
       "catalogImage": "../../Assets/Catalog/Images/03473f12283eca9a8a0fdd3b5afe1214.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 521401,
-      "sha256": "0228fd87b84f3e28b1353d5a9236e64d88ee8a3ed301f1a074b6488bfa944ed0"
+      "organizedImage": "03473f12283eca9a8a0fdd3b5afe1214.jpg",
+      "sourceImage": "sources/03473f12283eca9a8a0fdd3b5afe1214.png",
+      "bytes": 624788,
+      "sha256": "b344a01e348cce84e5a35e90e7d53960a1ed454c9fe15d9b86794b1c47a3a202"
     },
     {
       "id": "edb0d3e96e94e0bcd0fcd03279cffc65",
       "title": "Prince of Persia -Two Thrones",
       "fileName": "edb0d3e96e94e0bcd0fcd03279cffc65.jpg",
       "catalogImage": "../../Assets/Catalog/Images/edb0d3e96e94e0bcd0fcd03279cffc65.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 487291,
-      "sha256": "969571193644141c5697e34f89e2b1f42faba3b997c408f500bbcc22c7a6b301"
+      "organizedImage": "edb0d3e96e94e0bcd0fcd03279cffc65.jpg",
+      "sourceImage": "sources/edb0d3e96e94e0bcd0fcd03279cffc65.png",
+      "bytes": 677480,
+      "sha256": "fdf241a317382228046942390226c14a815cf80f4d17ca4a1389149674a26efe"
     },
     {
       "id": "02be7acf79e88d77ceca6d6704ad9dff",
       "title": "Ratatouille",
       "fileName": "02be7acf79e88d77ceca6d6704ad9dff.jpg",
       "catalogImage": "../../Assets/Catalog/Images/02be7acf79e88d77ceca6d6704ad9dff.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 468599,
-      "sha256": "551b15d1a4382b8df8d9273975e26413e11d7ad2ed8debcb010d9bc6ce5c70ef"
+      "organizedImage": "02be7acf79e88d77ceca6d6704ad9dff.jpg",
+      "sourceImage": "sources/02be7acf79e88d77ceca6d6704ad9dff.png",
+      "bytes": 476322,
+      "sha256": "45c12cdea1b11a61bac91e066f199b183687a4dc1b5002657a3ff45234f77628"
     },
     {
       "id": "d019b7ef326ed3da26b5b3c7380165bb",
       "title": "Resident Evil - Code - Veronica X",
       "fileName": "d019b7ef326ed3da26b5b3c7380165bb.jpg",
       "catalogImage": "../../Assets/Catalog/Images/d019b7ef326ed3da26b5b3c7380165bb.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 448988,
-      "sha256": "3b072919d7849f3fb234d7be4d13c6d81e20880d85964b2d414c2a993b84454b"
+      "organizedImage": "d019b7ef326ed3da26b5b3c7380165bb.jpg",
+      "sourceImage": "sources/d019b7ef326ed3da26b5b3c7380165bb.png",
+      "bytes": 481715,
+      "sha256": "34ee650e0a595d12f35575cab9e9fb855f6ca9e3d43f1f455a4a10a056df6708"
     },
     {
       "id": "8a240e5c324c989a404f811d65cd0e96",
       "title": "Resident Evil 4",
       "fileName": "8a240e5c324c989a404f811d65cd0e96.jpg",
       "catalogImage": "../../Assets/Catalog/Images/8a240e5c324c989a404f811d65cd0e96.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 489895,
-      "sha256": "985c095ab150e6bc6659586a701e3050f2b48eef6d4f8278f5dfcd5916a1abb2"
+      "organizedImage": "8a240e5c324c989a404f811d65cd0e96.jpg",
+      "sourceImage": "sources/8a240e5c324c989a404f811d65cd0e96.png",
+      "bytes": 493834,
+      "sha256": "79399f2f6739d3f3a4a17f7f4e72fbaae5ca9f4c15ef7c9647afdb7aa951162c"
     },
     {
       "id": "2216ac1768c84f23f2af402a92ab767d",
       "title": "Sonic Heroes",
       "fileName": "2216ac1768c84f23f2af402a92ab767d.jpg",
       "catalogImage": "../../Assets/Catalog/Images/2216ac1768c84f23f2af402a92ab767d.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 480169,
-      "sha256": "2d6285eae15aefa08f7637dafb5b5ee53bab395396f5041d91d25328455606ff"
+      "organizedImage": "2216ac1768c84f23f2af402a92ab767d.jpg",
+      "sourceImage": "sources/2216ac1768c84f23f2af402a92ab767d.png",
+      "bytes": 586026,
+      "sha256": "278063370377321fdd901901ee3c49aacde274d5be870345815d1e55cb284007"
     },
     {
       "id": "a091ed8a2cfdd5da96f86f833e27b809",
       "title": "Sonic_Adventure_2",
       "fileName": "a091ed8a2cfdd5da96f86f833e27b809.jpg",
       "catalogImage": "../../Assets/Catalog/Images/a091ed8a2cfdd5da96f86f833e27b809.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 560183,
-      "sha256": "55d5a5a0d26040fcb5e0673b6c46a88781e9dff1937b788415d9dd47709d0a88"
+      "organizedImage": "a091ed8a2cfdd5da96f86f833e27b809.jpg",
+      "sourceImage": "sources/a091ed8a2cfdd5da96f86f833e27b809.png",
+      "bytes": 612958,
+      "sha256": "01d99301102ca5824254d92248d9cc30a449a17f21ff49eeecc9ac9ee0b6bbef"
     },
     {
       "id": "c30af5a6ac8709a1ddc14d5876e6ed00",
       "title": "Spartan - Total Warrior",
       "fileName": "c30af5a6ac8709a1ddc14d5876e6ed00.jpg",
       "catalogImage": "../../Assets/Catalog/Images/c30af5a6ac8709a1ddc14d5876e6ed00.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 466061,
-      "sha256": "d56f8054c38388179c3bd2ccfe9eab819ec669364fbeea15cec8ebb1a2605daa"
+      "organizedImage": "c30af5a6ac8709a1ddc14d5876e6ed00.jpg",
+      "sourceImage": "sources/c30af5a6ac8709a1ddc14d5876e6ed00.png",
+      "bytes": 599252,
+      "sha256": "582a0bf31be354444aeec15065062884424a0caf7789feedc3c46a91a05d1aab"
     },
     {
       "id": "97e6fa5a74b51954e1825d195b8700c6",
       "title": "Star Fox - Assault",
       "fileName": "97e6fa5a74b51954e1825d195b8700c6.jpg",
       "catalogImage": "../../Assets/Catalog/Images/97e6fa5a74b51954e1825d195b8700c6.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 505683,
-      "sha256": "0d158cdbfdd612720328d1849de05e6a0dec5f8e10a461678d171cd76daae65f"
+      "organizedImage": "97e6fa5a74b51954e1825d195b8700c6.jpg",
+      "sourceImage": "sources/97e6fa5a74b51954e1825d195b8700c6.png",
+      "bytes": 574438,
+      "sha256": "44aca6b9a1deefe0998a2b91facb2fe770dff258f06a05f5d562ffdbd0abdb3a"
     },
     {
       "id": "4e26f01dd511f4ac95b8dda8dda3a82a",
       "title": "Super Smash Bros. Melee (Europe) (En,Fr,De,Es,It)",
       "fileName": "4e26f01dd511f4ac95b8dda8dda3a82a.jpg",
       "catalogImage": "../../Assets/Catalog/Images/4e26f01dd511f4ac95b8dda8dda3a82a.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 553444,
-      "sha256": "a3518c5d3205fc24f2935d1b431f999022fdadcfbe4acbd6ecb651c1f9f2a9f1"
+      "organizedImage": "4e26f01dd511f4ac95b8dda8dda3a82a.jpg",
+      "sourceImage": "sources/4e26f01dd511f4ac95b8dda8dda3a82a.png",
+      "bytes": 454809,
+      "sha256": "4307fff799c327c06e6729192195dd288fde7234d9e9d1287e28ae7f26ebc7ae"
     },
     {
       "id": "4487241790b7033464c9e13cc1055069",
       "title": "Terminator 3 - The Redemption",
       "fileName": "4487241790b7033464c9e13cc1055069.jpg",
       "catalogImage": "../../Assets/Catalog/Images/4487241790b7033464c9e13cc1055069.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 489235,
-      "sha256": "ebe206160d10f64d6d613f33ee995147a395b222c56a8897d57fb19237e09cc2"
+      "organizedImage": "4487241790b7033464c9e13cc1055069.jpg",
+      "sourceImage": "sources/4487241790b7033464c9e13cc1055069.png",
+      "bytes": 555746,
+      "sha256": "ae484c792ac976439bdf228f193512204ec0ef2f5c0beee879fe23343de251b6"
     },
     {
       "id": "991ea2257843d22db14eb8171beb1636",
       "title": "The Incredibles 1",
       "fileName": "991ea2257843d22db14eb8171beb1636.jpg",
       "catalogImage": "../../Assets/Catalog/Images/991ea2257843d22db14eb8171beb1636.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 403464,
-      "sha256": "42cee9961f6608a69ac243abdaa4920a2df5c8e51354a19251fa6e57df2e9a9a"
+      "organizedImage": "991ea2257843d22db14eb8171beb1636.jpg",
+      "sourceImage": "sources/991ea2257843d22db14eb8171beb1636.png",
+      "bytes": 370386,
+      "sha256": "10c95a765abf45f8a679bfc2a43e887ed5bdc199fe81c5b7b0cbca0e6171a296"
     },
     {
       "id": "982900ad78f53ec2c070fc19e1b660b4",
       "title": "The Incredibles Rise Of The Underminer",
       "fileName": "982900ad78f53ec2c070fc19e1b660b4.jpg",
       "catalogImage": "../../Assets/Catalog/Images/982900ad78f53ec2c070fc19e1b660b4.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 514741,
-      "sha256": "ccdc0ea05026bb878b88d97a6a3b35a484476d6db44c668f078df03ea46c2039"
+      "organizedImage": "982900ad78f53ec2c070fc19e1b660b4.jpg",
+      "sourceImage": "sources/982900ad78f53ec2c070fc19e1b660b4.png",
+      "bytes": 431429,
+      "sha256": "62e88a49e4a5016fb3999bb69d8a481b31095219df802d349c5553db1a43e006"
     },
     {
       "id": "13828f66c8a6b4f249d0c4509034007b",
       "title": "The Legend of Zelda Four Swords Adventures",
       "fileName": "13828f66c8a6b4f249d0c4509034007b.jpg",
       "catalogImage": "../../Assets/Catalog/Images/13828f66c8a6b4f249d0c4509034007b.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 487973,
-      "sha256": "d39e5ee6f5d43674825e79af59adaed396d0d0a26d4147542e00d1fb4b64a79a"
+      "organizedImage": "13828f66c8a6b4f249d0c4509034007b.jpg",
+      "sourceImage": "sources/13828f66c8a6b4f249d0c4509034007b.png",
+      "bytes": 570043,
+      "sha256": "5ac095a6b91a09e0a9d9b9f345b7897f3e7cf06f43250d59bdd3db2b685698be"
     },
     {
       "id": "18c701dab975f7fb1ebc39e5108ac72d",
       "title": "the Legend of Zelda, The - The Wind Waker (Europe) (En,Fr,De,Es,It)",
       "fileName": "18c701dab975f7fb1ebc39e5108ac72d.jpg",
       "catalogImage": "../../Assets/Catalog/Images/18c701dab975f7fb1ebc39e5108ac72d.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 464453,
-      "sha256": "33649da807c4673f581e9ea40c0341c8eab02b3a2c6de8209620272f2975db10"
+      "organizedImage": "18c701dab975f7fb1ebc39e5108ac72d.jpg",
+      "sourceImage": "sources/18c701dab975f7fb1ebc39e5108ac72d.png",
+      "bytes": 557116,
+      "sha256": "ae72710ac6a35a6a188830dabba72babdb86eda582a2f52727a3bd590ac09861"
     },
     {
       "id": "cecc542a714bb5804470a399a758eb85",
       "title": "the Legend of Zelda, The - Twilight Princess (Europe) (En,Fr,De,Es,It)",
       "fileName": "cecc542a714bb5804470a399a758eb85.jpg",
       "catalogImage": "../../Assets/Catalog/Images/cecc542a714bb5804470a399a758eb85.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 470366,
-      "sha256": "c3096cc57a7246c8394b0639e1e617f63616722f266ea83e2aa511984b100bf5"
+      "organizedImage": "cecc542a714bb5804470a399a758eb85.jpg",
+      "sourceImage": "sources/cecc542a714bb5804470a399a758eb85.png",
+      "bytes": 595700,
+      "sha256": "8c20a7651883ed039aa1a95d37d47329aec84e66cdf25a786cd2efbc0659f2db"
     },
     {
       "id": "7265407703b1b0708a8eef76ae2594dd",
       "title": "The Simpsons Hit & Run",
       "fileName": "7265407703b1b0708a8eef76ae2594dd.jpg",
       "catalogImage": "../../Assets/Catalog/Images/7265407703b1b0708a8eef76ae2594dd.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 507398,
-      "sha256": "7db2415c2921d66e56c7de0e673e280da139930a7814e1f55a0e6914db9e58d0"
+      "organizedImage": "7265407703b1b0708a8eef76ae2594dd.jpg",
+      "sourceImage": "sources/7265407703b1b0708a8eef76ae2594dd.png",
+      "bytes": 632797,
+      "sha256": "2b64455baa2920887294e6c7cf8b41186636edbdbfe42a17d5b2e097da09ec97"
     },
     {
       "id": "358572ef78a00d287c5d9439765606d8",
       "title": "true crime new york city",
       "fileName": "358572ef78a00d287c5d9439765606d8.jpg",
       "catalogImage": "../../Assets/Catalog/Images/358572ef78a00d287c5d9439765606d8.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 425517,
-      "sha256": "11a6ee0e00889229948bebf5b1aff756d98a5f94d11d9c4294fd9967c86eff6d"
+      "organizedImage": "358572ef78a00d287c5d9439765606d8.jpg",
+      "sourceImage": "sources/358572ef78a00d287c5d9439765606d8.png",
+      "bytes": 561480,
+      "sha256": "449ecae537b428c43d688f78cf2592b54188b698153d820b6045e7f7f673b06c"
     },
     {
       "id": "d73d9b5dbfd0a0029f886335464037b6",
       "title": "True Crime Streets of LA (BR)",
       "fileName": "d73d9b5dbfd0a0029f886335464037b6.jpg",
       "catalogImage": "../../Assets/Catalog/Images/d73d9b5dbfd0a0029f886335464037b6.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 457121,
-      "sha256": "ddfb35ffe250b3cbc8eef422aee7a40eee9ad6f57147cd082a256d9aa17394ca"
+      "organizedImage": "d73d9b5dbfd0a0029f886335464037b6.jpg",
+      "sourceImage": "sources/d73d9b5dbfd0a0029f886335464037b6.png",
+      "bytes": 559725,
+      "sha256": "dd45e910e0b5e6f91334fe2b677b4efa5964f95cb926b5d6457f8a9173af2bb1"
     },
     {
       "id": "b40857daf1c5f0101b96f6163d097934",
       "title": "XIII",
       "fileName": "b40857daf1c5f0101b96f6163d097934.jpg",
       "catalogImage": "../../Assets/Catalog/Images/b40857daf1c5f0101b96f6163d097934.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 421480,
-      "sha256": "77821024f94ee6133d9b898b5862f70bc0e1afa2bf25894ac823857a7d008620"
+      "organizedImage": "b40857daf1c5f0101b96f6163d097934.jpg",
+      "sourceImage": "sources/b40857daf1c5f0101b96f6163d097934.png",
+      "bytes": 581443,
+      "sha256": "6727df1ff1b5492d016b069248f2e3ea76ac68ee58686a6507e91e76195d0b0b"
     }
   ]
 }

@@ -7,9 +7,11 @@ param(
     [string]$Ps2BackgroundVideo = "$([Environment]::GetFolderPath('UserProfile'))\Downloads\videoplayback-ps2.mp4",
     [string]$Ps4BackgroundVideo = "$([Environment]::GetFolderPath('UserProfile'))\Downloads\videoplayback-ps4.mp4",
     [string]$Ps5BackgroundVideo = "$([Environment]::GetFolderPath('UserProfile'))\Downloads\videoplayback-ps5.mp4",
+    [string]$PspBackgroundVideo = "$([Environment]::GetFolderPath('UserProfile'))\Downloads\videoplayback-psp.mp4",
+    [string]$PsVitaBackgroundVideo = "$([Environment]::GetFolderPath('UserProfile'))\Downloads\videoplayback-psvita.mp4",
     [string]$SegaSaturnBackgroundVideo = "$([Environment]::GetFolderPath('UserProfile'))\Downloads\videoplayback-saturn.mp4",
     [string]$XboxOneBackgroundVideo = "$([Environment]::GetFolderPath('UserProfile'))\Downloads\videoplayback-xboxonex.mp4",
-    [string]$NintendoBackgroundVideo = "$([Environment]::GetFolderPath('UserProfile'))\Downloads\videoplayback-nintendo.mp4",
+    [string]$NintendoBackgroundVideo = "$([Environment]::GetFolderPath('UserProfile'))\Downloads\videoplayback-swith.mp4",
     [string]$NintendoWiiBackgroundVideo = "$([Environment]::GetFolderPath('UserProfile'))\Downloads\videoplayback-nintendo-wii.mp4",
     [string]$WindowsBackgroundVideo = "$([Environment]::GetFolderPath('UserProfile'))\Downloads\videoplayback-windows.mp4",
     [string]$RetroBackgroundVideo = "$([Environment]::GetFolderPath('UserProfile'))\Downloads\videoplayback-retro.mp4"
@@ -30,6 +32,8 @@ $systemToolsBackgroundVideoOutput = Join-Path $outputDirectory 'Turborama-backgr
 $ps2BackgroundVideoOutput = Join-Path $outputDirectory 'Turborama-background-ps2.mp4'
 $ps4BackgroundVideoOutput = Join-Path $outputDirectory 'Turborama-background-ps4.mp4'
 $ps5BackgroundVideoOutput = Join-Path $outputDirectory 'Turborama-background-ps5.mp4'
+$pspBackgroundVideoOutput = Join-Path $outputDirectory 'Turborama-background-psp.mp4'
+$psVitaBackgroundVideoOutput = Join-Path $outputDirectory 'Turborama-background-ps-vita.mp4'
 $segaSaturnBackgroundVideoOutput = Join-Path $outputDirectory 'Turborama-background-sega-saturn.mp4'
 $xboxOneBackgroundVideoOutput = Join-Path $outputDirectory 'Turborama-background-xbox-one-x.mp4'
 $nintendoBackgroundVideoOutput = Join-Path $outputDirectory 'Turborama-background-nintendo.mp4'
@@ -232,6 +236,8 @@ Require-File $SystemToolsBackgroundVideo 'Vídeo de sistemas e utilitários'
 Require-File $Ps2BackgroundVideo 'Vídeo do PlayStation 2'
 Require-File $Ps4BackgroundVideo 'Vídeo do PlayStation 4'
 Require-File $Ps5BackgroundVideo 'Vídeo do PlayStation 5'
+Require-File $PspBackgroundVideo 'Vídeo do PSP'
+Require-File $PsVitaBackgroundVideo 'Vídeo do PS Vita'
 Require-File $SegaSaturnBackgroundVideo 'Vídeo do SEGA Saturn'
 Require-File $XboxOneBackgroundVideo 'Vídeo do Xbox One X'
 Require-File $NintendoBackgroundVideo 'Vídeo do Nintendo Switch'
@@ -245,6 +251,8 @@ foreach ($platformVideo in @(
     [pscustomobject]@{ Label = 'PlayStation 2'; Path = $Ps2BackgroundVideo },
     [pscustomobject]@{ Label = 'PlayStation 4'; Path = $Ps4BackgroundVideo },
     [pscustomobject]@{ Label = 'PlayStation 5'; Path = $Ps5BackgroundVideo },
+    [pscustomobject]@{ Label = 'PSP'; Path = $PspBackgroundVideo },
+    [pscustomobject]@{ Label = 'PS Vita'; Path = $PsVitaBackgroundVideo },
     [pscustomobject]@{ Label = 'SEGA Saturn'; Path = $SegaSaturnBackgroundVideo },
     [pscustomobject]@{ Label = 'Xbox One X'; Path = $XboxOneBackgroundVideo },
     [pscustomobject]@{ Label = 'Nintendo Switch'; Path = $NintendoBackgroundVideo },
@@ -264,6 +272,7 @@ foreach ($platformVideo in @(
 
 $work = Get-BuildWorkRoot
 New-Item -ItemType Directory -Force -Path $work, $outputDirectory | Out-Null
+$buildIntermediatePath = (Join-Path $work 'obj') + [IO.Path]::DirectorySeparatorChar
 $previousTemp = $env:TEMP
 $previousTmp = $env:TMP
 $env:TEMP = $work
@@ -330,7 +339,9 @@ try {
         "-p:PrivateCatalogKeySourcePath=$privateCatalogKeySource",
         '-p:PublishSingleFile=true',
         '-p:PublishReadyToRun=false',
-        '-p:SelfContained=false'
+        '-p:SelfContained=false',
+        "-p:BaseIntermediateOutputPath=$buildIntermediatePath",
+        "-p:MSBuildProjectExtensionsPath=$buildIntermediatePath"
     )
     dotnet restore $project -r win-x64 --source https://api.nuget.org/v3/index.json `
         --ignore-failed-sources @privateProperties
@@ -341,6 +352,8 @@ try {
         -p:PublishReadyToRun=false `
         -p:IncludeNativeLibrariesForSelfExtract=false -p:EnableCompressionInSingleFile=false `
         -p:DebugType=None -p:DebugSymbols=false `
+        "-p:BaseIntermediateOutputPath=$buildIntermediatePath" `
+        "-p:MSBuildProjectExtensionsPath=$buildIntermediatePath" `
         "-p:PrivateCatalogResourcePath=$privateCatalogResource" `
         "-p:PrivateCatalogKeySourcePath=$privateCatalogKeySource" -o $payload
     if ($LASTEXITCODE -ne 0) { throw "Falha ao compilar o Turborama ($LASTEXITCODE)." }
@@ -371,6 +384,8 @@ try {
     Copy-Item -LiteralPath $Ps2BackgroundVideo -Destination $ps2BackgroundVideoOutput -Force
     Copy-Item -LiteralPath $Ps4BackgroundVideo -Destination $ps4BackgroundVideoOutput -Force
     Copy-Item -LiteralPath $Ps5BackgroundVideo -Destination $ps5BackgroundVideoOutput -Force
+    Copy-Item -LiteralPath $PspBackgroundVideo -Destination $pspBackgroundVideoOutput -Force
+    Copy-Item -LiteralPath $PsVitaBackgroundVideo -Destination $psVitaBackgroundVideoOutput -Force
     Copy-Item -LiteralPath $SegaSaturnBackgroundVideo -Destination $segaSaturnBackgroundVideoOutput -Force
     Copy-Item -LiteralPath $XboxOneBackgroundVideo -Destination $xboxOneBackgroundVideoOutput -Force
     Copy-Item -LiteralPath $NintendoBackgroundVideo -Destination $nintendoBackgroundVideoOutput -Force
@@ -389,6 +404,8 @@ try {
     Write-Host "Vídeo PlayStation 2: $ps2BackgroundVideoOutput"
     Write-Host "Vídeo PlayStation 4: $ps4BackgroundVideoOutput"
     Write-Host "Vídeo PlayStation 5: $ps5BackgroundVideoOutput"
+    Write-Host "Vídeo PSP: $pspBackgroundVideoOutput"
+    Write-Host "Vídeo PS Vita: $psVitaBackgroundVideoOutput"
     Write-Host "Vídeo SEGA Saturn: $segaSaturnBackgroundVideoOutput"
     Write-Host "Vídeo Xbox One X: $xboxOneBackgroundVideoOutput"
     Write-Host "Vídeo Nintendo Switch: $nintendoBackgroundVideoOutput"

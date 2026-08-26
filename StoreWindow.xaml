@@ -1576,6 +1576,9 @@
                         IsHitTestVisible="False"
                         Panel.ZIndex="0">
                     <Grid x:Name="RetroUniversalVideoPlayerHost"
+                          ClipToBounds="True"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch"
                           IsHitTestVisible="False" />
                     <Border Background="{DynamicResource CurrentSystemVideoOverlayBrush}" />
                     <Border Background="{DynamicResource CurrentSystemAccentBrush}" Opacity=".018" />

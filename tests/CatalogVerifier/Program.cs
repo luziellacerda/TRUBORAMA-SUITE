@@ -159,23 +159,29 @@ var temporaryRoot = Path.Combine(Path.GetTempPath(), "TurboramaCatalogVerifier",
 Directory.CreateDirectory(temporaryRoot);
 try
 {
-    var item = repository.Query("system-tools", string.Empty, 1, 4).Items[0];
     using var service = new CatalogDownloadService();
-    var result = await service.DownloadAsync(item, temporaryRoot);
-    Assert(result.Succeeded, result.Message);
-    Assert(File.Exists(result.LocalFilePath), "Arquivo final não foi criado.");
-    var downloadedName = Path.GetFileNameWithoutExtension(result.LocalFilePath);
-    Assert(!downloadedName.Equals(item.Id, StringComparison.OrdinalIgnoreCase),
-        "O arquivo baixado deve usar um nome legível, não apenas o ID interno.");
-    Assert(downloadedName.Contains(item.Id, StringComparison.OrdinalIgnoreCase),
-        "O arquivo baixado deve manter o ID estável para evitar colisões.");
-    Assert(new FileInfo(result.LocalFilePath).Length == 92, "O asset público deveria ter 92 bytes.");
-    var actualHash = Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(result.LocalFilePath)));
-    Assert(actualHash.Equals(item.Sha256, StringComparison.OrdinalIgnoreCase), "Hash final divergente.");
-    Assert(item.DownloadState == CatalogDownloadState.Completed && item.ProgressPercentage == 100,
-        "Estado/progresso final incorreto.");
-    Assert(!Directory.EnumerateFiles(temporaryRoot, "*.part", SearchOption.AllDirectories).Any(),
-        "Arquivo parcial permaneceu após sucesso.");
+    if (!string.Equals(
+            Environment.GetEnvironmentVariable("TURBORAMA_SKIP_NETWORK_TESTS"),
+            "1",
+            StringComparison.Ordinal))
+    {
+        var item = repository.Query("system-tools", string.Empty, 1, 4).Items[0];
+        var result = await service.DownloadAsync(item, temporaryRoot);
+        Assert(result.Succeeded, result.Message);
+        Assert(File.Exists(result.LocalFilePath), "Arquivo final não foi criado.");
+        var downloadedName = Path.GetFileNameWithoutExtension(result.LocalFilePath);
+        Assert(!downloadedName.Equals(item.Id, StringComparison.OrdinalIgnoreCase),
+            "O arquivo baixado deve usar um nome legível, não apenas o ID interno.");
+        Assert(downloadedName.Contains(item.Id, StringComparison.OrdinalIgnoreCase),
+            "O arquivo baixado deve manter o ID estável para evitar colisões.");
+        Assert(new FileInfo(result.LocalFilePath).Length == 92, "O asset público deveria ter 92 bytes.");
+        var actualHash = Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(result.LocalFilePath)));
+        Assert(actualHash.Equals(item.Sha256, StringComparison.OrdinalIgnoreCase), "Hash final divergente.");
+        Assert(item.DownloadState == CatalogDownloadState.Completed && item.ProgressPercentage == 100,
+            "Estado/progresso final incorreto.");
+        Assert(!Directory.EnumerateFiles(temporaryRoot, "*.part", SearchOption.AllDirectories).Any(),
+            "Arquivo parcial permaneceu após sucesso.");
+    }
 
     using var preCanceled = new CancellationTokenSource();
     preCanceled.Cancel();
