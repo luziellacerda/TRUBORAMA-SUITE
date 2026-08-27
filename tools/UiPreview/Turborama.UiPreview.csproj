@@ -1,0 +1,90 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>Turborama-UI-Preview</AssemblyName>
+    <RootNamespace>Turborama.UiPreview</RootNamespace>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Product>Turborama UI Preview</Product>
+    <Company>Turborama</Company>
+    <Description>Visualizador local e somente leitura da interface Turborama.</Description>
+    <ApplicationIcon>..\..\Assets\turborama-app-icon.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Optimize>true</Optimize>
+    <DebugType>None</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <PublishTrimmed>false</PublishTrimmed>
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <TurboramaPreviewSourceRevision Condition="'$(TurboramaPreviewSourceRevision)' == ''">UNSET</TurboramaPreviewSourceRevision>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Turborama.UiPreview.Tests" />
+    <AssemblyMetadata Include="Turborama.UiPreview.Marker"
+                      Value="LOCAL-ADMIN-PREVIEW-NOT-FOR-DISTRIBUTION" />
+    <AssemblyMetadata Include="Turborama.UiPreview.SourceRevision"
+                      Value="$(TurboramaPreviewSourceRevision)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\Assets\Catalog\catalog.json"
+             Link="Assets\Catalog\catalog.json"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\Assets\Catalog\platform-descriptions.json"
+             Link="Assets\Catalog\platform-descriptions.json"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\Assets\Catalog\Images\*.jpg"
+             Link="Assets\Catalog\Images\%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\Assets\Catalog\MenuIcons\*.png"
+             Link="Assets\Catalog\MenuIcons\%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\Assets\Catalog\SystemVideos\*.mp4"
+             Link="Assets\Catalog\SystemVideos\%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\Assets\Catalog\SystemVideos\*.json"
+             Link="Assets\Catalog\SystemVideos\%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\Assets\BackgroundVideos\*.mp4"
+             Link="Assets\BackgroundVideos\%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\Assets\BackgroundVideos\*.json"
+             Link="Assets\BackgroundVideos\%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\Assets\f15-turborama-user-original-v13.png"
+             Link="Assets\f15-turborama-user-original-v13.png"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\Assets\turborama-logo-v3.png"
+             Link="Assets\turborama-logo-v3.png"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\Assets\turborama-app-icon.ico"
+             Link="Assets\turborama-app-icon.ico"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <Target Name="ValidateUiPreviewBuildIdentity" BeforeTargets="CoreCompile">
+    <Error Condition="'$(TurboramaPreviewSourceRevision)' == 'UNSET'"
+           Text="TurboramaPreviewSourceRevision deve receber o commit Git exato." />
+  </Target>
+</Project>

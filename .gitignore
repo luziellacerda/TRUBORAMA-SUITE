@@ -21,5 +21,6 @@ SHA256SUMS.txt
 *.cache
 *.tmp
 *.log
+ui-preview.credential
 .env
 .env.*

@@ -44,6 +44,12 @@
   <ItemGroup>
     <Compile Remove="tools\**\*.cs" />
     <Compile Remove="tests\**\*.cs" />
+    <Compile Remove="obj-*\**\*.cs" />
+    <Page Remove="tools\**\*.xaml;tests\**\*.xaml;obj-*\**\*.xaml" />
+    <ApplicationDefinition Remove="tools\**\App.xaml;tests\**\App.xaml;obj-*\**\App.xaml" />
+    <Resource Remove="tools\UiPreview\**\*" />
+    <Content Remove="tools\UiPreview\**\*;tools\UiPreview.Tests\**\*" />
+    <None Remove="tools\UiPreview\**\*;tools\UiPreview.Tests\**\*" />
     <Content Include="THIRD-PARTY-NOTICES.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
