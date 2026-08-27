@@ -10,7 +10,7 @@
       "title": "3DS",
       "fileName": "f95f1d8257dc3d0ec31c199c8d30ba0e.jpg",
       "catalogImage": "../../Assets/Catalog/Images/f95f1d8257dc3d0ec31c199c8d30ba0e.jpg",
-      "organizedImage": null,
+      "organizedImage": "f95f1d8257dc3d0ec31c199c8d30ba0e.jpg",
       "sourceImage": null,
       "bytes": 287410,
       "sha256": "684fba4991b631dcd8a46f62f873f41e5e4d2a694c6b6bdfdd7a5c0389da8ae2"
@@ -20,7 +20,7 @@
       "title": "GAMECUBE",
       "fileName": "83864e2a73f63bc39dbfbd84b20f0795.jpg",
       "catalogImage": "../../Assets/Catalog/Images/83864e2a73f63bc39dbfbd84b20f0795.jpg",
-      "organizedImage": null,
+      "organizedImage": "83864e2a73f63bc39dbfbd84b20f0795.jpg",
       "sourceImage": null,
       "bytes": 295855,
       "sha256": "a03cda2827cc09026e6af34e133bdfbb761a5865e0ae3d12cb09916d591f11af"
@@ -30,7 +30,7 @@
       "title": "PLAYSTATION 1",
       "fileName": "cb4b3fa79fd5c10714e2a92e6777da08.jpg",
       "catalogImage": "../../Assets/Catalog/Images/cb4b3fa79fd5c10714e2a92e6777da08.jpg",
-      "organizedImage": null,
+      "organizedImage": "cb4b3fa79fd5c10714e2a92e6777da08.jpg",
       "sourceImage": null,
       "bytes": 300493,
       "sha256": "07c5ba6357d21bb82b71eb4c7b044f327049a911a155aa2bc2f112c1e577eb52"
@@ -40,7 +40,7 @@
       "title": "PS2",
       "fileName": "c430156afd3ca0b0f10579218c7aedc1.jpg",
       "catalogImage": "../../Assets/Catalog/Images/c430156afd3ca0b0f10579218c7aedc1.jpg",
-      "organizedImage": null,
+      "organizedImage": "c430156afd3ca0b0f10579218c7aedc1.jpg",
       "sourceImage": null,
       "bytes": 304548,
       "sha256": "97c1c1e92871f4358a89ca5249098c3e6933d1af23e24efef8cc2aed967f2e29"
@@ -50,7 +50,7 @@
       "title": "PS3",
       "fileName": "d2326fb5c3bf0d258dc869a20f883612.jpg",
       "catalogImage": "../../Assets/Catalog/Images/d2326fb5c3bf0d258dc869a20f883612.jpg",
-      "organizedImage": null,
+      "organizedImage": "d2326fb5c3bf0d258dc869a20f883612.jpg",
       "sourceImage": null,
       "bytes": 290511,
       "sha256": "97cbcd5182167af97ad89eba12b7ea59adbe8dcd8d6e4beb441ed5033c50e1ca"
@@ -60,7 +60,7 @@
       "title": "PS4",
       "fileName": "4c2d5717ad93c2b6277453f7ae39aa13.jpg",
       "catalogImage": "../../Assets/Catalog/Images/4c2d5717ad93c2b6277453f7ae39aa13.jpg",
-      "organizedImage": null,
+      "organizedImage": "4c2d5717ad93c2b6277453f7ae39aa13.jpg",
       "sourceImage": null,
       "bytes": 302877,
       "sha256": "5a27cfad29dc24258344e94a166d67fc6e9ad9fdd10b1eaad32f1088697f064e"
@@ -70,7 +70,7 @@
       "title": "PS5",
       "fileName": "40ff54b598e3f23a31cea45c856397e8.jpg",
       "catalogImage": "../../Assets/Catalog/Images/40ff54b598e3f23a31cea45c856397e8.jpg",
-      "organizedImage": null,
+      "organizedImage": "40ff54b598e3f23a31cea45c856397e8.jpg",
       "sourceImage": null,
       "bytes": 294457,
       "sha256": "07dbd82185e0b104867ba1d942c98f0e64b4e8dd707a7929054645a6a077027c"
@@ -80,7 +80,7 @@
       "title": "PSP",
       "fileName": "303aed3c0caf2e9e02d3f229cfeb18b6.jpg",
       "catalogImage": "../../Assets/Catalog/Images/303aed3c0caf2e9e02d3f229cfeb18b6.jpg",
-      "organizedImage": null,
+      "organizedImage": "303aed3c0caf2e9e02d3f229cfeb18b6.jpg",
       "sourceImage": null,
       "bytes": 326234,
       "sha256": "626bef3fe36efb3aeb90b7162ec29419110442d6016e807f9746f91bc3f19922"
@@ -90,7 +90,7 @@
       "title": "PSVITA",
       "fileName": "d43efb43df478b8e78759de456be6177.jpg",
       "catalogImage": "../../Assets/Catalog/Images/d43efb43df478b8e78759de456be6177.jpg",
-      "organizedImage": null,
+      "organizedImage": "d43efb43df478b8e78759de456be6177.jpg",
       "sourceImage": null,
       "bytes": 320376,
       "sha256": "a8a14dea4477bd803a8a41f7224bdbe5fed11c27ab2c8c2d8649d76e9b6b2a4c"
@@ -100,7 +100,7 @@
       "title": "SEGA SATURN",
       "fileName": "7468dcff66e5c9f90202455b19b629c6.jpg",
       "catalogImage": "../../Assets/Catalog/Images/7468dcff66e5c9f90202455b19b629c6.jpg",
-      "organizedImage": null,
+      "organizedImage": "7468dcff66e5c9f90202455b19b629c6.jpg",
       "sourceImage": null,
       "bytes": 289026,
       "sha256": "eda1614a6f6b2e5eafe8f8461203399bbf0871bcad7af771f20ccf336e020fde"
@@ -110,7 +110,7 @@
       "title": "SWITCH",
       "fileName": "2c6872aec304fb6faa038b8cc65dee58.jpg",
       "catalogImage": "../../Assets/Catalog/Images/2c6872aec304fb6faa038b8cc65dee58.jpg",
-      "organizedImage": null,
+      "organizedImage": "2c6872aec304fb6faa038b8cc65dee58.jpg",
       "sourceImage": null,
       "bytes": 314479,
       "sha256": "5f90b5a7db4531858347179c2986f550b2528b0f399d7c13ec09fcbc12d9b08b"
@@ -120,7 +120,7 @@
       "title": "WII",
       "fileName": "f9f47bfde74241481308ebdfda080778.jpg",
       "catalogImage": "../../Assets/Catalog/Images/f9f47bfde74241481308ebdfda080778.jpg",
-      "organizedImage": null,
+      "organizedImage": "f9f47bfde74241481308ebdfda080778.jpg",
       "sourceImage": null,
       "bytes": 319642,
       "sha256": "aea8a0522336272692e38bf64ed145f994be088b6f169c05b76eabde6dd6d899"
@@ -130,7 +130,7 @@
       "title": "WII U",
       "fileName": "f754c3e71638008f72dce88d1c5b9590.jpg",
       "catalogImage": "../../Assets/Catalog/Images/f754c3e71638008f72dce88d1c5b9590.jpg",
-      "organizedImage": null,
+      "organizedImage": "f754c3e71638008f72dce88d1c5b9590.jpg",
       "sourceImage": null,
       "bytes": 304173,
       "sha256": "abedca8e863cff3998a5d1bf767ae58b5fcd2410a95b7cd3b958e48c71c61482"
@@ -140,7 +140,7 @@
       "title": "XBOX",
       "fileName": "492a56ae14eb149854ccdd23b6617f08.jpg",
       "catalogImage": "../../Assets/Catalog/Images/492a56ae14eb149854ccdd23b6617f08.jpg",
-      "organizedImage": null,
+      "organizedImage": "492a56ae14eb149854ccdd23b6617f08.jpg",
       "sourceImage": null,
       "bytes": 299065,
       "sha256": "394385ef4d8054af1316773610b78ebb24b11fa5cd8055346400496197f4882d"
@@ -150,7 +150,7 @@
       "title": "XBOX 360",
       "fileName": "aab30de07d8cf800b283271fd0365aca.jpg",
       "catalogImage": "../../Assets/Catalog/Images/aab30de07d8cf800b283271fd0365aca.jpg",
-      "organizedImage": null,
+      "organizedImage": "aab30de07d8cf800b283271fd0365aca.jpg",
       "sourceImage": null,
       "bytes": 296623,
       "sha256": "15fa6967cb3df70dc060cd943a9a91c80ca073a66fa6146f9512ff0a49c277d2"
@@ -160,7 +160,7 @@
       "title": "Xbox One",
       "fileName": "2dccd65b139159b74c7327df00fcfda9.jpg",
       "catalogImage": "../../Assets/Catalog/Images/2dccd65b139159b74c7327df00fcfda9.jpg",
-      "organizedImage": null,
+      "organizedImage": "2dccd65b139159b74c7327df00fcfda9.jpg",
       "sourceImage": null,
       "bytes": 270122,
       "sha256": "7b6ad32555f366cf9add6ab7d9dec2de6772c3e5a2b2b02d830f40a4975e586a"
@@ -170,7 +170,7 @@
       "title": "Xbox series",
       "fileName": "962f9229c145b1e91e079f8c2601f0af.jpg",
       "catalogImage": "../../Assets/Catalog/Images/962f9229c145b1e91e079f8c2601f0af.jpg",
-      "organizedImage": null,
+      "organizedImage": "962f9229c145b1e91e079f8c2601f0af.jpg",
       "sourceImage": null,
       "bytes": 256811,
       "sha256": "eaa130bd2c39bde086b28bb4d442ea4b8aca80286d51b8ea9a2ec29f7797cfc5"
