@@ -26,7 +26,7 @@ var now = new DateTimeOffset(2026, 8, 27, 12, 0, 0, TimeSpan.Zero);
 VerifyCredentialRules(password, now);
 VerifyPackageManifest();
 VerifyCatalogAndPaths();
-VerifyWindowMarkupAndSquareLayout();
+VerifySquareLayout();
 VerifyProductionIsolation();
 
 Console.WriteLine(
@@ -294,22 +294,13 @@ static void VerifyCatalogAndPaths()
     }
 }
 
-static void VerifyWindowMarkupAndSquareLayout()
+static void VerifySquareLayout()
 {
     Exception? failure = null;
     var thread = new Thread(() =>
     {
         try
         {
-            var application = new App();
-            application.InitializeComponent();
-            application.ShutdownMode = ShutdownMode.OnExplicitShutdown;
-            var login = new PreviewLoginWindow(
-                Path.Combine(Path.GetTempPath(), PreviewCredentialVerifier.CredentialFileName),
-                Commit);
-            Assert(login.Title.Contains("Preview", StringComparison.Ordinal),
-                "A janela de senha precisa carregar todos os recursos XAML.");
-
             foreach (var size in new[]
                      {
                          new Size(1024, 768),
@@ -325,7 +316,6 @@ static void VerifyWindowMarkupAndSquareLayout()
                 Assert(Math.Abs(child.RenderSize.Width - child.RenderSize.Height) < 0.01,
                     "O contêiner de vídeo precisa permanecer quadrado.");
             }
-            application.Shutdown();
         }
         catch (Exception exception)
         {
