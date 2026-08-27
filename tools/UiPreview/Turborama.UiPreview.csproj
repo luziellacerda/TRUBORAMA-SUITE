@@ -69,18 +69,10 @@
              Link="Assets\BackgroundVideos\%(Filename)%(Extension)"
              CopyToOutputDirectory="PreserveNewest"
              CopyToPublishDirectory="PreserveNewest" />
-    <Content Include="..\..\Assets\f15-turborama-user-original-v13.png"
-             Link="Assets\f15-turborama-user-original-v13.png"
-             CopyToOutputDirectory="PreserveNewest"
-             CopyToPublishDirectory="PreserveNewest" />
-    <Content Include="..\..\Assets\turborama-logo-v3.png"
-             Link="Assets\turborama-logo-v3.png"
-             CopyToOutputDirectory="PreserveNewest"
-             CopyToPublishDirectory="PreserveNewest" />
-    <Content Include="..\..\Assets\turborama-app-icon.ico"
-             Link="Assets\turborama-app-icon.ico"
-             CopyToOutputDirectory="PreserveNewest"
-             CopyToPublishDirectory="PreserveNewest" />
+    <Resource Include="..\..\Assets\turborama-logo-v3.png"
+              Link="Assets\turborama-logo-v3.png" />
+    <Resource Include="..\..\Assets\turborama-app-icon.ico"
+              Link="Assets\turborama-app-icon.ico" />
   </ItemGroup>
 
   <Target Name="ValidateUiPreviewBuildIdentity" BeforeTargets="CoreCompile">
