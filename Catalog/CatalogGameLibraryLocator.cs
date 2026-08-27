@@ -58,7 +58,7 @@ public static class CatalogGameLibraryLocator
                 true);
     }
 
-    private static IEnumerable<string> GetReadyFixedDriveRoots()
+    private static string[] GetReadyFixedDriveRoots()
     {
         try
         {

@@ -1,10 +1,12 @@
+using System.Buffers;
 using System.Collections.ObjectModel;
-using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Windows;
@@ -12,29 +14,53 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Microsoft.Win32;
+using Microsoft.Win32.SafeHandles;
 using TurboBoxManager.Catalog;
+using TurboBoxManager.Licensing;
 
 namespace TurboBoxManager;
 
+[SuppressMessage(
+    "Design",
+    "CA1001:Types that own disposable fields should be disposable",
+    Justification = "The WPF lifetime cancels all work in OnClosed; its linked CTS intentionally remains valid while in-flight operations unwind, and an active extraction may still release its semaphore after closure.")]
 public partial class StoreWindow : Window, INotifyPropertyChanged
 {
     private const int CatalogPageSize = 4;
     private const string RetroGamesCategoryId = "retro-games";
     private const int MaximumRetroSystemVideoManifestBytes = 256 * 1024;
     private const int MaximumRetroPlatformDescriptionsBytes = 512 * 1024;
+    private const int MaximumQuarantinedVideoPlaybacks = 8;
+    private const uint NativeGenericRead = 0x80000000;
+    private const uint NativeFileReadAttributes = 0x00000080;
+    private const uint NativeFileShareRead = 0x00000001;
+    private const uint NativeOpenExisting = 3;
+    private const uint NativeFileFlagBackupSemantics = 0x02000000;
+    private const uint NativeFileFlagOpenReparsePoint = 0x00200000;
+    private const uint NativeFileFlagSequentialScan = 0x08000000;
+    private const int NativeFileAttributeTagInfoClass = 9;
+    private const int NativeWmDpiChanged = 0x02E0;
+    private const uint NativeMonitorDefaultToNearest = 0x00000002;
+    private const uint NativeSwpNoZOrder = 0x0004;
+    private const uint NativeSwpNoActivate = 0x0010;
     private static readonly Lazy<IReadOnlyDictionary<string, string>> RetroSystemVideoMap =
         new(LoadRetroSystemVideoMap);
     private static readonly Lazy<IReadOnlyDictionary<string, RetroSystemVideoIntegrity>> RetroSystemVideoIntegrityMap =
         new(LoadRetroSystemVideoIntegrityMap);
-    private static readonly ConcurrentDictionary<string, bool> RetroSystemVideoIntegrityCache =
-        new(StringComparer.OrdinalIgnoreCase);
+    private static readonly Lazy<IReadOnlyDictionary<string, RetroSystemVideoIntegrity>> BackgroundVideoIntegrityMap =
+        new(LoadBackgroundVideoIntegrityMap);
     private static readonly Lazy<IReadOnlyDictionary<string, string>> RetroPlatformDescriptions =
         new(LoadRetroPlatformDescriptions);
+    private static readonly object FailedVideoCloseQuarantineGate = new();
+    private static readonly List<(MediaElement Player, TrustedVideoLease Lease)>
+        FailedVideoCloseQuarantine = [];
+    private static int _videoPlaybackDisabled;
     private static readonly IReadOnlyDictionary<string, string> BuiltInRetroPlatformDescriptions =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -93,13 +119,16 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                 "github.com",
                 "objects.githubusercontent.com",
                 "release-assets.githubusercontent.com",
-                "raw.githubusercontent.com",
-                "cucunot.sambox.club",
-                "detroit.sambox.club",
-                "miami.sambox.buzz"
+                "raw.githubusercontent.com"
             ],
             StringComparer.OrdinalIgnoreCase)
     });
+    private readonly AuthorizedStoreContext _authorization;
+    private readonly SuiteLicensingRuntime _licensingRuntime;
+    private readonly SuiteAuthorizationSubscription _authorizationSubscription;
+    private readonly CancellationTokenSource _storeOperationCancellation;
+    private int _revocationHandled;
+    private int _storeReady;
     private readonly Dictionary<string, CatalogDownloadJob> _downloadJobsByItem =
         new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> _downloadRootsByItem =
@@ -127,13 +156,27 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     private int _remainingRetroCarouselClickSteps;
     private bool _isRetroCarouselAnimating;
     private int _retroSystemVideoRequestVersion;
+    private int _retroUniversalVideoRequestVersion;
     private int _activeRetroSystemVideoGeneration;
     private string _activeRetroSystemVideoItemId = string.Empty;
     private string _activeRetroSystemVideoPath = string.Empty;
+    private string _pendingRetroSystemVideoItemId = string.Empty;
+    private string _activeRetroUniversalVideoCategoryId = string.Empty;
+    private string _pendingRetroUniversalVideoCategoryId = string.Empty;
     private MediaElement? _retroSystemVideoPlayer;
     private MediaElement? _retroUniversalVideoPlayer;
+    private TrustedVideoLease? _retroSystemVideoLease;
+    private TrustedVideoLease? _retroUniversalVideoLease;
+    private CancellationTokenSource? _retroSystemVideoLoadCancellation;
+    private CancellationTokenSource? _retroUniversalVideoLoadCancellation;
+    private Task _retroSystemVideoLoadTask = Task.CompletedTask;
+    private Task _retroUniversalVideoLoadTask = Task.CompletedTask;
     private bool _retroSystemVideoPausedForWindow;
     private bool _retroSystemVideoRestartOnResume;
+    private HwndSource? _windowSource;
+    private IntPtr _lastWorkAreaMonitor;
+    private bool _workAreaClampScheduled;
+    private bool _workAreaClampInProgress;
 
     private readonly record struct RetroCarouselSlot(
         double Left,
@@ -144,6 +187,133 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         int ZIndex);
 
     private readonly record struct RetroSystemVideoIntegrity(string Sha256, long Length);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeFileAttributeTagInfo
+    {
+        public uint FileAttributes;
+        public uint ReparseTag;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeMonitorInfo
+    {
+        public uint Size;
+        public NativeRect Monitor;
+        public NativeRect Work;
+        public uint Flags;
+    }
+
+    private sealed class TrustedVideoLeaseResources(
+        FileStream stream,
+        List<SafeFileHandle> directoryHandles) : IDisposable
+    {
+        public void Dispose()
+        {
+            try
+            {
+                stream.Dispose();
+            }
+            finally
+            {
+                for (var index = directoryHandles.Count - 1; index >= 0; index--)
+                    directoryHandles[index].Dispose();
+            }
+        }
+    }
+
+    private sealed class TrustedVideoLease(
+        string path,
+        FileStream stream,
+        List<SafeFileHandle> directoryHandles) : IDisposable
+    {
+        private TrustedVideoLeaseResources? _resources = new(stream, directoryHandles);
+
+        public string Path { get; } = path;
+
+        public bool IsActive => Volatile.Read(ref _resources) is not null;
+
+        public void Dispose() => Interlocked.Exchange(ref _resources, null)?.Dispose();
+    }
+
+#pragma warning disable SYSLIB1054
+    [DllImport(
+        "kernel32.dll",
+        EntryPoint = "CreateFileW",
+        CharSet = CharSet.Unicode,
+        ExactSpelling = true,
+        SetLastError = true)]
+    private static extern SafeFileHandle OpenNativeVideoPathHandle(
+        string fileName,
+        uint desiredAccess,
+        uint shareMode,
+        IntPtr securityAttributes,
+        uint creationDisposition,
+        uint flagsAndAttributes,
+        IntPtr templateFile);
+
+    [DllImport(
+        "kernel32.dll",
+        EntryPoint = "GetFileInformationByHandleEx",
+        ExactSpelling = true,
+        SetLastError = true)]
+    private static extern int GetNativeVideoFileInformation(
+        SafeFileHandle file,
+        int fileInformationClass,
+        out NativeFileAttributeTagInfo fileInformation,
+        uint bufferSize);
+
+    [DllImport(
+        "kernel32.dll",
+        EntryPoint = "GetFinalPathNameByHandleW",
+        ExactSpelling = true,
+        SetLastError = true)]
+    private static extern uint GetFinalNativeVideoPath(
+        SafeFileHandle file,
+        IntPtr pathBuffer,
+        uint pathBufferLength,
+        uint flags);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    private static extern IntPtr MonitorFromWindow(IntPtr windowHandle, uint flags);
+
+    [DllImport(
+        "user32.dll",
+        EntryPoint = "GetMonitorInfoW",
+        ExactSpelling = true,
+        SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetNativeMonitorInfo(
+        IntPtr monitorHandle,
+        ref NativeMonitorInfo monitorInfo);
+
+    [DllImport("user32.dll", ExactSpelling = true, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(IntPtr windowHandle, out NativeRect windowRect);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    private static extern uint GetDpiForWindow(IntPtr windowHandle);
+
+    [DllImport("user32.dll", ExactSpelling = true, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetWindowPos(
+        IntPtr windowHandle,
+        IntPtr insertAfter,
+        int x,
+        int y,
+        int width,
+        int height,
+        uint flags);
+#pragma warning restore SYSLIB1054
 
     public ObservableCollection<CatalogCategory> CatalogCategories { get; } = [];
     public ObservableCollection<CatalogCategory> FeaturedCategories { get; } = [];
@@ -218,29 +388,51 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public StoreWindow() : this(false)
+    internal StoreWindow(
+        AuthorizedStoreContext authorization,
+        SuiteLicensingRuntime licensingRuntime)
     {
-    }
+        _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
+        _licensingRuntime = licensingRuntime
+                            ?? throw new ArgumentNullException(nameof(licensingRuntime));
+        _authorizationSubscription = _licensingRuntime.AttachAuthorizationConsumer(
+            _authorization,
+            LicensingRuntime_AuthorizationRevoked);
+        _storeOperationCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            _authorizationSubscription.AuthorizationCancellationToken);
 
-    public StoreWindow(bool skipLogin)
-    {
-        InitializeComponent();
-        DataContext = this;
-        _installFolderPath = LocalDataPaths.ReadInstallFolder() ?? _installFolderPath;
-        _gameLibraryFolderPath = LocalDataPaths.ReadGameLibraryFolder() ?? string.Empty;
-        RememberApprovedRoot(_installFolderPath);
-        if (IsExistingGameLibraryFolder(_gameLibraryFolderPath))
-            RememberApprovedRoot(_gameLibraryFolderPath);
-        InitializeCatalog();
-        UpdateFolderLabels();
-        Loaded += StoreWindow_Loaded;
-        StateChanged += StoreWindow_StateChanged;
-
-        if (!skipLogin) return;
-
-        SetVisibility("LoginView", false);
-        SetVisibility("AppView", true);
-        ShowPage("Home");
+        try
+        {
+            ThrowIfOperationUnauthorized();
+            InitializeComponent();
+            DataContext = this;
+            _installFolderPath = LocalDataPaths.ReadInstallFolder() ?? _installFolderPath;
+            _gameLibraryFolderPath = LocalDataPaths.ReadGameLibraryFolder() ?? string.Empty;
+            RememberApprovedRoot(_installFolderPath);
+            if (IsExistingGameLibraryFolder(_gameLibraryFolderPath))
+                RememberApprovedRoot(_gameLibraryFolderPath);
+            InitializeCatalog();
+            ThrowIfOperationUnauthorized();
+            UpdateFolderLabels();
+            Loaded += StoreWindow_Loaded;
+            StateChanged += StoreWindow_StateChanged;
+            SessionStatusText.Text = "SESSÃO ATIVA";
+            SessionStatusText.Foreground = Brushes.LawnGreen;
+            SessionStatusBadge.Background = new SolidColorBrush(Color.FromRgb(19, 32, 14));
+            SessionStatusBadge.BorderBrush = new SolidColorBrush(Color.FromRgb(49, 72, 42));
+            ThrowIfOperationUnauthorized();
+            Volatile.Write(ref _storeReady, 1);
+            ThrowIfOperationUnauthorized();
+            ShowPage("Home");
+        }
+        catch
+        {
+            Volatile.Write(ref _storeReady, 0);
+            CancelStoreOperations();
+            _storeOperationCancellation.Dispose();
+            _authorizationSubscription.Dispose();
+            throw;
+        }
     }
 
     private void InitializeCatalog()
@@ -249,12 +441,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         {
             var catalogDirectory = Path.Combine(AppContext.BaseDirectory, "Assets", "Catalog");
             var publicManifestPath = Path.Combine(catalogDirectory, "catalog.json");
-            if (!PrivateCatalogResource.TryLoadRepository(
-                    publicManifestPath,
-                    out var repository))
-                repository = CatalogRepository.Load(publicManifestPath);
-            _catalogRepository = repository
-                ?? throw new InvalidDataException("O catálogo incorporado está vazio.");
+            _catalogRepository = CatalogRepository.Load(publicManifestPath);
 
             CatalogCategories.Clear();
             foreach (var category in _catalogRepository.Categories)
@@ -288,26 +475,6 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             HasCatalogItems = false;
             SetCatalogStatus($"Catálogo indisponível: {exception.Message}");
         }
-    }
-
-    private void Enter_Click(object sender, RoutedEventArgs e)
-    {
-        var licenseInput = FindNamed<TextBox>("LicenseInput");
-        var loginStatus = FindNamed<TextBlock>("LoginStatus");
-        if (string.IsNullOrWhiteSpace(licenseInput?.Text))
-        {
-            if (loginStatus is not null)
-            {
-                loginStatus.Text = "Digite uma licença para continuar.";
-                loginStatus.Visibility = Visibility.Visible;
-            }
-            return;
-        }
-
-        if (loginStatus is not null) loginStatus.Visibility = Visibility.Collapsed;
-        SetVisibility("LoginView", false);
-        SetVisibility("AppView", true);
-        ShowPage("Home");
     }
 
     private void Nav_Click(object sender, RoutedEventArgs e)
@@ -355,7 +522,9 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                 searchText: null,
                 requestedPage: 1,
                 pageSize: Math.Max(1, _catalogRepository.ItemCount));
-            var cover = result.Items.FirstOrDefault()?.ImageSource ?? string.Empty;
+            var cover = result.Items.Count > 0
+                ? result.Items[0].ImageSource
+                : string.Empty;
             LibrarySystems.Add(new LibrarySystemSummary
             {
                 Category = category,
@@ -584,7 +753,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
     // Every collection now uses the same 2:3 poster presentation approved for
     // the retro carousel. The poster itself is the cell; the action stays below.
-    private bool UsesPortraitCarouselCovers => true;
+    private static bool UsesPortraitCarouselCovers => true;
 
     private void RefreshRetroCarousel()
     {
@@ -743,7 +912,6 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             SetRetroCarouselActionInteractive(actionBar, true);
         }
         StartRetroUniversalVideo();
-        StopRetroSystemVideo(clearFallback: true);
     }
 
     private bool TryGetRetroCarouselControls(out ContentControl[] controls)
@@ -841,6 +1009,8 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             previousButton.IsEnabled = _retroCarouselItems.Count > 1;
         if (FindNamed<Button>("RetroCarouselNextButton") is { } nextButton)
             nextButton.IsEnabled = _retroCarouselItems.Count > 1;
+
+        SwitchRetroSystemVideo(current);
     }
 
     private bool HasPendingRetroCarouselMotion =>
@@ -850,34 +1020,137 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
     private void StartRetroUniversalVideo()
     {
-        if (!IsRetroCarouselVisible || WindowState == WindowState.Minimized)
-            return;
-
-        var videoPath = ResolveRetroUniversalVideoPath(SelectedCategory?.Id);
-        if (videoPath is null || FindNamed<Grid>("RetroUniversalVideoPlayerHost") is not { } host)
+        if (IsVideoPlaybackDisabled)
         {
             StopRetroUniversalVideo();
             return;
         }
+        if (!IsRetroCarouselVisible || WindowState == WindowState.Minimized)
+            return;
 
+        var categoryId = SelectedCategory?.Id ?? string.Empty;
         if (_retroUniversalVideoPlayer is { Source: not null } active
-            && active.Source.IsFile
-            && Path.GetFullPath(active.Source.LocalPath).Equals(videoPath, StringComparison.OrdinalIgnoreCase))
+            && _retroUniversalVideoLease is { IsActive: true } activeLease
+            && _activeRetroUniversalVideoCategoryId.Equals(
+                categoryId,
+                StringComparison.OrdinalIgnoreCase)
+            && IsPlayerUsingLease(active, activeLease))
         {
             try { active.Play(); }
             catch (InvalidOperationException) { StopRetroUniversalVideo(); }
             return;
         }
 
+        if (_pendingRetroUniversalVideoCategoryId.Equals(
+                categoryId,
+                StringComparison.OrdinalIgnoreCase)
+            && !_retroUniversalVideoLoadTask.IsCompleted)
+            return;
+
         StopRetroUniversalVideo();
+        if (Dispatcher.HasShutdownStarted) return;
+
+        var requestVersion = ++_retroUniversalVideoRequestVersion;
+        var requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            _storeOperationCancellation.Token);
+        _pendingRetroUniversalVideoCategoryId = categoryId;
+        Volatile.Write(ref _retroUniversalVideoLoadCancellation, requestCancellation);
+        _retroUniversalVideoLoadTask = LoadRetroUniversalVideoAsync(
+            categoryId,
+            requestVersion,
+            requestCancellation);
+    }
+
+    private async Task LoadRetroUniversalVideoAsync(
+        string categoryId,
+        int requestVersion,
+        CancellationTokenSource requestCancellation)
+    {
+        TrustedVideoLease? videoLease = null;
+        var cancellationToken = requestCancellation.Token;
+        try
+        {
+            videoLease = await Task.Run(
+                    () => OpenRetroUniversalVideoLeaseCore(
+                        categoryId,
+                        cancellationToken),
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (Dispatcher.HasShutdownStarted) return;
+
+            var completion = Dispatcher.InvokeAsync(
+                () => CompleteRetroUniversalVideoLoad(
+                    categoryId,
+                    requestVersion,
+                    requestCancellation,
+                    videoLease),
+                DispatcherPriority.ContextIdle);
+            if (await completion.Task.ConfigureAwait(false))
+                videoLease = null;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (InvalidOperationException exception)
+        {
+            Debug.WriteLine($"Carregamento assíncrono do vídeo universal falhou: {exception.Message}");
+        }
+        finally
+        {
+            videoLease?.Dispose();
+            if (ReferenceEquals(
+                    Interlocked.CompareExchange(
+                        ref _retroUniversalVideoLoadCancellation,
+                        null,
+                        requestCancellation),
+                    requestCancellation))
+            {
+                requestCancellation.Dispose();
+            }
+        }
+    }
+
+    private bool CompleteRetroUniversalVideoLoad(
+        string categoryId,
+        int requestVersion,
+        CancellationTokenSource requestCancellation,
+        TrustedVideoLease? videoLease)
+    {
+        if (!ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref _retroUniversalVideoLoadCancellation,
+                    null,
+                    requestCancellation),
+                requestCancellation))
+            return false;
+
+        var requestWasCanceled = requestCancellation.IsCancellationRequested;
+        requestCancellation.Dispose();
+        if (requestVersion == _retroUniversalVideoRequestVersion)
+            _pendingRetroUniversalVideoCategoryId = string.Empty;
+        if (requestWasCanceled
+            || requestVersion != _retroUniversalVideoRequestVersion
+            || videoLease is null
+            || IsVideoPlaybackDisabled
+            || !IsRetroCarouselVisible
+            || WindowState == WindowState.Minimized
+            || !(SelectedCategory?.Id ?? string.Empty).Equals(
+                categoryId,
+                StringComparison.OrdinalIgnoreCase)
+            || FindNamed<Grid>("RetroUniversalVideoPlayerHost") is not { } host)
+            return false;
+
+        CloseRetroUniversalVideoCore();
         var player = CreateResponsiveBackgroundVideoPlayer(host);
         player.MediaEnded += RetroUniversalVideo_MediaEnded;
         player.MediaFailed += RetroUniversalVideo_MediaFailed;
         _retroUniversalVideoPlayer = player;
+        _retroUniversalVideoLease = videoLease;
+        _activeRetroUniversalVideoCategoryId = categoryId;
         host.Children.Add(player);
         try
         {
-            player.Source = new Uri(videoPath, UriKind.Absolute);
+            player.Source = new Uri(videoLease.Path, UriKind.Absolute);
             player.Play();
         }
         catch (Exception exception) when (exception is InvalidOperationException
@@ -886,13 +1159,21 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         {
             Debug.WriteLine($"Vídeo universal indisponível: {exception.Message}");
             StopRetroUniversalVideo();
+            return false;
         }
+        return true;
     }
 
     private void RetroUniversalVideo_MediaEnded(object? sender, RoutedEventArgs e)
     {
         if (sender is not MediaElement player || !ReferenceEquals(player, _retroUniversalVideoPlayer))
             return;
+        if (_retroUniversalVideoLease is not { IsActive: true } activeLease
+            || !IsPlayerUsingLease(player, activeLease))
+        {
+            StopRetroUniversalVideo();
+            return;
+        }
         if (!IsRetroCarouselVisible || WindowState == WindowState.Minimized)
             return;
         try
@@ -914,6 +1195,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
     private void PauseRetroUniversalVideo()
     {
+        CancelRetroUniversalVideoLoad();
         if (_retroUniversalVideoPlayer is not { Source: not null } player) return;
         try { player.Pause(); }
         catch (InvalidOperationException) { }
@@ -921,39 +1203,86 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
     private void ResumeRetroUniversalVideo()
     {
+        if (IsVideoPlaybackDisabled)
+        {
+            StopRetroUniversalVideo();
+            return;
+        }
         if (!IsRetroCarouselVisible || WindowState == WindowState.Minimized) return;
-        if (_retroUniversalVideoPlayer is { Source: not null } player)
+        if (_retroUniversalVideoPlayer is { Source: not null } player
+            && _retroUniversalVideoLease is { IsActive: true } activeLease
+            && IsPlayerUsingLease(player, activeLease))
         {
             try { player.Play(); return; }
             catch (InvalidOperationException) { StopRetroUniversalVideo(); }
+        }
+        else
+        {
+            StopRetroUniversalVideo();
         }
         StartRetroUniversalVideo();
     }
 
     private void StopRetroUniversalVideo()
     {
+        CancelRetroUniversalVideoLoad();
+        CloseRetroUniversalVideoCore();
+    }
+
+    private void CancelRetroUniversalVideoLoad()
+    {
+        ++_retroUniversalVideoRequestVersion;
+        _pendingRetroUniversalVideoCategoryId = string.Empty;
+        CancelAndDisposeVideoLoad(
+            Interlocked.Exchange(ref _retroUniversalVideoLoadCancellation, null));
+    }
+
+    private void CloseRetroUniversalVideoCore()
+    {
         var player = _retroUniversalVideoPlayer;
+        var lease = _retroUniversalVideoLease;
         _retroUniversalVideoPlayer = null;
-        if (player is null) return;
-        player.MediaEnded -= RetroUniversalVideo_MediaEnded;
-        player.MediaFailed -= RetroUniversalVideo_MediaFailed;
-        try { player.Stop(); }
-        catch (InvalidOperationException) { }
-        try
+        _retroUniversalVideoLease = null;
+        _activeRetroUniversalVideoCategoryId = string.Empty;
+        var playerClosed = player is null;
+        if (player is not null)
         {
-            player.Close();
-            player.Source = null;
+            player.MediaEnded -= RetroUniversalVideo_MediaEnded;
+            player.MediaFailed -= RetroUniversalVideo_MediaFailed;
+            try { player.Stop(); }
+            catch (InvalidOperationException) { }
+            try
+            {
+                player.Close();
+                playerClosed = true;
+            }
+            catch (InvalidOperationException) { }
+            try
+            {
+                player.Source = null;
+                playerClosed = true;
+            }
+            catch (InvalidOperationException) { }
+            if (FindNamed<Grid>("RetroUniversalVideoPlayerHost") is { } host)
+                host.Children.Remove(player);
         }
-        catch (InvalidOperationException) { }
-        if (FindNamed<Grid>("RetroUniversalVideoPlayerHost") is { } host)
-            host.Children.Remove(player);
+
+        // Keep the same verified handle alive until MediaElement has been
+        // stopped and closed, so the path cannot be replaced in between.
+        ReleaseOrRetainVideoLease(player, lease, playerClosed);
     }
 
     private void SwitchRetroSystemVideo(CatalogItem item)
     {
-        var videoPath = ResolveRetroSystemVideoPath(item);
-        if (videoPath is null || !IsRetroCarouselVisible || WindowState == WindowState.Minimized)
+        if (IsVideoPlaybackDisabled)
         {
+            CancelRetroSystemVideoLoad();
+            CloseRetroSystemVideoCore(clearFallback: false);
+            return;
+        }
+        if (!IsRetroCarouselVisible || WindowState == WindowState.Minimized)
+        {
+            CancelRetroSystemVideoLoad();
             CloseRetroSystemVideoCore(clearFallback: false);
             if (WindowState == WindowState.Minimized && IsRetroCarouselMode)
                 _retroSystemVideoPausedForWindow = true;
@@ -962,38 +1291,136 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
         _retroSystemVideoPausedForWindow = false;
         if (_retroSystemVideoPlayer is { Source: not null } currentPlayer
-            && _activeRetroSystemVideoPath.Equals(videoPath, StringComparison.OrdinalIgnoreCase)
+            && _retroSystemVideoLease is { IsActive: true } activeLease
+            && _activeRetroSystemVideoItemId.Equals(item.Id, StringComparison.OrdinalIgnoreCase)
+            && IsPlayerUsingLease(currentPlayer, activeLease)
             && IsActiveRetroSystemVideo(currentPlayer))
         {
-            try { currentPlayer.Play(); }
+            try
+            {
+                currentPlayer.Play();
+                return;
+            }
             catch (InvalidOperationException exception)
             {
-                Debug.WriteLine($"Não foi possível continuar o vídeo universal: {exception.Message}");
+                Debug.WriteLine($"Não foi possível continuar o vídeo de sistema: {exception.Message}");
+                CloseRetroSystemVideoCore(clearFallback: false);
             }
-            return;
         }
 
-        var requestVersion = ++_retroSystemVideoRequestVersion;
+        if (_pendingRetroSystemVideoItemId.Equals(item.Id, StringComparison.OrdinalIgnoreCase)
+            && !_retroSystemVideoLoadTask.IsCompleted)
+            return;
+
+        CancelRetroSystemVideoLoad();
         CloseRetroSystemVideoCore(clearFallback: false);
         if (Dispatcher.HasShutdownStarted) return;
 
-        Dispatcher.BeginInvoke(
-            DispatcherPriority.ContextIdle,
-            new Action(() =>
-            {
-                if (requestVersion != _retroSystemVideoRequestVersion
-                    || !IsRetroCarouselVisible
-                    || WindowState == WindowState.Minimized)
-                    return;
-
-                OpenRetroSystemVideo(item, videoPath, requestVersion);
-            }));
+        var requestVersion = ++_retroSystemVideoRequestVersion;
+        var requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            _storeOperationCancellation.Token);
+        _pendingRetroSystemVideoItemId = item.Id;
+        Volatile.Write(ref _retroSystemVideoLoadCancellation, requestCancellation);
+        _retroSystemVideoLoadTask = LoadRetroSystemVideoAsync(
+            item,
+            requestVersion,
+            requestCancellation);
     }
 
-    private void OpenRetroSystemVideo(CatalogItem item, string videoPath, int generation)
+    private async Task LoadRetroSystemVideoAsync(
+        CatalogItem item,
+        int requestVersion,
+        CancellationTokenSource requestCancellation)
     {
-        if (FindNamed<Grid>("RetroSystemVideoPlayerHost") is not { } playerHost)
+        TrustedVideoLease? videoLease = null;
+        var cancellationToken = requestCancellation.Token;
+        try
+        {
+            videoLease = await Task.Run(
+                    () => OpenRetroSystemVideoLeaseCore(
+                        item.Id,
+                        cancellationToken),
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (Dispatcher.HasShutdownStarted) return;
+
+            var completion = Dispatcher.InvokeAsync(
+                () => CompleteRetroSystemVideoLoad(
+                    item,
+                    requestVersion,
+                    requestCancellation,
+                    videoLease),
+                DispatcherPriority.ContextIdle);
+            if (await completion.Task.ConfigureAwait(false))
+                videoLease = null;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (InvalidOperationException exception)
+        {
+            Debug.WriteLine($"Carregamento assíncrono do vídeo de sistema falhou: {exception.Message}");
+        }
+        finally
+        {
+            videoLease?.Dispose();
+            if (ReferenceEquals(
+                    Interlocked.CompareExchange(
+                        ref _retroSystemVideoLoadCancellation,
+                        null,
+                        requestCancellation),
+                    requestCancellation))
+            {
+                requestCancellation.Dispose();
+            }
+        }
+    }
+
+    private bool CompleteRetroSystemVideoLoad(
+        CatalogItem item,
+        int requestVersion,
+        CancellationTokenSource requestCancellation,
+        TrustedVideoLease? videoLease)
+    {
+        if (!ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref _retroSystemVideoLoadCancellation,
+                    null,
+                    requestCancellation),
+                requestCancellation))
+            return false;
+
+        var requestWasCanceled = requestCancellation.IsCancellationRequested;
+        requestCancellation.Dispose();
+        if (requestVersion == _retroSystemVideoRequestVersion)
+            _pendingRetroSystemVideoItemId = string.Empty;
+        if (requestWasCanceled
+            || requestVersion != _retroSystemVideoRequestVersion
+            || videoLease is null
+            || IsVideoPlaybackDisabled
+            || !IsRetroCarouselVisible
+            || WindowState == WindowState.Minimized
+            || _retroCarouselItems.Count == 0
+            || !_retroCarouselItems[WrapRetroCarouselIndex(_retroCarouselIndex)].Id.Equals(
+                item.Id,
+                StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        OpenRetroSystemVideo(item, videoLease, requestVersion);
+        return ReferenceEquals(_retroSystemVideoLease, videoLease);
+    }
+
+    private void OpenRetroSystemVideo(
+        CatalogItem item,
+        TrustedVideoLease videoLease,
+        int generation)
+    {
+        if (IsVideoPlaybackDisabled
+            || FindNamed<Grid>("RetroSystemVideoPlayerHost") is not { } playerHost)
+        {
+            videoLease.Dispose();
             return;
+        }
 
         CloseRetroSystemVideoCore(clearFallback: false);
         var player = CreateResponsiveBackgroundVideoPlayer(playerHost);
@@ -1004,14 +1431,15 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         player.MediaFailed += RetroSystemVideo_MediaFailed;
 
         _retroSystemVideoPlayer = player;
+        _retroSystemVideoLease = videoLease;
         _activeRetroSystemVideoGeneration = generation;
         _activeRetroSystemVideoItemId = item.Id;
-        _activeRetroSystemVideoPath = videoPath;
+        _activeRetroSystemVideoPath = videoLease.Path;
         playerHost.Children.Add(player);
 
         try
         {
-            player.Source = new Uri(videoPath, UriKind.Absolute);
+            player.Source = new Uri(videoLease.Path, UriKind.Absolute);
             player.Play();
         }
         catch (Exception exception) when (exception is InvalidOperationException
@@ -1124,6 +1552,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     private bool IsActiveRetroSystemVideo(MediaElement player)
     {
         if (!ReferenceEquals(player, _retroSystemVideoPlayer)
+            || _retroSystemVideoLease is not { IsActive: true } activeLease
             || player.Tag is not int generation
             || generation != _activeRetroSystemVideoGeneration
             || player.Source is null
@@ -1131,11 +1560,19 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             || string.IsNullOrEmpty(_activeRetroSystemVideoPath))
             return false;
 
+        return _activeRetroSystemVideoPath.Equals(activeLease.Path, StringComparison.OrdinalIgnoreCase)
+               && IsPlayerUsingLease(player, activeLease);
+    }
+
+    private static bool IsPlayerUsingLease(MediaElement player, TrustedVideoLease lease)
+    {
         try
         {
-            var sourceSnapshot = Path.GetFullPath(player.Source.LocalPath);
-            return player.Source.IsFile
-                   && sourceSnapshot.Equals(_activeRetroSystemVideoPath, StringComparison.OrdinalIgnoreCase);
+            return lease.IsActive
+                   && player.Source is { IsFile: true } source
+                   && Path.GetFullPath(source.LocalPath).Equals(
+                       lease.Path,
+                       StringComparison.OrdinalIgnoreCase);
         }
         catch (Exception exception) when (exception is ArgumentException
                                            or IOException
@@ -1155,7 +1592,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         PauseRetroUniversalVideo();
         if (!IsRetroCarouselMode) return;
 
-        ++_retroSystemVideoRequestVersion;
+        CancelRetroSystemVideoLoad();
         _retroSystemVideoPausedForWindow = true;
         if (_retroSystemVideoPlayer is not { Source: not null } player)
             return;
@@ -1173,15 +1610,21 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     private void ResumeRetroSystemVideoForWindow()
     {
         ResumeRetroUniversalVideo();
+        if (IsVideoPlaybackDisabled)
+        {
+            CancelRetroSystemVideoLoad();
+            CloseRetroSystemVideoCore(clearFallback: false);
+            return;
+        }
         if (!_retroSystemVideoPausedForWindow) return;
         _retroSystemVideoPausedForWindow = false;
         if (!IsRetroCarouselVisible || _retroCarouselItems.Count == 0) return;
 
         var current = _retroCarouselItems[_retroCarouselIndex];
-        var expectedPath = ResolveRetroSystemVideoPath(current);
-        if (expectedPath is not null
-            && _retroSystemVideoPlayer is { Source: not null } player
-            && _activeRetroSystemVideoPath.Equals(expectedPath, StringComparison.OrdinalIgnoreCase)
+        if (_retroSystemVideoPlayer is { Source: not null } player
+            && _retroSystemVideoLease is { IsActive: true } activeLease
+            && _activeRetroSystemVideoItemId.Equals(current.Id, StringComparison.OrdinalIgnoreCase)
+            && IsPlayerUsingLease(player, activeLease)
             && IsActiveRetroSystemVideo(player))
         {
             try
@@ -1204,24 +1647,52 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             }
         }
 
-        StopRetroSystemVideo(clearFallback: true);
+        SwitchRetroSystemVideo(current);
     }
 
     private void StopRetroSystemVideo(bool clearFallback)
     {
-        ++_retroSystemVideoRequestVersion;
+        CancelRetroSystemVideoLoad();
         _retroSystemVideoPausedForWindow = false;
         CloseRetroSystemVideoCore(clearFallback);
+    }
+
+    private void CancelRetroSystemVideoLoad()
+    {
+        ++_retroSystemVideoRequestVersion;
+        _pendingRetroSystemVideoItemId = string.Empty;
+        CancelAndDisposeVideoLoad(
+            Interlocked.Exchange(ref _retroSystemVideoLoadCancellation, null));
+    }
+
+    private static void CancelAndDisposeVideoLoad(CancellationTokenSource? cancellation)
+    {
+        if (cancellation is null) return;
+        try
+        {
+            cancellation.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+        finally
+        {
+            cancellation.Dispose();
+        }
     }
 
     private void CloseRetroSystemVideoCore(bool clearFallback)
     {
         var player = _retroSystemVideoPlayer;
+        var lease = _retroSystemVideoLease;
         _retroSystemVideoPlayer = null;
+        _retroSystemVideoLease = null;
         _activeRetroSystemVideoGeneration = 0;
         _activeRetroSystemVideoItemId = string.Empty;
         _activeRetroSystemVideoPath = string.Empty;
+        _pendingRetroSystemVideoItemId = string.Empty;
         _retroSystemVideoRestartOnResume = false;
+        var playerClosed = player is null;
 
         if (player is not null)
         {
@@ -1243,64 +1714,107 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             try
             {
                 player.Close();
-                player.Source = null;
+                playerClosed = true;
             }
             catch (InvalidOperationException exception)
             {
                 Debug.WriteLine($"Não foi possível liberar o vídeo de sistema: {exception.Message}");
+            }
+            try
+            {
+                player.Source = null;
+                playerClosed = true;
+            }
+            catch (InvalidOperationException exception)
+            {
+                Debug.WriteLine($"Não foi possível limpar a origem do vídeo de sistema: {exception.Message}");
             }
 
             if (FindNamed<Grid>("RetroSystemVideoPlayerHost") is { } playerHost)
                 playerHost.Children.Remove(player);
         }
 
+        // Do not release either identity lock until its player has closed.
+        ReleaseOrRetainVideoLease(player, lease, playerClosed);
+
         if (clearFallback && FindNamed<Image>("RetroSystemVideoFallback") is { } fallback)
             fallback.DataContext = null;
     }
 
-    private static string? ResolveRetroSystemVideoPath(CatalogItem item)
+    private static bool IsVideoPlaybackDisabled =>
+        Volatile.Read(ref _videoPlaybackDisabled) != 0;
+
+    private static void ReleaseOrRetainVideoLease(
+        MediaElement? player,
+        TrustedVideoLease? lease,
+        bool playerClosed)
     {
-        var root = GetRetroSystemVideoRoot();
-        if (root is null) return null;
-        return RetroSystemVideoMap.Value.TryGetValue(item.Id, out var mappedFile)
-            ? ResolveRetroSystemVideoCandidate(root, mappedFile)
-            : ResolveRetroSystemVideoCandidate(root, $"{item.Id}.mp4");
+        if (lease is null) return;
+        if (playerClosed || player is null)
+        {
+            lease.Dispose();
+            return;
+        }
+
+        // Fail closed for the process lifetime. Keeping the player together
+        // with its complete path lease prevents GC ordering from releasing the
+        // identity locks while the native media graph can still reference it.
+        Volatile.Write(ref _videoPlaybackDisabled, 1);
+        lock (FailedVideoCloseQuarantineGate)
+        {
+            if (FailedVideoCloseQuarantine.Count >= MaximumQuarantinedVideoPlaybacks)
+            {
+                Environment.FailFast(
+                    "A quarantine de vídeos excedeu o limite seguro depois de falhas repetidas ao fechar MediaElement.");
+            }
+            FailedVideoCloseQuarantine.Add((player, lease));
+            Debug.WriteLine(
+                $"MediaElement retido em quarantine; reprodução desabilitada para o processo " +
+                $"({FailedVideoCloseQuarantine.Count}/{MaximumQuarantinedVideoPlaybacks}).");
+        }
     }
 
-    private static string? ResolveRetroUniversalVideoPath(string? categoryId)
+    private static TrustedVideoLease? OpenRetroSystemVideoLease(CatalogItem item) =>
+        OpenRetroSystemVideoLeaseCore(item.Id, CancellationToken.None);
+
+    private static TrustedVideoLease? OpenRetroSystemVideoLeaseCore(
+        string itemId,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var root = GetRetroSystemVideoRoot();
+        if (root is null) return null;
+        cancellationToken.ThrowIfCancellationRequested();
+        return RetroSystemVideoMap.Value.TryGetValue(itemId, out var mappedFile)
+            ? OpenRetroSystemVideoCandidate(root, mappedFile, cancellationToken)
+            : OpenRetroSystemVideoCandidate(root, $"{itemId}.mp4", cancellationToken);
+    }
+
+    private static TrustedVideoLease? OpenRetroUniversalVideoLease(string? categoryId) =>
+        OpenRetroUniversalVideoLeaseCore(categoryId, CancellationToken.None);
+
+    private static TrustedVideoLease? OpenRetroUniversalVideoLeaseCore(
+        string? categoryId,
+        CancellationToken cancellationToken)
     {
         try
         {
-            var fileName = categoryId?.ToLowerInvariant() switch
-            {
-                "system-tools" => "Turborama-background-system-tools.mp4",
-                "playstation-2" or "playstation-2-br"
-                    => "Turborama-background-ps2.mp4",
-                "playstation-4" => "Turborama-background-ps4.mp4",
-                "playstation-5" => "Turborama-background-ps5.mp4",
-                "psp" => "Turborama-background-psp.mp4",
-                "ps-vita" => "Turborama-background-ps-vita.mp4",
-                "sega-saturn" => "Turborama-background-sega-saturn.mp4",
-                "xbox" or "xbox-360" or "xbox-one" or "xbox-series"
-                    => "Turborama-background-xbox-one-x.mp4",
-                "nintendo-switch" => "Turborama-background-nintendo.mp4",
-                "nintendo-wii" or "nintendo-wii-u"
-                    => "Turborama-background-nintendo-wii.mp4",
-                "windows" => "Turborama-background-windows.mp4",
-                "retro-games" => "Turborama-background-retro.mp4",
-                _ => "Turborama-background.mp4"
-            };
-            var path = Path.GetFullPath(Path.Combine(
+            cancellationToken.ThrowIfCancellationRequested();
+            var fileName = ResolveRetroUniversalVideoFileName(categoryId);
+            var root = Path.GetFullPath(Path.Combine(
                 AppContext.BaseDirectory,
-                fileName));
-            if (!IsValidMp4File(path)
+                "Assets",
+                "BackgroundVideos"));
+            var lease = OpenBackgroundVideoCandidate(root, fileName, cancellationToken);
+            if (lease is null
                 && !fileName.Equals("Turborama-background.mp4", StringComparison.OrdinalIgnoreCase))
             {
-                path = Path.GetFullPath(Path.Combine(
-                    AppContext.BaseDirectory,
-                    "Turborama-background.mp4"));
+                lease = OpenBackgroundVideoCandidate(
+                    root,
+                    "Turborama-background.mp4",
+                    cancellationToken);
             }
-            return IsValidMp4File(path) ? path : null;
+            return lease;
         }
         catch (Exception exception) when (exception is IOException
                                            or UnauthorizedAccessException
@@ -1310,6 +1824,30 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             return null;
         }
     }
+
+    private static string ResolveRetroUniversalVideoFileName(string? categoryId) =>
+        categoryId?.ToLowerInvariant() switch
+        {
+            "system-tools" => "Turborama-background-system-tools.mp4",
+            "playstation-1" => "Turborama-background-playstation.mp4",
+            "playstation-2" or "playstation-2-br"
+                => "Turborama-background-ps2.mp4",
+            "playstation-4" => "Turborama-background-ps4.mp4",
+            "playstation-5" => "Turborama-background-ps5.mp4",
+            "psp" => "Turborama-background-psp.mp4",
+            "ps-vita" => "Turborama-background-ps-vita.mp4",
+            "sega-saturn" => "Turborama-background-sega-saturn.mp4",
+            "xbox" or "xbox-360" or "xbox-one" or "xbox-series"
+                => "Turborama-background-xbox-one-x.mp4",
+            "nintendo-3ds" or "gamecube"
+                => "Turborama-background-nintendo-generic.mp4",
+            "nintendo-switch" => "Turborama-background-nintendo-switch.mp4",
+            "nintendo-wii" or "nintendo-wii-u"
+                => "Turborama-background-nintendo-wii.mp4",
+            "windows" => "Turborama-background-windows.mp4",
+            "retro-games" => "Turborama-background-retro.mp4",
+            _ => "Turborama-background.mp4"
+        };
 
     private static string? GetRetroSystemVideoRoot()
     {
@@ -1337,8 +1875,48 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         }
     }
 
-    private static string? ResolveRetroSystemVideoCandidate(string videoRoot, string? relativePath)
+    private static TrustedVideoLease? OpenBackgroundVideoCandidate(
+        string root,
+        string fileName,
+        CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!Directory.Exists(root)
+            || !Path.GetFileName(fileName).Equals(fileName, StringComparison.Ordinal)
+            || !fileName.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase)
+            || HasReparsePointInRetroSystemVideoPath(root))
+            return null;
+
+        var candidate = Path.GetFullPath(Path.Combine(root, fileName));
+        var prefix = Path.TrimEndingDirectorySeparator(root) + Path.DirectorySeparatorChar;
+        if (!candidate.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        TrustedVideoLease? lease = OpenTrustedBackgroundVideoLeaseCore(
+            candidate,
+            fileName,
+            cancellationToken);
+        if (lease is null) return null;
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (HasReparsePointInRetroSystemVideoPath(root, candidate)) return null;
+            var acceptedLease = lease;
+            lease = null;
+            return acceptedLease;
+        }
+        finally
+        {
+            lease?.Dispose();
+        }
+    }
+
+    private static TrustedVideoLease? OpenRetroSystemVideoCandidate(
+        string videoRoot,
+        string? relativePath,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
         if (string.IsNullOrWhiteSpace(relativePath)) return null;
 
         try
@@ -1355,13 +1933,26 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             var candidate = Path.GetFullPath(Path.Combine(videoRoot, fileName));
             var normalizedRoot = Path.TrimEndingDirectorySeparator(videoRoot)
                                  + Path.DirectorySeparatorChar;
-            if (!candidate.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase)
-                || !IsValidMp4File(candidate)
-                || !IsTrustedRetroSystemVideo(candidate, fileName)
-                || HasReparsePointInRetroSystemVideoPath(videoRoot, candidate))
+            if (!candidate.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase))
                 return null;
 
-            return candidate;
+            TrustedVideoLease? lease = OpenTrustedRetroSystemVideoLeaseCore(
+                candidate,
+                fileName,
+                cancellationToken);
+            if (lease is null) return null;
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (HasReparsePointInRetroSystemVideoPath(videoRoot, candidate)) return null;
+                var acceptedLease = lease;
+                lease = null;
+                return acceptedLease;
+            }
+            finally
+            {
+                lease?.Dispose();
+            }
         }
         catch (Exception exception) when (exception is ArgumentException
                                            or IOException
@@ -1377,44 +1968,332 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         string videoRoot,
         string? leafPath = null)
     {
-        var paths = leafPath is null ? new[] { videoRoot } : new[] { videoRoot, leafPath };
-        return paths.Any(path => File.Exists(path) || Directory.Exists(path)
-            ? (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0
-            : true);
+        return HasReparsePointInVideoPath(videoRoot)
+               || leafPath is not null && HasReparsePointInVideoPath(leafPath);
     }
 
-    private static bool IsValidMp4File(string path)
+    private static bool HasReparsePointInVideoPath(string path)
     {
-        if (!File.Exists(path)) return false;
-        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-        if (stream.Length < 12) return false;
-        Span<byte> header = stackalloc byte[12];
-        if (stream.Read(header) != header.Length) return false;
-        return header[4] == (byte)'f'
-               && header[5] == (byte)'t'
-               && header[6] == (byte)'y'
-               && header[7] == (byte)'p';
-    }
+        var candidate = Path.GetFullPath(path);
+        var volumeRoot = Path.GetPathRoot(candidate);
+        if (string.IsNullOrEmpty(volumeRoot)) return true;
 
-    private static bool IsTrustedRetroSystemVideo(string path, string fileName)
-    {
-        if (!RetroSystemVideoIntegrityMap.Value.TryGetValue(fileName, out var expected))
-            return false;
-        var file = new FileInfo(path);
-        if (file.Length != expected.Length) return false;
-
-        var cacheKey = $"{path}|{file.Length}|{file.LastWriteTimeUtc.Ticks}";
-        return RetroSystemVideoIntegrityCache.GetOrAdd(cacheKey, _ =>
+        var current = volumeRoot;
+        if ((File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
+            return true;
+        foreach (var segment in Path.GetRelativePath(volumeRoot, candidate).Split(
+                     [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+                     StringSplitOptions.RemoveEmptyEntries))
         {
-            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-            var actualHash = SHA256.HashData(stream);
-            var expectedHash = Convert.FromHexString(expected.Sha256);
-            return actualHash.Length == expectedHash.Length
-                   && CryptographicOperations.FixedTimeEquals(actualHash, expectedHash);
-        });
+            current = Path.Combine(current, segment);
+            if ((File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
+                return true;
+        }
+        return false;
     }
 
-    private static IReadOnlyDictionary<string, string> LoadRetroSystemVideoMap()
+    private static TrustedVideoLease? OpenTrustedRetroSystemVideoLease(
+        string path,
+        string fileName) =>
+        OpenTrustedRetroSystemVideoLeaseCore(path, fileName, CancellationToken.None);
+
+    private static TrustedVideoLease? OpenTrustedRetroSystemVideoLeaseCore(
+        string path,
+        string fileName,
+        CancellationToken cancellationToken) =>
+        OpenTrustedVideoLease(
+            path,
+            fileName,
+            RetroSystemVideoIntegrityMap.Value,
+            cancellationToken);
+
+    private static TrustedVideoLease? OpenTrustedBackgroundVideoLease(
+        string path,
+        string fileName) =>
+        OpenTrustedBackgroundVideoLeaseCore(path, fileName, CancellationToken.None);
+
+    private static TrustedVideoLease? OpenTrustedBackgroundVideoLeaseCore(
+        string path,
+        string fileName,
+        CancellationToken cancellationToken) =>
+        OpenTrustedVideoLease(
+            path,
+            fileName,
+            BackgroundVideoIntegrityMap.Value,
+            cancellationToken);
+
+    private static TrustedVideoLease? OpenTrustedVideoLease(
+        string path,
+        string fileName,
+        IReadOnlyDictionary<string, RetroSystemVideoIntegrity> integrityMap,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!integrityMap.TryGetValue(fileName, out var expected))
+            return null;
+
+        List<SafeFileHandle>? directoryHandles = null;
+        SafeFileHandle? leafHandle = null;
+        FileStream? stream = null;
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var expectedHash = Convert.FromHexString(expected.Sha256);
+            var canonicalPath = Path.GetFullPath(path);
+            directoryHandles = OpenTrustedVideoDirectoryHandles(canonicalPath);
+            cancellationToken.ThrowIfCancellationRequested();
+            leafHandle = OpenTrustedVideoLeafHandle(canonicalPath);
+            stream = new FileStream(
+                leafHandle,
+                FileAccess.Read,
+                128 * 1024,
+                isAsync: false);
+            leafHandle = null;
+            if (stream.Length != expected.Length || stream.Length < 12)
+                return null;
+
+            Span<byte> header = stackalloc byte[12];
+            stream.ReadExactly(header);
+            if (header[4] != (byte)'f'
+                || header[5] != (byte)'t'
+                || header[6] != (byte)'y'
+                || header[7] != (byte)'p')
+                return null;
+
+            stream.Position = 0;
+            var actualHash = ComputeVideoSha256(stream, cancellationToken);
+            if (stream.Length != expected.Length
+                || actualHash.Length != expectedHash.Length
+                || !CryptographicOperations.FixedTimeEquals(actualHash, expectedHash))
+                return null;
+
+            var lease = new TrustedVideoLease(canonicalPath, stream, directoryHandles);
+            stream = null;
+            directoryHandles = null;
+            return lease;
+        }
+        catch (Exception exception) when (exception is IOException
+                                           or UnauthorizedAccessException
+                                           or FormatException
+                                           or ArgumentException
+                                           or NotSupportedException
+                                           or Win32Exception
+                                           or OverflowException)
+        {
+            return null;
+        }
+        finally
+        {
+            stream?.Dispose();
+            leafHandle?.Dispose();
+            DisposeVideoPathHandles(directoryHandles);
+        }
+    }
+
+    private static byte[] ComputeVideoSha256(
+        Stream stream,
+        CancellationToken cancellationToken)
+    {
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        var buffer = ArrayPool<byte>.Shared.Rent(128 * 1024);
+        try
+        {
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var bytesRead = stream.Read(buffer, 0, buffer.Length);
+                if (bytesRead == 0) break;
+                hash.AppendData(buffer, 0, bytesRead);
+            }
+            cancellationToken.ThrowIfCancellationRequested();
+            return hash.GetHashAndReset();
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer, clearArray: true);
+        }
+    }
+
+    private static List<SafeFileHandle> OpenTrustedVideoDirectoryHandles(string canonicalPath)
+    {
+        var directory = Path.GetDirectoryName(canonicalPath)
+                        ?? throw new IOException("O vídeo não possui um diretório válido.");
+        var volumeRoot = Path.GetPathRoot(directory);
+        if (string.IsNullOrEmpty(volumeRoot))
+            throw new IOException("O vídeo não possui uma raiz de volume válida.");
+
+        var paths = new List<string> { volumeRoot };
+        var relativeDirectory = Path.GetRelativePath(volumeRoot, directory);
+        if (!relativeDirectory.Equals(".", StringComparison.Ordinal))
+        {
+            var current = volumeRoot;
+            foreach (var segment in relativeDirectory.Split(
+                         [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+                         StringSplitOptions.RemoveEmptyEntries))
+            {
+                current = Path.Combine(current, segment);
+                paths.Add(current);
+            }
+        }
+
+        var handles = new List<SafeFileHandle>(paths.Count);
+        try
+        {
+            foreach (var directoryPath in paths)
+            {
+                var handle = OpenNativeVideoHandle(
+                    directoryPath,
+                    NativeFileReadAttributes,
+                    NativeFileFlagBackupSemantics | NativeFileFlagOpenReparsePoint);
+                try
+                {
+                    ValidateNativeVideoPathHandle(handle, directoryPath, expectDirectory: true);
+                    handles.Add(handle);
+                }
+                catch
+                {
+                    handle.Dispose();
+                    throw;
+                }
+            }
+            return handles;
+        }
+        catch
+        {
+            DisposeVideoPathHandles(handles);
+            throw;
+        }
+    }
+
+    private static SafeFileHandle OpenTrustedVideoLeafHandle(string canonicalPath)
+    {
+        var handle = OpenNativeVideoHandle(
+            canonicalPath,
+            NativeGenericRead,
+            NativeFileFlagOpenReparsePoint | NativeFileFlagSequentialScan);
+        try
+        {
+            ValidateNativeVideoPathHandle(handle, canonicalPath, expectDirectory: false);
+            return handle;
+        }
+        catch
+        {
+            handle.Dispose();
+            throw;
+        }
+    }
+
+    private static SafeFileHandle OpenNativeVideoHandle(
+        string path,
+        uint desiredAccess,
+        uint flagsAndAttributes)
+    {
+        var handle = OpenNativeVideoPathHandle(
+            ToExtendedVideoPath(path),
+            desiredAccess,
+            NativeFileShareRead,
+            IntPtr.Zero,
+            NativeOpenExisting,
+            flagsAndAttributes,
+            IntPtr.Zero);
+        if (!handle.IsInvalid) return handle;
+
+        var error = Marshal.GetLastPInvokeError();
+        handle.Dispose();
+        throw new Win32Exception(error, $"Não foi possível reservar o caminho de vídeo '{path}'.");
+    }
+
+    private static void ValidateNativeVideoPathHandle(
+        SafeFileHandle handle,
+        string expectedPath,
+        bool expectDirectory)
+    {
+        if (GetNativeVideoFileInformation(
+                handle,
+                NativeFileAttributeTagInfoClass,
+                out var information,
+                (uint)Marshal.SizeOf<NativeFileAttributeTagInfo>()) == 0)
+        {
+            throw new Win32Exception(
+                Marshal.GetLastPInvokeError(),
+                $"Não foi possível validar os atributos do caminho de vídeo '{expectedPath}'.");
+        }
+
+        var attributes = (FileAttributes)information.FileAttributes;
+        if ((attributes & FileAttributes.ReparsePoint) != 0 || information.ReparseTag != 0)
+            throw new IOException($"O caminho de vídeo '{expectedPath}' contém um reparse point.");
+        if (((attributes & FileAttributes.Directory) != 0) != expectDirectory)
+            throw new IOException($"O tipo do caminho de vídeo '{expectedPath}' mudou durante a validação.");
+
+        var finalPath = GetFinalVideoPath(handle);
+        if (!VideoPathsEqual(finalPath, expectedPath))
+        {
+            throw new IOException(
+                $"O caminho final do vídeo mudou durante a validação: '{expectedPath}'.");
+        }
+    }
+
+    private static string GetFinalVideoPath(SafeFileHandle handle)
+    {
+        uint capacity = 512;
+        while (capacity <= short.MaxValue)
+        {
+            var buffer = Marshal.AllocHGlobal(checked((int)capacity * sizeof(char)));
+            try
+            {
+                var length = GetFinalNativeVideoPath(handle, buffer, capacity, flags: 0);
+                if (length == 0)
+                    throw new Win32Exception(Marshal.GetLastPInvokeError());
+                if (length < capacity)
+                {
+                    var path = Marshal.PtrToStringUni(buffer, checked((int)length));
+                    return NormalizeFinalVideoPath(
+                        path ?? throw new IOException("O handle de vídeo não retornou um caminho final."));
+                }
+                capacity = checked(length + 1);
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(buffer);
+            }
+        }
+        throw new IOException("O caminho final do vídeo excede o limite suportado.");
+    }
+
+    private static string NormalizeFinalVideoPath(string path)
+    {
+        const string uncPrefix = @"\\?\UNC\";
+        const string extendedPrefix = @"\\?\";
+        if (path.StartsWith(uncPrefix, StringComparison.OrdinalIgnoreCase))
+            path = @"\\" + path[uncPrefix.Length..];
+        else if (path.StartsWith(extendedPrefix, StringComparison.OrdinalIgnoreCase))
+            path = path[extendedPrefix.Length..];
+        return Path.GetFullPath(path);
+    }
+
+    private static string ToExtendedVideoPath(string path)
+    {
+        var canonicalPath = Path.GetFullPath(path);
+        if (canonicalPath.StartsWith(@"\\?\", StringComparison.Ordinal))
+            return canonicalPath;
+        return canonicalPath.StartsWith(@"\\", StringComparison.Ordinal)
+            ? @"\\?\UNC\" + canonicalPath[2..]
+            : @"\\?\" + canonicalPath;
+    }
+
+    private static bool VideoPathsEqual(string first, string second) =>
+        Path.TrimEndingDirectorySeparator(Path.GetFullPath(first)).Equals(
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(second)),
+            StringComparison.OrdinalIgnoreCase);
+
+    private static void DisposeVideoPathHandles(List<SafeFileHandle>? handles)
+    {
+        if (handles is null) return;
+        for (var index = handles.Count - 1; index >= 0; index--)
+            handles[index].Dispose();
+    }
+
+    private static Dictionary<string, string> LoadRetroSystemVideoMap()
     {
         var entries = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         try
@@ -1466,13 +2345,20 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         return entries;
     }
 
-    private static IReadOnlyDictionary<string, RetroSystemVideoIntegrity> LoadRetroSystemVideoIntegrityMap()
+    private static Dictionary<string, RetroSystemVideoIntegrity> LoadRetroSystemVideoIntegrityMap()
+        => LoadVideoIntegrityMap("Turborama.SystemVideoIntegrity.json", "videos de sistema");
+
+    private static Dictionary<string, RetroSystemVideoIntegrity> LoadBackgroundVideoIntegrityMap()
+        => LoadVideoIntegrityMap("Turborama.BackgroundVideoIntegrity.json", "videos de fundo");
+
+    private static Dictionary<string, RetroSystemVideoIntegrity> LoadVideoIntegrityMap(
+        string resourceName,
+        string label)
     {
         var entries = new Dictionary<string, RetroSystemVideoIntegrity>(StringComparer.OrdinalIgnoreCase);
         try
         {
-            using var stream = typeof(StoreWindow).Assembly.GetManifestResourceStream(
-                "Turborama.SystemVideoIntegrity.json");
+            using var stream = typeof(StoreWindow).Assembly.GetManifestResourceStream(resourceName);
             if (stream is null || stream.Length <= 0 || stream.Length > MaximumRetroSystemVideoManifestBytes)
                 return entries;
             using var document = JsonDocument.Parse(stream, new JsonDocumentOptions { MaxDepth = 4 });
@@ -1496,12 +2382,12 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                                            or ArgumentException
                                            or NotSupportedException)
         {
-            Debug.WriteLine($"Integridade de vídeos incorporada ignorada: {exception.Message}");
+            Debug.WriteLine($"Integridade de {label} incorporada ignorada: {exception.Message}");
         }
         return entries;
     }
 
-    private static IReadOnlyDictionary<string, string> LoadRetroPlatformDescriptions()
+    private static Dictionary<string, string> LoadRetroPlatformDescriptions()
     {
         var entries = new Dictionary<string, string>(
             BuiltInRetroPlatformDescriptions,
@@ -1601,7 +2487,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         return wrapped < 0 ? wrapped + _retroCarouselItems.Count : wrapped;
     }
 
-    private RetroCarouselSlot GetRetroCarouselSlot(int offset)
+    private static RetroCarouselSlot GetRetroCarouselSlot(int offset)
     {
         var selectedHeight = UsesPortraitCarouselCovers ? 375 : 188;
         var compactHeight = UsesPortraitCarouselCovers ? 210 : 105;
@@ -1619,7 +2505,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         };
     }
 
-    private void ApplyRetroCarouselSlot(ContentControl control, RetroCarouselSlot slot)
+    private static void ApplyRetroCarouselSlot(ContentControl control, RetroCarouselSlot slot)
     {
         const double nativeWidth = 250;
         var nativeHeight = UsesPortraitCarouselCovers ? 375 : 188;
@@ -1921,7 +2807,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         }
     }
 
-    private void AnimateRetroCarouselSurface(
+    private static void AnimateRetroCarouselSurface(
         ContentControl control,
         RetroCarouselSlot target,
         bool keepMoving,
@@ -2060,13 +2946,16 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
     private void ChooseInstallFolder_Click(object sender, RoutedEventArgs e)
     {
+        if (!TryEnsureAuthorized("alterar a pasta de instalação")) return;
         var selectedFolder = ChooseFolder("Escolha a pasta de instalação", _installFolderPath);
         if (selectedFolder is null) return;
+        if (!TryEnsureAuthorized("alterar a pasta de instalação")) return;
 
         _installFolderPath = selectedFolder;
         _gameLibraryFolderPath = string.Empty;
         RememberApprovedRoot(selectedFolder);
         UpdateFolderLabels();
+        if (!TryEnsureAuthorized("salvar a pasta de instalação")) return;
         var installSaved = LocalDataPaths.WriteInstallFolder(selectedFolder);
         var libraryCreated = EnsureGameLibraryFolder() is not null;
         SetCatalogStatus(installSaved && libraryCreated
@@ -2096,6 +2985,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
     private void OpenInstallFolder_Click(object sender, RoutedEventArgs e)
     {
+        if (!TryEnsureAuthorized("abrir a pasta de instalação")) return;
         if (!Directory.Exists(_installFolderPath))
         {
             SetCatalogStatus("A pasta de instalação não existe. Escolha uma pasta válida.");
@@ -2104,9 +2994,8 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
         try
         {
-            var startInfo = new ProcessStartInfo("explorer.exe") { UseShellExecute = true };
-            startInfo.ArgumentList.Add(_installFolderPath);
-            Process.Start(startInfo);
+            if (!TryEnsureAuthorized("abrir a pasta de instalação")) return;
+            Process.Start(CreateExplorerStartInfo(_installFolderPath));
             SetCatalogStatus("Pasta de instalação aberta.");
         }
         catch (Exception exception) when (exception is InvalidOperationException or Win32Exception)
@@ -2115,18 +3004,41 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         }
     }
 
+    internal static ProcessStartInfo CreateExplorerStartInfo(string directoryPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(directoryPath);
+
+        var canonicalDirectory = Path.GetFullPath(directoryPath);
+        var windowsDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        if (string.IsNullOrWhiteSpace(windowsDirectory)
+            || !Path.IsPathFullyQualified(windowsDirectory))
+        {
+            throw new InvalidOperationException(
+                "O diretório do Windows não pôde ser determinado com segurança.");
+        }
+
+        var explorerPath = Path.GetFullPath(Path.Combine(windowsDirectory, "explorer.exe"));
+        var startInfo = new ProcessStartInfo(explorerPath)
+        {
+            UseShellExecute = false
+        };
+        startInfo.ArgumentList.Add(canonicalDirectory);
+        return startInfo;
+    }
+
     private void Support_Click(object sender, RoutedEventArgs e)
     {
         SetCatalogStatus("O canal de suporte ainda não foi configurado nesta versão.");
     }
 
-    private void StoreWindow_Loaded(object sender, RoutedEventArgs e)
+    private async void StoreWindow_Loaded(object sender, RoutedEventArgs e)
     {
         Loaded -= StoreWindow_Loaded;
         if (_catalogRepository is null) return;
 
         try
         {
+            ThrowIfOperationUnauthorized();
             var restoredCount = 0;
             var restoredItems = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var restoreRoots = new List<string>();
@@ -2137,13 +3049,28 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
             var gameLibraryChoiceAttempted = false;
             string? restoreGameLibrary = null;
+            var authorizedItems = _catalogRepository.Items
+                .Where(item => item.HasAuthorizedArtifact)
+                .ToArray();
             foreach (var restoreRoot in restoreRoots)
             {
-                foreach (var savedDownload in _downloadService.DiscoverResumableDownloads(restoreRoot))
+                ThrowIfOperationUnauthorized();
+                var savedDownloads = await Task.Run(
+                    () => _downloadService.DiscoverResumableDownloads(
+                        restoreRoot,
+                        authorizedItems,
+                        _storeOperationCancellation.Token),
+                    _storeOperationCancellation.Token);
+                foreach (var savedDownload in savedDownloads)
                 {
+                    ThrowIfOperationUnauthorized();
                     var item = _catalogRepository.FindById(savedDownload.ItemId);
-                    if (item is null || !restoredItems.Add(item.Id)) continue;
+                    if (item is null
+                        || !item.HasAuthorizedArtifact
+                        || !restoredItems.Add(item.Id)) continue;
+                    var artifact = RequireAuthorizedArtifact(item);
 
+                    ThrowIfOperationUnauthorized();
                     _downloadRootsByItem[item.Id] = restoreRoot;
                     RememberApprovedRoot(restoreRoot);
                     EnsureDownloadJob(item);
@@ -2153,21 +3080,29 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                     {
                         if (!gameLibraryChoiceAttempted)
                         {
+                            ThrowIfOperationUnauthorized();
                             restoreGameLibrary = EnsureGameLibraryFolder();
+                            ThrowIfOperationUnauthorized();
                             gameLibraryChoiceAttempted = true;
                         }
 
                         if (restoreGameLibrary is not null)
+                        {
+                            ThrowIfOperationUnauthorized();
                             _extractionRootsByItem[item.Id] = restoreGameLibrary;
+                        }
                     }
 
+                    ThrowIfOperationUnauthorized();
                     if (savedDownload.ArchiveReady && File.Exists(savedDownload.ArchiveFilePath))
                     {
-                        if (item.Extract)
+                        if (artifact.ExtractPolicy == CatalogExtractPolicy.ExtractArchive)
                         {
+                            ThrowIfOperationUnauthorized();
                             item.MarkArchiveReady(savedDownload.ArchiveFilePath);
                             if (IsGameItem(item) && restoreGameLibrary is null)
                             {
+                                ThrowIfOperationUnauthorized();
                                 item.AwaitExtractionLocation(
                                     $"Localize a pasta '{CatalogArchiveExtractor.GameLibraryFolderName}' para continuar.");
                                 continue;
@@ -2176,6 +3111,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                             var extractionRoot = IsGameItem(item)
                                 ? restoreGameLibrary!
                                 : restoreRoot;
+                            ThrowIfOperationUnauthorized();
                             _ = ExtractArchiveAsync(
                                 item,
                                 savedDownload.ArchiveFilePath,
@@ -2184,6 +3120,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                         }
                         else
                         {
+                            ThrowIfOperationUnauthorized();
                             item.CompleteDownload(savedDownload.ArchiveFilePath);
                         }
                         continue;
@@ -2191,12 +3128,14 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
                     var restorePaused = savedDownload.IsPaused
                                         || IsGameItem(item) && restoreGameLibrary is null;
+                    ThrowIfOperationUnauthorized();
                     item.RestoreDownload(
                         savedDownload.BytesReceived,
                         savedDownload.TotalBytes,
                         restorePaused);
                     if (!restorePaused)
                     {
+                        ThrowIfOperationUnauthorized();
                         _ = RunDownloadAsync(item, restoreRoot);
                     }
                 }
@@ -2213,71 +3152,97 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         {
             SetCatalogStatus($"Não foi possível restaurar os downloads anteriores: {exception.Message}");
         }
+        catch (OperationCanceledException)
+        {
+            SetCatalogStatus("A restauração foi cancelada porque a sessão terminou.");
+        }
+        catch (SuiteAuthorizationException)
+        {
+            SetCatalogStatus("A restauração foi bloqueada porque a sessão não está autorizada.");
+        }
     }
 
     private async Task RunDownloadAsync(CatalogItem item, string installationRoot)
     {
-        if (_downloadService.IsActive(item.Id))
+        try
         {
-            SetCatalogStatus($"{item.Title}: o download ainda está ativo; aguarde a operação atual.");
-            return;
-        }
-
-        var isGameItem = IsGameItem(item);
-        string? gameLibraryRoot = null;
-        if (isGameItem)
-        {
-            gameLibraryRoot = EnsureGameLibraryFolder();
-            if (gameLibraryRoot is null)
+            ThrowIfOperationUnauthorized();
+            var artifact = RequireAuthorizedArtifact(item);
+            var shouldExtract = artifact.ExtractPolicy == CatalogExtractPolicy.ExtractArchive;
+            if (_downloadService.IsActive(item.Id))
             {
-                SetCatalogStatus(
-                    $"{item.Title}: selecione a pasta '{CatalogArchiveExtractor.GameLibraryFolderName}' para iniciar ou continuar.");
+                SetCatalogStatus($"{item.Title}: o download ainda está ativo; aguarde a operação atual.");
                 return;
             }
 
-            var hasRememberedDownloadRoot = _downloadRootsByItem.ContainsKey(item.Id);
-            if (!item.Extract
-                && (!hasRememberedDownloadRoot || !Directory.Exists(installationRoot)))
-                installationRoot = gameLibraryRoot;
-            _extractionRootsByItem[item.Id] = gameLibraryRoot;
-        }
+            var isGameItem = IsGameItem(item);
+            string? gameLibraryRoot = null;
+            if (isGameItem)
+            {
+                ThrowIfOperationUnauthorized();
+                gameLibraryRoot = EnsureGameLibraryFolder();
+                ThrowIfOperationUnauthorized();
+                if (gameLibraryRoot is null)
+                {
+                    SetCatalogStatus(
+                        $"{item.Title}: selecione a pasta '{CatalogArchiveExtractor.GameLibraryFolderName}' para iniciar ou continuar.");
+                    return;
+                }
 
-        EnsureDownloadJob(item);
-        _downloadRootsByItem[item.Id] = installationRoot;
-        RememberApprovedRoot(installationRoot);
-        SetCatalogStatus(item.CanResume
-            ? $"{item.Title}: continuando do ponto salvo..."
-            : $"{item.Title}: iniciando download verificado...");
+                var hasRememberedDownloadRoot = _downloadRootsByItem.ContainsKey(item.Id);
+                if (!shouldExtract
+                    && (!hasRememberedDownloadRoot || !Directory.Exists(installationRoot)))
+                    installationRoot = gameLibraryRoot;
+                ThrowIfOperationUnauthorized();
+                _extractionRootsByItem[item.Id] = gameLibraryRoot;
+            }
 
-        try
-        {
-            var result = await _downloadService.DownloadAsync(item, installationRoot);
+            ThrowIfOperationUnauthorized();
+            EnsureDownloadJob(item);
+            _downloadRootsByItem[item.Id] = installationRoot;
+            RememberApprovedRoot(installationRoot);
+            SetCatalogStatus(item.CanResume
+                ? $"{item.Title}: continuando do ponto salvo..."
+                : $"{item.Title}: iniciando download verificado...");
+
+            ThrowIfOperationUnauthorized();
+            var result = await _downloadService.DownloadAsync(
+                item,
+                installationRoot,
+                _storeOperationCancellation.Token);
+            ThrowIfOperationUnauthorized();
             SetCatalogStatus(result.Message);
             if (!result.Succeeded) return;
 
             if (isGameItem)
             {
+                ThrowIfOperationUnauthorized();
                 gameLibraryRoot = EnsureGameLibraryFolder();
+                ThrowIfOperationUnauthorized();
                 if (gameLibraryRoot is null)
                 {
-                    if (item.Extract)
+                    if (shouldExtract)
                         item.AwaitExtractionLocation(
                             $"Localize a pasta '{CatalogArchiveExtractor.GameLibraryFolderName}' para concluir.");
                     SetCatalogStatus(
                         $"{item.Title}: download preservado; localize '{CatalogArchiveExtractor.GameLibraryFolderName}' para concluir.");
                     return;
                 }
+                ThrowIfOperationUnauthorized();
                 _extractionRootsByItem[item.Id] = gameLibraryRoot;
             }
 
-            if (isGameItem && !item.Extract)
+            if (isGameItem && !shouldExtract)
             {
+                ThrowIfOperationUnauthorized();
                 var placedPath = await EnsureDownloadedGameIsInsideLibraryAsync(
                     item,
                     result.LocalFilePath,
                     gameLibraryRoot!);
+                ThrowIfOperationUnauthorized();
                 if (placedPath is not null)
                 {
+                    ThrowIfOperationUnauthorized();
                     item.CompleteDownload(placedPath);
                     RememberApprovedRoot(gameLibraryRoot!);
                     SetCatalogStatus(
@@ -2286,8 +3251,9 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                 return;
             }
 
-            if (!item.Extract) return;
+            if (!shouldExtract) return;
 
+            ThrowIfOperationUnauthorized();
             await ExtractArchiveAsync(
                 item,
                 result.LocalFilePath,
@@ -2302,6 +3268,14 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         {
             SetCatalogStatus($"{item.Title}: {exception.Message} O progresso salvo foi preservado.");
         }
+        catch (OperationCanceledException)
+        {
+            SetCatalogStatus($"{item.Title}: operação cancelada porque a sessão terminou.");
+        }
+        catch (SuiteAuthorizationException)
+        {
+            SetCatalogStatus($"{item.Title}: a autorização terminou; nada novo foi iniciado.");
+        }
     }
 
     private async Task ExtractArchiveAsync(
@@ -2311,9 +3285,13 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         string downloadRoot,
         bool offerAnotherDrive = true)
     {
-        await _extractionQueue.WaitAsync();
+        var enteredQueue = false;
         try
         {
+            ThrowIfOperationUnauthorized();
+            await _extractionQueue.WaitAsync(_storeOperationCancellation.Token);
+            enteredQueue = true;
+            ThrowIfOperationUnauthorized();
             await ExtractArchiveCoreAsync(
                 item,
                 archivePath,
@@ -2321,9 +3299,21 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                 downloadRoot,
                 offerAnotherDrive);
         }
+        catch (OperationCanceledException)
+        {
+            if (File.Exists(archivePath))
+                item.FailExtraction("Extração cancelada; o pacote verificado foi preservado.");
+            SetCatalogStatus($"{item.Title}: extração cancelada porque a sessão terminou.");
+        }
+        catch (SuiteAuthorizationException)
+        {
+            if (File.Exists(archivePath))
+                item.FailExtraction("Autorização encerrada; o pacote verificado foi preservado.");
+            SetCatalogStatus($"{item.Title}: a autorização terminou antes da extração.");
+        }
         finally
         {
-            _extractionQueue.Release();
+            if (enteredQueue) _extractionQueue.Release();
         }
     }
 
@@ -2334,6 +3324,11 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         string downloadRoot,
         bool offerAnotherDrive)
     {
+        ThrowIfOperationUnauthorized();
+        var artifact = RequireAuthorizedArtifact(item);
+        if (artifact.ExtractPolicy != CatalogExtractPolicy.ExtractArchive)
+            throw new InvalidDataException(
+                "A política autorizada deste artefato não permite extração.");
         if (string.IsNullOrWhiteSpace(archivePath) || !File.Exists(archivePath))
         {
             item.FailExtraction("O pacote compactado não foi encontrado. Baixe-o novamente.");
@@ -2341,6 +3336,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             return;
         }
 
+        ThrowIfOperationUnauthorized();
         _extractionRootsByItem[item.Id] = destinationBase;
         item.BeginExtraction();
         SetCatalogStatus($"{item.Title}: descompactando automaticamente...");
@@ -2352,15 +3348,24 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             destinationBase,
             category,
             item.Title,
-            baseDirectoryIsGameLibrary: isGameItem));
+            artifact,
+            baseDirectoryIsGameLibrary: isGameItem,
+            itemId: item.Id,
+            cancellationToken: _storeOperationCancellation.Token));
 
+        ThrowIfOperationUnauthorized();
         if (result.Succeeded)
         {
             var completedLibraryRoot = isGameItem
                 ? destinationBase
                 : Path.Combine(destinationBase, CatalogArchiveExtractor.LibraryFolderName);
+            ThrowIfOperationUnauthorized();
             RememberApprovedRoot(completedLibraryRoot);
-            if (!_downloadService.MarkExtractionCompleted(item, downloadRoot, archivePath))
+            if (!await _downloadService.MarkExtractionCompletedAsync(
+                    item,
+                    downloadRoot,
+                    archivePath,
+                    _storeOperationCancellation.Token))
             {
                 item.FailExtraction(
                     "O conteúdo foi extraído, mas o estado final não pôde ser salvo. " +
@@ -2369,26 +3374,24 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                 return;
             }
 
+            ThrowIfOperationUnauthorized();
             var archiveCleanupMessage = string.Empty;
             try
             {
-                File.Delete(archivePath);
+                ThrowIfOperationUnauthorized();
+                _ = CatalogExtractionCompletionCleanup.DeleteArchivePreservingRecoveryMarker(
+                    archivePath,
+                    downloadRoot,
+                    result.DestinationPath);
             }
-            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            catch (Exception exception) when (exception is IOException
+                                               or UnauthorizedAccessException
+                                               or InvalidDataException)
             {
                 archiveCleanupMessage = $" A extração terminou, mas o pacote compactado não pôde ser apagado: {exception.Message}";
             }
 
-            try
-            {
-                File.Delete(Path.Combine(
-                    result.DestinationPath,
-                    CatalogArchiveExtractor.CompletionMarkerFileName));
-            }
-            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-            {
-            }
-
+            ThrowIfOperationUnauthorized();
             item.CompleteExtraction(result.DestinationPath);
             var libraryName = isGameItem
                 ? CatalogArchiveExtractor.GameLibraryFolderName
@@ -2399,6 +3402,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
         if (result.NeedsAnotherDrive)
         {
+            ThrowIfOperationUnauthorized();
             item.AwaitExtractionLocation(result.Message);
             SetCatalogStatus($"{item.Title}: {result.Message}");
             if (!offerAnotherDrive) return;
@@ -2416,11 +3420,14 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
             if (isGameItem)
             {
+                ThrowIfOperationUnauthorized();
                 var alternativeGameLibrary = ChooseAndPersistGameLibraryFolder(
                     destinationBase,
                     $"Selecione outra pasta chamada exatamente '{CatalogArchiveExtractor.GameLibraryFolderName}'");
+                ThrowIfOperationUnauthorized();
                 if (alternativeGameLibrary is null) return;
 
+                ThrowIfOperationUnauthorized();
                 _extractionRootsByItem[item.Id] = alternativeGameLibrary;
                 await ExtractArchiveCoreAsync(
                     item,
@@ -2431,16 +3438,20 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                 return;
             }
 
+            ThrowIfOperationUnauthorized();
             var selectedFolder = ChooseFolder(
                 "Escolha outro HD ou uma pasta-base para criar TruboRoms",
                 destinationBase);
+            ThrowIfOperationUnauthorized();
             if (selectedFolder is null) return;
 
             var alternativeBase = NormalizeExtractionBase(selectedFolder);
             try
             {
+                ThrowIfOperationUnauthorized();
                 var libraryRoot = Path.Combine(alternativeBase, CatalogArchiveExtractor.LibraryFolderName);
                 Directory.CreateDirectory(libraryRoot);
+                ThrowIfOperationUnauthorized();
                 RememberApprovedRoot(libraryRoot);
                 _extractionRootsByItem[item.Id] = alternativeBase;
             }
@@ -2476,6 +3487,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
     private async void DownloadItem_Click(object sender, RoutedEventArgs e)
     {
+        if (!TryEnsureAuthorized("usar o catálogo")) return;
         var source = sender as FrameworkElement;
         var item = source?.Tag as CatalogItem ?? source?.DataContext as CatalogItem;
         if (item is null && source?.Tag is string itemId)
@@ -2502,9 +3514,11 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         if (item.CanRetryExtraction)
         {
             var downloadRoot = GetDownloadRoot(item);
+            if (!TryEnsureAuthorized("tentar a extração")) return;
             var extractionBase = IsGameItem(item)
                 ? EnsureGameLibraryFolder()
                 : _extractionRootsByItem.GetValueOrDefault(item.Id, downloadRoot);
+            if (!TryEnsureAuthorized("tentar a extração")) return;
             if (extractionBase is null)
             {
                 SetCatalogStatus(
@@ -2521,9 +3535,11 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(item.DownloadUrl))
+        if (!item.HasAuthorizedArtifact)
         {
-            SetCatalogStatus($"{item.Title}: nenhum endereço de download foi configurado. Nada foi iniciado.");
+            SetCatalogStatus(item.HasExtractPolicyConflict
+                ? $"{item.Title}: a política visual diverge do manifesto autorizado. Nada foi iniciado."
+                : $"{item.Title}: conteúdo indisponível para esta sessão. Nada foi iniciado.");
             return;
         }
 
@@ -2544,6 +3560,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
     private async void ResumeDownloadJob_Click(object sender, RoutedEventArgs e)
     {
+        if (!TryEnsureAuthorized("continuar o download")) return;
         var job = ResolveDownloadJob(sender as FrameworkElement);
         if (job is null)
         {
@@ -2556,6 +3573,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
     private async void RetryExtractionJob_Click(object sender, RoutedEventArgs e)
     {
+        if (!TryEnsureAuthorized("tentar a extração")) return;
         var job = ResolveDownloadJob(sender as FrameworkElement);
         if (job is null || string.IsNullOrWhiteSpace(job.Item.ArchiveFilePath))
         {
@@ -2564,9 +3582,11 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         }
 
         var downloadRoot = GetDownloadRoot(job.Item);
+        if (!TryEnsureAuthorized("tentar a extração")) return;
         var extractionBase = IsGameItem(job.Item)
             ? EnsureGameLibraryFolder()
             : _extractionRootsByItem.GetValueOrDefault(job.ItemId, downloadRoot);
+        if (!TryEnsureAuthorized("tentar a extração")) return;
         if (extractionBase is null)
         {
             SetCatalogStatus(
@@ -2578,6 +3598,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
     private void DiscardDownloadJob_Click(object sender, RoutedEventArgs e)
     {
+        if (!TryEnsureAuthorized("apagar o download e o progresso")) return;
         var job = ResolveDownloadJob(sender as FrameworkElement);
         if (job is null)
         {
@@ -2605,6 +3626,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             MessageBoxImage.Warning,
             MessageBoxResult.No);
         if (confirmation != MessageBoxResult.Yes) return;
+        if (!TryEnsureAuthorized("apagar o download e o progresso")) return;
 
         if (_downloadService.Discard(job.Item, GetDownloadRoot(job.Item)))
         {
@@ -2618,6 +3640,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
     private void OpenDownloadJob_Click(object sender, RoutedEventArgs e)
     {
+        if (!TryEnsureAuthorized("abrir a pasta do download")) return;
         var job = ResolveDownloadJob(sender as FrameworkElement);
         if (job is null || !job.CanOpen)
         {
@@ -2672,6 +3695,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
     private string? EnsureGameLibraryFolder()
     {
+        if (!TryEnsureAuthorized("preparar a biblioteca de jogos")) return null;
         if (IsExistingGameLibraryFolder(_gameLibraryFolderPath))
             return Path.GetFullPath(_gameLibraryFolderPath);
 
@@ -2683,7 +3707,9 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             var automaticLibrary = Path.GetFullPath(Path.Combine(
                 _installFolderPath,
                 CatalogArchiveExtractor.GameLibraryFolderName));
+            if (!TryEnsureAuthorized("preparar a biblioteca de jogos")) return null;
             Directory.CreateDirectory(automaticLibrary);
+            if (!TryEnsureAuthorized("preparar a biblioteca de jogos")) return null;
             return PersistGameLibraryFolder(automaticLibrary)
                 ? automaticLibrary
                 : null;
@@ -2702,11 +3728,13 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
     private string? ChooseAndPersistGameLibraryFolder(string initialFolder, string title)
     {
+        if (!TryEnsureAuthorized("alterar a biblioteca de jogos")) return null;
         var initialDirectory = GetExistingFolderPickerStart(initialFolder);
         while (true)
         {
             var selectedFolder = ChooseFolder(title, initialDirectory);
             if (selectedFolder is null) return null;
+            if (!TryEnsureAuthorized("alterar a biblioteca de jogos")) return null;
 
             var candidate = ResolveSelectedGameLibraryFolder(selectedFolder);
             if (candidate is null)
@@ -2727,6 +3755,20 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
     private bool PersistGameLibraryFolder(string candidate)
     {
+        if (!TryEnsureAuthorized("salvar a biblioteca de jogos")) return false;
+        try
+        {
+            Directory.CreateDirectory(candidate);
+        }
+        catch (Exception exception) when (exception is IOException
+                                           or UnauthorizedAccessException
+                                           or ArgumentException
+                                           or NotSupportedException)
+        {
+            SetCatalogStatus($"Não foi possível preparar a pasta mestre: {exception.Message}");
+            return false;
+        }
+        if (!TryEnsureAuthorized("salvar a biblioteca de jogos")) return false;
         if (!LocalDataPaths.WriteGameLibraryFolder(candidate))
         {
             MessageBox.Show(
@@ -2773,12 +3815,11 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             if (CatalogArchiveExtractor.IsGameLibraryRoot(canonical))
                 return canonical;
 
-            // Ao escolher uma unidade ou pasta-base alternativa, o Turborama
-            // cria sozinho TruboRoms\roms; não é necessário criá-la no diálogo.
+            // Ao escolher uma unidade ou pasta-base alternativa, a criação de
+            // TruboRoms\roms ocorre depois, no ponto central protegido por autorização.
             var child = Path.GetFullPath(Path.Combine(
                 canonical,
                 CatalogArchiveExtractor.GameLibraryFolderName));
-            Directory.CreateDirectory(child);
             return child;
         }
         catch (Exception exception) when (exception is IOException
@@ -2805,8 +3846,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
             var destinationPath = _downloadService.BuildSafeDestinationPath(
                 canonicalLibrary,
-                item,
-                new Uri(item.DownloadUrl, UriKind.Absolute));
+                item);
             if (sourcePath.Equals(destinationPath, StringComparison.OrdinalIgnoreCase)
                 && File.Exists(sourcePath))
                 return sourcePath;
@@ -2826,13 +3866,19 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             Directory.CreateDirectory(destinationDirectory);
             EnsureGameLibraryDestinationSafe(canonicalLibrary, destinationPath);
 
-            await Task.Run(() => MoveFilePreservingSourceOnFailure(sourcePath, destinationPath));
+            ThrowIfOperationUnauthorized();
+            await MoveFilePreservingSourceOnFailureAsync(
+                sourcePath,
+                destinationPath,
+                item.Artifact
+                ?? throw new InvalidDataException("O artefato do jogo não possui identidade autorizada."),
+                _storeOperationCancellation.Token);
+            ThrowIfOperationUnauthorized();
             return destinationPath;
         }
         catch (Exception exception) when (exception is IOException
                                            or UnauthorizedAccessException
                                            or InvalidDataException
-                                           or UriFormatException
                                            or ArgumentException
                                            or NotSupportedException)
         {
@@ -2842,37 +3888,182 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         }
     }
 
-    private static void MoveFilePreservingSourceOnFailure(string sourcePath, string destinationPath)
+    internal static async Task MoveFilePreservingSourceOnFailureAsync(
+        string sourcePath,
+        string destinationPath,
+        CatalogArtifactDescriptor artifact,
+        CancellationToken cancellationToken)
     {
-        var sameVolume = string.Equals(
-            Path.GetPathRoot(sourcePath),
-            Path.GetPathRoot(destinationPath),
-            StringComparison.OrdinalIgnoreCase);
-        if (sameVolume)
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentNullException.ThrowIfNull(artifact);
+        var canonicalSource = PathIdentity.Canonicalize(sourcePath);
+        var canonicalDestination = PathIdentity.Canonicalize(destinationPath);
+        var sourceParent = Path.GetDirectoryName(canonicalSource)
+                           ?? throw new InvalidDataException("A origem não possui diretório-pai.");
+        var destinationParent = Path.GetDirectoryName(canonicalDestination)
+                                ?? throw new InvalidDataException("O destino não possui diretório-pai.");
+        using var sourceTree = PathIdentity.OpenDirectoryTree(sourceParent);
+        using var destinationTree = PathIdentity.OpenDirectoryTree(
+            destinationParent,
+            createIfMissing: true);
+        await using var source = sourceTree.OpenFile(
+            canonicalSource,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            128 * 1024,
+            FileOptions.Asynchronous | FileOptions.SequentialScan,
+            deleteAccess: true);
+        var sourceIdentity = PathIdentity.CaptureFileIdentity(
+            source.SafeFileHandle,
+            canonicalSource);
+        if (source.Length != artifact.ContentLength)
+            throw new InvalidDataException("O tamanho da origem diverge do descritor autorizado.");
+        if (!await VerifyOpenArtifactAsync(source, artifact, cancellationToken))
+            throw new InvalidDataException("O SHA-256 da origem diverge do descritor autorizado.");
+        sourceTree.Revalidate();
+        destinationTree.Revalidate();
+
+        var destinationParentIdentity = PathIdentity.CaptureDirectoryIdentity(
+            destinationTree.AnchorHandle,
+            destinationParent);
+        if (sourceIdentity.VolumeSerialNumber == destinationParentIdentity.VolumeSerialNumber)
         {
-            File.Move(sourcePath, destinationPath);
+            _ = PathIdentity.RenameByHandle(
+                source.SafeFileHandle,
+                sourceIdentity,
+                destinationTree.AnchorHandle,
+                destinationParent,
+                Path.GetFileName(canonicalDestination),
+                replaceIfExists: false);
             return;
         }
 
+        var temporaryPath = canonicalDestination + ".copy-" + Guid.NewGuid().ToString("N");
+        FileStream? destination = null;
+        PathIdentity.HandleIdentity? destinationIdentity = null;
         try
         {
-            File.Copy(sourcePath, destinationPath, overwrite: false);
-            if (new FileInfo(sourcePath).Length != new FileInfo(destinationPath).Length)
-                throw new IOException("A cópia para a pasta mestre ficou incompleta.");
-            File.Delete(sourcePath);
+            destination = destinationTree.OpenFile(
+                temporaryPath,
+                FileMode.CreateNew,
+                FileAccess.ReadWrite,
+                FileShare.Read,
+                128 * 1024,
+                FileOptions.Asynchronous | FileOptions.SequentialScan,
+                deleteAccess: true);
+            destinationIdentity = PathIdentity.CaptureFileIdentity(
+                destination.SafeFileHandle,
+                temporaryPath);
+            source.Position = 0;
+            destination.Position = 0;
+            using (var sourceHasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256))
+            {
+                var buffer = GC.AllocateUninitializedArray<byte>(128 * 1024);
+                try
+                {
+                    long copied = 0;
+                    while (true)
+                    {
+                        var read = await source.ReadAsync(buffer, cancellationToken);
+                        if (read == 0) break;
+                        copied = checked(copied + read);
+                        if (copied > artifact.ContentLength)
+                            throw new InvalidDataException("A origem cresceu durante a cópia.");
+                        sourceHasher.AppendData(buffer, 0, read);
+                        await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+                    }
+                    if (copied != artifact.ContentLength
+                        || !CryptographicOperations.FixedTimeEquals(
+                            sourceHasher.GetHashAndReset(),
+                            Convert.FromHexString(artifact.Sha256)))
+                        throw new InvalidDataException("A origem mudou durante a cópia autenticada.");
+                }
+                finally
+                {
+                    CryptographicOperations.ZeroMemory(buffer);
+                }
+            }
+            await destination.FlushAsync(cancellationToken);
+            destination.Flush(flushToDisk: true);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!await VerifyOpenArtifactAsync(destination, artifact, cancellationToken))
+                throw new InvalidDataException("A cópia para a pasta mestre não preservou o SHA-256.");
+            _ = PathIdentity.RevalidateFile(
+                source.SafeFileHandle,
+                canonicalSource,
+                sourceIdentity);
+            _ = PathIdentity.RevalidateFile(
+                destination.SafeFileHandle,
+                temporaryPath,
+                destinationIdentity.Value);
+            sourceTree.Revalidate();
+            destinationTree.Revalidate();
+
+            destinationIdentity = PathIdentity.RenameByHandle(
+                destination.SafeFileHandle,
+                destinationIdentity.Value,
+                destinationTree.AnchorHandle,
+                destinationParent,
+                Path.GetFileName(canonicalDestination),
+                replaceIfExists: false);
+            cancellationToken.ThrowIfCancellationRequested();
+            PathIdentity.DeleteByHandle(
+                source.SafeFileHandle,
+                canonicalSource,
+                sourceIdentity);
         }
         catch
         {
-            try
+            if (destination is not null && destinationIdentity is { } exactDestination)
             {
-                if (File.Exists(destinationPath)) File.Delete(destinationPath);
-            }
-            catch (Exception cleanupException) when (cleanupException is IOException
-                                                     or UnauthorizedAccessException)
-            {
+                // RenameByHandle can complete the kernel rename and then fail a
+                // post-validation query. In that narrow case the caller has not
+                // received the updated FinalPath yet. Probe only the two names
+                // owned by this transaction and delete solely when the same
+                // volume/file ID is still held by our original handle.
+                foreach (var cleanupPath in new[] { canonicalDestination, temporaryPath })
+                {
+                    try
+                    {
+                        var currentIdentity = PathIdentity.CaptureFileIdentity(
+                            destination.SafeFileHandle,
+                            cleanupPath);
+                        if (!currentIdentity.SameObject(exactDestination)) continue;
+                        PathIdentity.DeleteByHandle(
+                            destination.SafeFileHandle,
+                            cleanupPath,
+                            currentIdentity);
+                        break;
+                    }
+                    catch (Exception cleanupException) when (cleanupException is IOException
+                                                             or UnauthorizedAccessException
+                                                             or InvalidDataException)
+                    {
+                        // Never fall back to deleting a pathname with unknown identity.
+                    }
+                }
             }
             throw;
         }
+        finally
+        {
+            if (destination is not null) await destination.DisposeAsync();
+        }
+    }
+
+    private static async Task<bool> VerifyOpenArtifactAsync(
+        FileStream stream,
+        CatalogArtifactDescriptor artifact,
+        CancellationToken cancellationToken)
+    {
+        if (stream.Length != artifact.ContentLength) return false;
+        stream.Position = 0;
+        var hash = await SHA256.HashDataAsync(stream, cancellationToken);
+        stream.Position = 0;
+        return CryptographicOperations.FixedTimeEquals(
+            hash,
+            Convert.FromHexString(artifact.Sha256));
     }
 
     private static void EnsureGameLibraryDestinationSafe(string libraryRoot, string destinationPath)
@@ -2948,6 +4139,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
     private void OpenDownloadedFile(string localFilePath)
     {
+        if (!TryEnsureAuthorized("abrir a pasta do download")) return;
         if (string.IsNullOrWhiteSpace(localFilePath)
             || (!File.Exists(localFilePath) && !Directory.Exists(localFilePath)))
         {
@@ -2969,9 +4161,8 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
         try
         {
-            var startInfo = new ProcessStartInfo("explorer.exe") { UseShellExecute = true };
-            startInfo.ArgumentList.Add(containingDirectory);
-            Process.Start(startInfo);
+            if (!TryEnsureAuthorized("abrir a pasta do download")) return;
+            Process.Start(CreateExplorerStartInfo(containingDirectory));
             SetCatalogStatus("Pasta do arquivo baixado aberta.");
         }
         catch (Exception exception) when (exception is InvalidOperationException or Win32Exception)
@@ -3070,6 +4261,186 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
     private T? FindNamed<T>(string name) where T : DependencyObject => FindName(name) as T;
 
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        _windowSource = PresentationSource.FromVisual(this) as HwndSource;
+        _windowSource?.AddHook(WindowMessageHook);
+        ClampWindowToCurrentMonitor();
+        ScheduleWorkAreaClamp();
+    }
+
+    protected override void OnLocationChanged(EventArgs e)
+    {
+        base.OnLocationChanged(e);
+        if (_workAreaClampInProgress
+            || WindowState != WindowState.Normal
+            || _windowSource is null)
+            return;
+
+        var monitor = MonitorFromWindow(
+            _windowSource.Handle,
+            NativeMonitorDefaultToNearest);
+        if (monitor != IntPtr.Zero && monitor != _lastWorkAreaMonitor)
+            ScheduleWorkAreaClamp();
+    }
+
+    protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+    {
+        base.OnDpiChanged(oldDpi, newDpi);
+        ScheduleWorkAreaClamp();
+    }
+
+    private IntPtr WindowMessageHook(
+        IntPtr windowHandle,
+        int message,
+        IntPtr wParam,
+        IntPtr lParam,
+        ref bool handled)
+    {
+        if (message == NativeWmDpiChanged)
+            ScheduleWorkAreaClamp();
+        return IntPtr.Zero;
+    }
+
+    private void ScheduleWorkAreaClamp()
+    {
+        if (_workAreaClampScheduled || Dispatcher.HasShutdownStarted) return;
+        _workAreaClampScheduled = true;
+        _ = Dispatcher.BeginInvoke(() =>
+        {
+            _workAreaClampScheduled = false;
+            ClampWindowToCurrentMonitor();
+        }, DispatcherPriority.Loaded);
+    }
+
+    private void ClampWindowToCurrentMonitor()
+    {
+        if (_workAreaClampInProgress
+            || WindowState != WindowState.Normal
+            || _windowSource is null)
+            return;
+
+        var windowHandle = _windowSource.Handle;
+        if (windowHandle == IntPtr.Zero) return;
+
+        var monitor = MonitorFromWindow(windowHandle, NativeMonitorDefaultToNearest);
+        if (monitor == IntPtr.Zero) return;
+
+        var monitorInfo = new NativeMonitorInfo
+        {
+            Size = checked((uint)Marshal.SizeOf<NativeMonitorInfo>())
+        };
+        if (!GetNativeMonitorInfo(monitor, ref monitorInfo)
+            || !GetWindowRect(windowHandle, out var windowRect))
+            return;
+
+        _lastWorkAreaMonitor = monitor;
+        var dpiScale = GetWindowDpiScale(windowHandle);
+        var currentBounds = new Rect(
+            windowRect.Left,
+            windowRect.Top,
+            windowRect.Right - windowRect.Left,
+            windowRect.Bottom - windowRect.Top);
+        var workArea = new Rect(
+            monitorInfo.Work.Left,
+            monitorInfo.Work.Top,
+            monitorInfo.Work.Right - monitorInfo.Work.Left,
+            monitorInfo.Work.Bottom - monitorInfo.Work.Top);
+        if (currentBounds.Width <= 0
+            || currentBounds.Height <= 0
+            || workArea.Width <= 0
+            || workArea.Height <= 0)
+            return;
+
+        var clampedBounds = ClampWindowBoundsToWorkArea(
+            currentBounds,
+            workArea,
+            new Size(MinWidth * dpiScale, MinHeight * dpiScale));
+        var x = checked((int)Math.Round(clampedBounds.X));
+        var y = checked((int)Math.Round(clampedBounds.Y));
+        var width = checked((int)Math.Round(clampedBounds.Width));
+        var height = checked((int)Math.Round(clampedBounds.Height));
+        if (x == windowRect.Left
+            && y == windowRect.Top
+            && width == windowRect.Right - windowRect.Left
+            && height == windowRect.Bottom - windowRect.Top)
+            return;
+
+        _workAreaClampInProgress = true;
+        try
+        {
+            _ = SetWindowPos(
+                windowHandle,
+                IntPtr.Zero,
+                x,
+                y,
+                width,
+                height,
+                NativeSwpNoZOrder | NativeSwpNoActivate);
+        }
+        finally
+        {
+            _workAreaClampInProgress = false;
+        }
+    }
+
+    private double GetWindowDpiScale(IntPtr windowHandle)
+    {
+        try
+        {
+            var dpi = GetDpiForWindow(windowHandle);
+            if (dpi != 0) return dpi / 96d;
+        }
+        catch (EntryPointNotFoundException)
+        {
+            // GetDpiForWindow is unavailable on pre-Windows 10 systems. WPF's
+            // visual DPI remains the correct fallback for the current source.
+        }
+
+        var visualDpi = VisualTreeHelper.GetDpi(this).DpiScaleX;
+        return double.IsFinite(visualDpi) && visualDpi > 0 ? visualDpi : 1d;
+    }
+
+    internal static Rect ClampWindowBoundsToWorkArea(
+        Rect windowBounds,
+        Rect workArea,
+        Size minimumSize)
+    {
+        if (windowBounds.IsEmpty
+            || workArea.IsEmpty
+            || windowBounds.Width <= 0
+            || windowBounds.Height <= 0
+            || workArea.Width <= 0
+            || workArea.Height <= 0
+            || minimumSize.IsEmpty
+            || minimumSize.Width < 0
+            || minimumSize.Height < 0
+            || !double.IsFinite(windowBounds.X)
+            || !double.IsFinite(windowBounds.Y)
+            || !double.IsFinite(windowBounds.Width)
+            || !double.IsFinite(windowBounds.Height)
+            || !double.IsFinite(workArea.X)
+            || !double.IsFinite(workArea.Y)
+            || !double.IsFinite(workArea.Width)
+            || !double.IsFinite(workArea.Height)
+            || !double.IsFinite(minimumSize.Width)
+            || !double.IsFinite(minimumSize.Height))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(windowBounds),
+                "Os limites da janela e da work area precisam ser finitos e positivos.");
+        }
+
+        var minimumWidth = Math.Min(minimumSize.Width, workArea.Width);
+        var minimumHeight = Math.Min(minimumSize.Height, workArea.Height);
+        var width = Math.Min(Math.Max(windowBounds.Width, minimumWidth), workArea.Width);
+        var height = Math.Min(Math.Max(windowBounds.Height, minimumHeight), workArea.Height);
+        var x = Math.Clamp(windowBounds.X, workArea.Left, workArea.Right - width);
+        var y = Math.Clamp(windowBounds.Y, workArea.Top, workArea.Bottom - height);
+        return new Rect(x, y, width, height);
+    }
+
     protected override void OnPreviewKeyDown(KeyEventArgs e)
     {
         base.OnPreviewKeyDown(e);
@@ -3108,17 +4479,100 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         if (WindowState == WindowState.Minimized)
             PauseRetroSystemVideoForWindow();
         else
+        {
             ResumeRetroSystemVideoForWindow();
+            if (WindowState == WindowState.Normal)
+                ScheduleWorkAreaClamp();
+        }
+    }
+
+    private void LicensingRuntime_AuthorizationRevoked(
+        object? sender,
+        SuiteAuthorizationRevokedEventArgs e)
+    {
+        if (Interlocked.Exchange(ref _revocationHandled, 1) != 0) return;
+        if (Volatile.Read(ref _storeReady) == 0) return;
+        _ = Dispatcher.InvokeAsync(() =>
+        {
+            if (Volatile.Read(ref _storeReady) == 0) return;
+            SessionStatusText.Text = "SESSÃO ENCERRADA";
+            SessionStatusText.Foreground = Brushes.OrangeRed;
+            SessionStatusBadge.Background = new SolidColorBrush(Color.FromRgb(40, 15, 15));
+            SessionStatusBadge.BorderBrush = new SolidColorBrush(Color.FromRgb(98, 38, 38));
+            IsEnabled = false;
+            SetCatalogStatus("A autorização expirou ou foi revogada. Entre novamente.");
+            var login = new PremiumLoginWindow();
+            login.Show();
+            Close();
+        }, DispatcherPriority.Send);
     }
 
     protected override void OnClosed(EventArgs e)
     {
+        Volatile.Write(ref _storeReady, 0);
+        // Mark downloads as application shutdown before canceling the shared
+        // Store token. Otherwise the cancellation catch can persist an
+        // explicit user pause and prevent automatic continuation next launch.
+        _downloadService.Dispose();
+        CancelStoreOperations();
         StateChanged -= StoreWindow_StateChanged;
+        _windowSource?.RemoveHook(WindowMessageHook);
+        _windowSource = null;
+        _authorizationSubscription.Dispose();
         StopRetroSystemVideo(clearFallback: true);
         StopRetroUniversalVideo();
         foreach (var job in DownloadJobs) job.Dispose();
-        _downloadService.Dispose();
+        _ = DisposeLicensingRuntimeAsync(_licensingRuntime);
         base.OnClosed(e);
+    }
+
+    private static async Task DisposeLicensingRuntimeAsync(SuiteLicensingRuntime runtime)
+    {
+        try { await runtime.DisposeAsync(); }
+        catch { }
+    }
+
+    private static CatalogArtifactDescriptor RequireAuthorizedArtifact(CatalogItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        var artifact = item.Artifact
+                       ?? throw new SuiteAuthorizationException("ARTIFACT_NOT_AUTHORIZED");
+        if (item.HasExtractPolicyConflict)
+            throw new InvalidDataException(
+                "A política de extração do catálogo visual diverge do manifesto autorizado.");
+        return artifact;
+    }
+
+    private void ThrowIfOperationUnauthorized()
+    {
+        _storeOperationCancellation.Token.ThrowIfCancellationRequested();
+        _authorization.ThrowIfUnauthorized();
+    }
+
+    private bool TryEnsureAuthorized(string action)
+    {
+        try
+        {
+            ThrowIfOperationUnauthorized();
+            return true;
+        }
+        catch (Exception exception) when (exception is OperationCanceledException
+                                           or SuiteAuthorizationException)
+        {
+            SetCatalogStatus($"Não foi possível {action}: a sessão terminou.");
+            return false;
+        }
+    }
+
+    private void CancelStoreOperations()
+    {
+        try
+        {
+            _storeOperationCancellation.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+        }
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>

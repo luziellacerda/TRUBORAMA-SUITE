@@ -1,13 +1,6 @@
 {
   "schemaVersion": 3,
   "defaultImage": "Images/_turborama-fallback.jpg",
-  "enableTestDownloads": true,
-  "testDownload": {
-    "url": "https://github.com/luziellacerda/TRUBORAMA-SUITE/releases/download/v1.5.0/SHA256SUMS.txt",
-    "sha256": "0739d0fce173582893742ccbcaf5e9048e4ab0467396129f9664618edb9a990e",
-    "size": "92 B",
-    "fileExtension": ".txt"
-  },
   "categories": [
     {
       "id": "system-tools",

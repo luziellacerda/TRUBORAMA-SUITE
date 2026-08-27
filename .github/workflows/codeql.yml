@@ -1,0 +1,64 @@
+name: CodeQL
+
+on:
+  push:
+    branches:
+      - main
+      - "codex/**"
+  pull_request:
+  schedule:
+    - cron: "17 5 * * 1"
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: codeql-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+  NUGET_PACKAGES: "${{ runner.temp }}\\turborama-nuget-packages"
+  NUGET_HTTP_CACHE_PATH: "${{ runner.temp }}\\turborama-nuget-http-cache"
+
+jobs:
+  analyze:
+    runs-on: windows-2025
+    timeout-minutes: 45
+    steps:
+      - name: Checkout immutable source
+        uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@a35ac6e6798d72df5475948b28efb89edc2e19ca # v4.37.9
+        with:
+          languages: csharp
+          build-mode: manual
+
+      - name: Setup .NET 10 LTS
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
+        with:
+          dotnet-version: 10.0.400
+
+      - name: Record runner image
+        shell: pwsh
+        run: |
+          "ImageOS=$env:ImageOS" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          "ImageVersion=$env:ImageVersion" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+
+      - name: Restore locked dependencies
+        shell: pwsh
+        run: dotnet restore .\TurboBoxManager.csproj -r win-x64 --locked-mode --no-http-cache --packages $env:NUGET_PACKAGES -p:Configuration=Release --source https://api.nuget.org/v3/index.json
+
+      - name: Build analyzed Release
+        shell: pwsh
+        run: dotnet build .\TurboBoxManager.csproj -c Release --no-restore
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@a35ac6e6798d72df5475948b28efb89edc2e19ca # v4.37.9
+        with:
+          category: /language:csharp

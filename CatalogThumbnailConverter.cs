@@ -1,33 +1,49 @@
 using System.Collections.Concurrent;
-using System.Globalization;
 using System.IO;
-using System.Windows.Data;
 using System.Windows.Media.Imaging;
 
 namespace TurboBoxManager;
 
-public sealed class CatalogThumbnailConverter : IValueConverter
+internal static class CatalogThumbnailLoader
 {
     private static readonly ConcurrentDictionary<string, WeakReference<BitmapSource>> Cache =
         new(StringComparer.Ordinal);
+    private static readonly ConcurrentDictionary<string, Lazy<BitmapSource?>> PendingLoads =
+        new(StringComparer.Ordinal);
 
-    public object? Convert(
-        object value,
-        Type targetType,
-        object parameter,
-        CultureInfo culture)
+    internal static BitmapSource? Load(string? source, int decodePixelWidth)
     {
-        if (value is not string source || string.IsNullOrWhiteSpace(source)) return null;
-        var decodeWidth = 384;
-        if (parameter is string text
-            && int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
-            decodeWidth = Math.Clamp(parsed, 64, 1024);
+        if (string.IsNullOrWhiteSpace(source)) return null;
+        var decodeWidth = Math.Clamp(decodePixelWidth, 64, 1024);
 
         var key = $"{decodeWidth}|{source}";
         if (Cache.TryGetValue(key, out var weak)
             && weak.TryGetTarget(out var existing))
             return existing;
 
+        var pending = PendingLoads.GetOrAdd(
+            key,
+            _ => new Lazy<BitmapSource?>(
+                () => Decode(source, decodeWidth),
+                LazyThreadSafetyMode.ExecutionAndPublication));
+        try
+        {
+            var bitmap = pending.Value;
+            if (bitmap is null) return null;
+
+            Cache[key] = new WeakReference<BitmapSource>(bitmap);
+            ScavengeCache();
+            return bitmap;
+        }
+        finally
+        {
+            ((ICollection<KeyValuePair<string, Lazy<BitmapSource?>>>)PendingLoads).Remove(
+                new KeyValuePair<string, Lazy<BitmapSource?>>(key, pending));
+        }
+    }
+
+    private static BitmapImage? Decode(string source, int decodeWidth)
+    {
         try
         {
             var bitmap = new BitmapImage();
@@ -38,27 +54,24 @@ public sealed class CatalogThumbnailConverter : IValueConverter
             bitmap.UriSource = new Uri(source, UriKind.Absolute);
             bitmap.EndInit();
             bitmap.Freeze();
-            Cache[key] = new WeakReference<BitmapSource>(bitmap);
-            if (Cache.Count > 256)
-            {
-                foreach (var stale in Cache.Where(entry => !entry.Value.TryGetTarget(out _)).Take(64))
-                    Cache.TryRemove(stale.Key, out _);
-            }
             return bitmap;
         }
         catch (Exception exception) when (exception is IOException
                                            or UnauthorizedAccessException
                                            or NotSupportedException
                                            or FileFormatException
-                                           or ArgumentException)
+                                           or ArgumentException
+                                           or InvalidOperationException
+                                           or UriFormatException)
         {
             return null;
         }
     }
 
-    public object ConvertBack(
-        object value,
-        Type targetType,
-        object parameter,
-        CultureInfo culture) => Binding.DoNothing;
+    private static void ScavengeCache()
+    {
+        if (Cache.Count <= 256) return;
+        foreach (var stale in Cache.Where(entry => !entry.Value.TryGetTarget(out _)).Take(64))
+            Cache.TryRemove(stale.Key, out _);
+    }
 }

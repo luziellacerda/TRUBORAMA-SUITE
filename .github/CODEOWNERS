@@ -1,0 +1,13 @@
+# Security-sensitive release, licensing and download paths require owner review.
+/.github/ @luziellacerda
+/Catalog/ @luziellacerda
+/Licensing/ @luziellacerda
+/tools/ @luziellacerda
+/tests/ @luziellacerda
+/TurboBoxManager.csproj @luziellacerda
+/Directory.Build.props @luziellacerda
+/global.json @luziellacerda
+/NuGet.Config @luziellacerda
+/.gitattributes @luziellacerda
+/app.manifest @luziellacerda
+/packages.lock.json @luziellacerda

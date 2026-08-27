@@ -1,0 +1,62 @@
+{
+  "Turborama-background-nintendo-generic.mp4": {
+    "length": 2983455,
+    "sha256": "cf5989bfebdda8f7aedd64af08f943f7e11a7e858782e2d3dffb7de906e5e65d"
+  },
+  "Turborama-background-nintendo-switch.mp4": {
+    "length": 3470078,
+    "sha256": "eb8705689a5e64ec061a27c38575599fa833c61ef889092ca517094182aabb39"
+  },
+  "Turborama-background-nintendo-wii.mp4": {
+    "length": 542632,
+    "sha256": "04a7da442a36f35c080f5779fd244f68ace70323419ba1ab3cec2c0a3f606757"
+  },
+  "Turborama-background-playstation.mp4": {
+    "length": 6594092,
+    "sha256": "48ac8106d216ea7ee595d4fc825cf57dd30534d20a64023051236ab398389995"
+  },
+  "Turborama-background-ps-vita.mp4": {
+    "length": 55253726,
+    "sha256": "5f9119893cafdb35a6d9c833f2bc7f9e94d89e883d52acdb633877fb0278756a"
+  },
+  "Turborama-background-ps2.mp4": {
+    "length": 3739635,
+    "sha256": "bc9a65ad1e45556a3a80cf73ae904e2faf6047886ff868d0e7c8740f10a944ce"
+  },
+  "Turborama-background-ps4.mp4": {
+    "length": 19104599,
+    "sha256": "cabca437060e37c7fa50d56bf6f9dcb886d7e882d770f97f0fdcc7c8cba60351"
+  },
+  "Turborama-background-ps5.mp4": {
+    "length": 2125989,
+    "sha256": "3bfca3ec4019626032cc1e427ee099dfadea880d52102f328a92f2b9df2058e5"
+  },
+  "Turborama-background-psp.mp4": {
+    "length": 3273864,
+    "sha256": "efe3414ed96bfb6c0e308ec61628b24df03db78e593080747c88f7db22490d5f"
+  },
+  "Turborama-background-retro.mp4": {
+    "length": 235266,
+    "sha256": "64c3de2aa1d6cf64e2d72e30d4218f4481d6ea79741b670a61836e9c2c1a0571"
+  },
+  "Turborama-background-sega-saturn.mp4": {
+    "length": 1089807,
+    "sha256": "63b7cdd5101a7c7f7d4bf8b142a4188e47e0cb7804e80c4b1ee5ea142f9aa901"
+  },
+  "Turborama-background-system-tools.mp4": {
+    "length": 9833247,
+    "sha256": "3c2372bc376c4e25c8abcb73d5b7aee0dbb3e462043b3b1dbd3d4ca57a6e3402"
+  },
+  "Turborama-background-windows.mp4": {
+    "length": 2383471,
+    "sha256": "1dbdea7aff16542328ff0db4c1ec1f4105988d206c63a784185602157e43d91d"
+  },
+  "Turborama-background-xbox-one-x.mp4": {
+    "length": 1939575,
+    "sha256": "6418a2f52355e69a7111968f731baae2466045b875b5c08f9bf304f501a6698a"
+  },
+  "Turborama-background.mp4": {
+    "length": 4630712,
+    "sha256": "c9a6ab773b8cbe367bc65523a93005f88b90044b422522c0936da8dc69965aed"
+  }
+}

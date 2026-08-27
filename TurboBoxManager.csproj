@@ -1,15 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Turborama</AssemblyName>
     <RootNamespace>TurboBoxManager</RootNamespace>
-    <Version>1.7.0</Version>
-    <AssemblyVersion>1.7.0.0</AssemblyVersion>
-    <FileVersion>1.7.0.0</FileVersion>
+    <Version>2.0.0</Version>
+    <AssemblyVersion>2.0.0.0</AssemblyVersion>
+    <FileVersion>2.0.0.0</FileVersion>
     <Product>Turborama</Product>
     <Company>Turborama</Company>
     <Description>Central Turborama de sistemas, biblioteca e downloads.</Description>
@@ -18,22 +18,43 @@
     <Optimize Condition="'$(Configuration)' == 'Release'">true</Optimize>
     <DebugType Condition="'$(Configuration)' == 'Release'">None</DebugType>
     <DebugSymbols Condition="'$(Configuration)' == 'Release'">false</DebugSymbols>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(PrivateCatalogResourcePath)' != '' and '$(PrivateCatalogKeySourcePath)' != ''">
-    <DefineConstants>$(DefineConstants);PRIVATE_CATALOG_EMBEDDED</DefineConstants>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <IncludeSourceRevisionInInformationalVersion>true</IncludeSourceRevisionInInformationalVersion>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <PublishTrimmed>false</PublishTrimmed>
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <CheckForOverflowUnderflow Condition="'$(Configuration)' == 'Release'">true</CheckForOverflowUnderflow>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="SharpCompress">
-      <HintPath>lib\SharpCompress.dll</HintPath>
-      <Private>true</Private>
-    </Reference>
+    <PackageReference Include="SharpCompress" Version="0.50.4" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="CatalogVerifier" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(SuiteAuthorityConfigurationBase64)' != '' and '$(SuiteAuthorityConfigurationSha256)' != '' and '$(SuiteAuthorityIssuerSpkiBase64)' != ''">
+    <AssemblyMetadata Include="TurboRama.Suite.AuthorityConfigurationBase64"
+                      Value="$(SuiteAuthorityConfigurationBase64)" />
+    <AssemblyMetadata Include="TurboRama.Suite.AuthorityConfigurationSha256"
+                      Value="$(SuiteAuthorityConfigurationSha256)" />
+    <AssemblyMetadata Include="TurboRama.Suite.AuthorityIssuerSpkiBase64"
+                      Value="$(SuiteAuthorityIssuerSpkiBase64)" />
   </ItemGroup>
   <ItemGroup>
     <Compile Remove="tools\**\*.cs" />
     <Compile Remove="tests\**\*.cs" />
-    <Content Include="Assets\Catalog\**\*.*"
-             Exclude="Assets\Catalog\platform-descriptions.json;Assets\Catalog\SystemVideos\system-videos.json;Assets\Catalog\SystemVideos\system-video-integrity.json"
-             Condition="'$(PrivateCatalogResourcePath)' == ''">
+    <Content Include="THIRD-PARTY-NOTICES.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </Content>
+    <Content Include="Assets\Catalog\catalog.json;Assets\Catalog\Images\*.jpg;Assets\Catalog\MenuIcons\*.png;Assets\Catalog\SystemIcons\*.png;Assets\Catalog\GameDescriptions\*.xml;Assets\Catalog\SystemVideos\*.mp4">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </Content>
+    <Content Include="Assets\BackgroundVideos\*.mp4">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
       <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
@@ -47,12 +68,7 @@
                       LogicalName="Turborama.SystemVideos.json" />
     <EmbeddedResource Include="Assets\Catalog\SystemVideos\system-video-integrity.json"
                       LogicalName="Turborama.SystemVideoIntegrity.json" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(PrivateCatalogResourcePath)' != '' and '$(PrivateCatalogKeySourcePath)' != ''">
-    <EmbeddedResource Include="$(PrivateCatalogResourcePath)" LogicalName="Turborama.PrivateCatalog.bin" />
-    <Compile Include="$(PrivateCatalogKeySourcePath)" Link="Generated\PrivateCatalogSecrets.g.cs" />
-    <Resource Include="Assets\Catalog\Images\*.*" />
-    <Resource Include="Assets\Catalog\SystemIcons\*.png" />
-    <Resource Include="Assets\Catalog\MenuIcons\*.png" />
+    <EmbeddedResource Include="Assets\BackgroundVideos\background-video-integrity.json"
+                      LogicalName="Turborama.BackgroundVideoIntegrity.json" />
   </ItemGroup>
 </Project>

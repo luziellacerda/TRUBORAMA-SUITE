@@ -1,7 +1,13 @@
 <Project>
   <PropertyGroup>
-    <BaseIntermediateOutputPath>obj-turborama\</BaseIntermediateOutputPath>
-    <MSBuildProjectExtensionsPath>obj-turborama\</MSBuildProjectExtensionsPath>
-    <DefaultItemExcludes>$(DefaultItemExcludes);obj\**;obj-turborama\**</DefaultItemExcludes>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <TreatWarningsAsErrors Condition="'$(Configuration)' == 'Release'">true</TreatWarningsAsErrors>
+    <WarningsAsErrors>$(WarningsAsErrors);NU1900;NU1901;NU1902;NU1903;NU1904</WarningsAsErrors>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RestoreLockedMode Condition="'$(Configuration)' == 'Release'">true</RestoreLockedMode>
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj\**;obj-turborama\**;obj-local\**;obj-codex-test2\**;obj-codex-prod\**;obj-codex-test-prod\**;release-staging-v1.7.0\**;dist-private\**;.tmp\**</DefaultItemExcludes>
   </PropertyGroup>
 </Project>

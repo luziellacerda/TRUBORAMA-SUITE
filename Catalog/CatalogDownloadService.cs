@@ -1,20 +1,24 @@
 using System.Collections.Concurrent;
+using System.ComponentModel;
 using System.Globalization;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
-using System.Text;
+using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Win32.SafeHandles;
 
 namespace TurboBoxManager.Catalog;
 
 public sealed class CatalogDownloadOptions
 {
     public long MaximumFileSizeBytes { get; init; } = 256L * 1024L * 1024L;
-    public int MaximumRedirects { get; init; } = 5;
+    // Kept for source compatibility. Authenticated redirects are always denied.
+    public int MaximumRedirects { get; init; }
     public TimeSpan InactivityTimeout { get; init; } = TimeSpan.FromMinutes(2);
     public IReadOnlyList<TimeSpan> RetryDelays { get; init; } =
         [TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10),
@@ -49,23 +53,42 @@ public sealed record CatalogResumableDownload(
     string ArchiveFilePath = "");
 
 /// <summary>
-/// Persistent, resumable downloader. Network interruptions are retried with an
-/// HTTP Range request; pausing or closing the application keeps the partial
-/// package. Only Discard removes the partial data.
+/// Persistent downloader whose durable authority is an artifact descriptor,
+/// never a URL. Every network attempt asks the request provider for a fresh,
+/// authenticated GET; the request and its proof live in memory only.
 /// </summary>
 public sealed class CatalogDownloadService : IDisposable
 {
     private const string ResumeSuffix = ".resume.json";
+    private const string LockSuffix = ".download.lock";
+    private const int ResumeSchemaVersion = 2;
     private const int BufferSize = 128 * 1024;
+    private const int MaximumMetadataBytes = 64 * 1024;
+    private const int MaximumImmediateRestarts = 2;
+    private const uint GenericRead = 0x80000000;
+    private const uint GenericWrite = 0x40000000;
+    private const uint FileShareRead = 0x00000001;
+    private const uint FileShareWrite = 0x00000002;
+    private const uint CreateNewDisposition = 1;
+    private const uint OpenExistingDisposition = 3;
+    private const uint OpenAlwaysDisposition = 4;
+    private const uint FileAttributeNormal = 0x00000080;
+    private const uint FileFlagWriteThrough = 0x80000000;
+    private const uint FileFlagOverlapped = 0x40000000;
+    private const uint FileFlagSequentialScan = 0x08000000;
+    private const uint FileFlagBackupSemantics = 0x02000000;
+    private const uint FileFlagOpenReparsePoint = 0x00200000;
     private static readonly TimeSpan MaximumRetryDelay = TimeSpan.FromMinutes(5);
 
     private static readonly JsonSerializerOptions ResumeJsonOptions = new()
     {
-        PropertyNameCaseInsensitive = true,
-        WriteIndented = true
+        PropertyNameCaseInsensitive = false,
+        WriteIndented = true,
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
     };
 
     private readonly HttpClient _httpClient;
+    private readonly ICatalogDownloadRequestProvider _requestProvider;
     private readonly CatalogDownloadOptions _options;
     private readonly bool _ownsHttpClient;
     private readonly SemaphoreSlim _downloadQueue = new(1, 1);
@@ -76,21 +99,38 @@ public sealed class CatalogDownloadService : IDisposable
     private bool _ownedResourcesDisposed;
 
     public CatalogDownloadService(CatalogDownloadOptions? options = null)
-        : this(CreateHttpClient(), options, ownsHttpClient: true)
+        : this(CreateHttpClient(), FailClosedRequestProvider.Instance, options, ownsHttpClient: true)
     {
     }
 
-    public CatalogDownloadService(HttpClient httpClient, CatalogDownloadOptions? options = null)
-        : this(httpClient, options, ownsHttpClient: false)
+    public CatalogDownloadService(
+        ICatalogDownloadRequestProvider requestProvider,
+        CatalogDownloadOptions? options = null)
+        : this(CreateHttpClient(), requestProvider, options, ownsHttpClient: true)
+    {
+    }
+
+    internal CatalogDownloadService(HttpClient httpClient, CatalogDownloadOptions? options = null)
+        : this(httpClient, FailClosedRequestProvider.Instance, options, ownsHttpClient: false)
+    {
+    }
+
+    internal CatalogDownloadService(
+        HttpClient httpClient,
+        ICatalogDownloadRequestProvider requestProvider,
+        CatalogDownloadOptions? options = null)
+        : this(httpClient, requestProvider, options, ownsHttpClient: false)
     {
     }
 
     private CatalogDownloadService(
         HttpClient httpClient,
+        ICatalogDownloadRequestProvider requestProvider,
         CatalogDownloadOptions? options,
         bool ownsHttpClient)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _requestProvider = requestProvider ?? throw new ArgumentNullException(nameof(requestProvider));
         _options = options ?? new CatalogDownloadOptions();
         _ownsHttpClient = ownsHttpClient;
 
@@ -103,74 +143,90 @@ public sealed class CatalogDownloadService : IDisposable
         if (_options.RetryDelays.Count == 0
             || _options.RetryDelays.Any(delay => delay < TimeSpan.Zero || delay > MaximumRetryDelay))
             throw new ArgumentOutOfRangeException(nameof(options), "Configure pelo menos um intervalo de nova tentativa.");
+        if (_options.AllowedHosts.Count == 0
+            || _options.AllowedHosts.Any(host => string.IsNullOrWhiteSpace(host)))
+            throw new ArgumentOutOfRangeException(nameof(options), "Configure pelo menos um host autorizado.");
     }
 
     public bool IsActive(string itemId) => _active.ContainsKey(itemId);
 
-    /// <summary>Pauses a transfer without removing its partial file.</summary>
     public bool Pause(string itemId)
     {
         if (!_active.TryGetValue(itemId, out var active)) return false;
-        active.PauseRequested = true;
-        active.Metadata.IsPaused = true;
-        if (!TrySaveResumeMetadata(active))
+        lock (active.MetadataGate)
         {
-            active.PauseRequested = false;
-            active.Metadata.IsPaused = false;
-            return false;
+            if (active.IsDisposed) return false;
+            active.PauseRequested = true;
+            active.Metadata.IsPaused = true;
+            if (!TrySaveResumeMetadata(active))
+            {
+                active.PauseRequested = false;
+                active.Metadata.IsPaused = false;
+                return false;
+            }
+            try
+            {
+                active.Cancellation.Cancel();
+                return true;
+            }
+            catch (ObjectDisposedException)
+            {
+                return false;
+            }
         }
-        active.Cancellation.Cancel();
-        return true;
     }
 
-    // Compatibility with the previous UI: cancellation now means pause.
     public bool Cancel(string itemId) => Pause(itemId);
 
-    /// <summary>
-    /// Explicitly removes a partial or downloaded package. This is deliberately
-    /// separate from Pause so an accidental interruption never loses progress.
-    /// </summary>
     public bool Discard(CatalogItem item, string installationRoot)
     {
         ArgumentNullException.ThrowIfNull(item);
-
-        // The UI deliberately requires Pause first. This avoids a terminal race
-        // between publishing the completed file and trying to erase it.
         if (_active.ContainsKey(item.Id)) return false;
 
         try
         {
-            var canonicalRoot = Path.GetFullPath(installationRoot);
-            var savedStates = FindResumeFileSets(canonicalRoot, item.Id);
+            var artifact = RequireValidArtifact(item);
+            var canonicalRoot = ValidateInstallationRoot(installationRoot);
+            var canonicalDestinationPath = BuildSafeDestinationPath(canonicalRoot, item);
+            var savedStates = FindResumeFileSets(canonicalRoot)
+                .Where(saved => MetadataMatchesArtifact(saved.Metadata, artifact)
+                                && PathsEqual(saved.DestinationPath, canonicalDestinationPath))
+                .ToArray();
+
+            if (savedStates.Length == 0)
+            {
+                var destinationPath = canonicalDestinationPath;
+                if (!File.Exists(destinationPath)
+                    && !File.Exists(destinationPath + ".part")
+                    && !File.Exists(destinationPath + ".part" + ResumeSuffix))
+                {
+                    item.DiscardDownload();
+                    return true;
+                }
+                savedStates =
+                [new ResumeFileSet(
+                    destinationPath + ".part" + ResumeSuffix,
+                    destinationPath + ".part",
+                    destinationPath,
+                    CreateMetadata(item, artifact))];
+            }
+
             foreach (var saved in savedStates)
             {
-                if (!TryDiscardFileSet(saved, canonicalRoot, out var failure))
-                    throw new IOException(failure);
-            }
-
-            if (savedStates.Count == 0
-                && Uri.TryCreate(item.DownloadUrl, UriKind.Absolute, out var candidateUri))
-            {
-                var sourceUri = ValidateSourceUri(candidateUri.AbsoluteUri);
-                var destinationPath = BuildSafeDestinationPath(canonicalRoot, item, sourceUri);
-                var partialPath = destinationPath + ".part";
-                EnsureNoReparsePoints(canonicalRoot, destinationPath);
-                EnsureNoReparsePoints(canonicalRoot, partialPath);
-                EnsureNoReparsePoints(canonicalRoot, partialPath + ResumeSuffix);
-                if (!TryDeleteFileStrict(partialPath, out var failure)
-                    || !TryDeletePreservedPartialsStrict(partialPath, out failure)
-                    || !TryDeleteFileStrict(partialPath + ResumeSuffix, out failure))
-                    throw new IOException(failure);
-            }
-
-            if (!string.IsNullOrWhiteSpace(item.ArchiveFilePath))
-            {
-                var archivePath = Path.GetFullPath(item.ArchiveFilePath);
-                if (!IsWithinRoot(archivePath, canonicalRoot))
-                    throw new InvalidDataException("O pacote salvo está fora da pasta autorizada.");
-                EnsureNoReparsePoints(canonicalRoot, archivePath);
-                if (!TryDeleteFileStrict(archivePath, out var failure))
-                    throw new IOException(failure);
+                using var pathLease = PathIdentity.OpenDirectoryTree(
+                    Path.GetDirectoryName(saved.DestinationPath)!);
+                FileStream? artifactLock = null;
+                try
+                {
+                    artifactLock = AcquireArtifactLock(saved.DestinationPath, pathLease);
+                    pathLease.Revalidate();
+                    if (!TryDiscardFileSet(saved, canonicalRoot, out var failure))
+                        throw new IOException(failure);
+                }
+                finally
+                {
+                    DisposeArtifactLock(artifactLock, saved.DestinationPath);
+                }
             }
 
             item.DiscardDownload();
@@ -179,67 +235,170 @@ public sealed class CatalogDownloadService : IDisposable
         catch (Exception exception) when (exception is IOException
                                            or UnauthorizedAccessException
                                            or InvalidDataException
-                                           or UriFormatException)
+                                           or ArgumentException
+                                           or NotSupportedException)
         {
-            item.SetDownloadState(CatalogDownloadState.Failed, exception.Message);
+            item.SetDownloadState(CatalogDownloadState.Failed, SafeLocalFailure(exception));
             return false;
         }
     }
 
-    /// <summary>Removes only the state record after a successful extraction.</summary>
-    public bool MarkExtractionCompleted(
+    public async Task<bool> MarkExtractionCompletedAsync(
         CatalogItem item,
         string installationRoot,
-        string archivePath)
+        string archivePath,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(item);
+        cancellationToken.ThrowIfCancellationRequested();
         try
         {
+            var artifact = RequireValidArtifact(item);
+            if (artifact.ExtractPolicy != CatalogExtractPolicy.ExtractArchive) return false;
+            var canonicalRoot = ValidateInstallationRoot(installationRoot);
             var canonicalArchivePath = Path.GetFullPath(archivePath);
-            var savedStates = FindResumeFileSets(installationRoot, item.Id);
-            var matchingStates = savedStates.Where(state =>
-                    state.Metadata.ArchiveReady
-                    && Path.GetFullPath(state.DestinationPath).Equals(
-                        canonicalArchivePath,
-                        StringComparison.OrdinalIgnoreCase))
-                .ToArray();
-            if (matchingStates.Length == 0) return false;
+            if (!IsWithinRoot(canonicalArchivePath, canonicalRoot)) return false;
+            var canonicalDestinationPath = BuildSafeDestinationPath(canonicalRoot, item);
+            if (!PathsEqual(canonicalArchivePath, canonicalDestinationPath)) return false;
 
-            foreach (var saved in matchingStates)
+            var matching = await Task.Run(
+                    () => FindResumeFileSets(canonicalRoot, cancellationToken)
+                        .Where(saved => MetadataMatchesArtifact(saved.Metadata, artifact)
+                                        && saved.DestinationPath.Equals(
+                                            canonicalArchivePath,
+                                            StringComparison.OrdinalIgnoreCase))
+                        .ToArray(),
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (matching.Length == 0) return false;
+
+            foreach (var saved in matching)
             {
-                EnsureNoReparsePoints(installationRoot, saved.MetadataPath);
-                EnsureNoReparsePoints(installationRoot, canonicalArchivePath);
-                if (!TryDeleteFileStrict(saved.MetadataPath, out _)) return false;
+                cancellationToken.ThrowIfCancellationRequested();
+                using var pathLease = PathIdentity.OpenDirectoryTree(
+                    Path.GetDirectoryName(saved.DestinationPath)!);
+                FileStream? artifactLock = null;
+                try
+                {
+                    artifactLock = AcquireArtifactLock(saved.DestinationPath, pathLease);
+                    if (!await ValidateFileWithLeaseAsync(
+                            canonicalArchivePath,
+                            artifact,
+                            pathLease,
+                            cancellationToken).ConfigureAwait(false)) return false;
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (!TryDeleteFileStrict(saved.MetadataPath, canonicalRoot, out _)) return false;
+                }
+                finally
+                {
+                    DisposeArtifactLock(artifactLock, saved.DestinationPath);
+                }
             }
             return true;
         }
         catch (Exception exception) when (exception is IOException
                                            or UnauthorizedAccessException
                                            or InvalidDataException
-                                           or UriFormatException
-                                           or ArgumentException)
+                                           or ArgumentException
+                                           or NotSupportedException
+                                           or CryptographicException)
         {
             return false;
         }
     }
 
-    public IReadOnlyList<CatalogResumableDownload> DiscoverResumableDownloads(string installationRoot)
+    /// <summary>
+    /// Lists partial transfers only. A ready archive is not trusted without an
+    /// authorized catalog descriptor; use the overload accepting catalog items
+    /// when ready archives must be restored for extraction.
+    /// </summary>
+    public IReadOnlyList<CatalogResumableDownload> DiscoverResumableDownloads(
+        string installationRoot) => DiscoverResumableDownloadsCore(
+            installationRoot,
+            [],
+            requireAuthorizedDescriptor: false,
+            CancellationToken.None);
+
+    public IReadOnlyList<CatalogResumableDownload> DiscoverResumableDownloads(
+        string installationRoot,
+        IEnumerable<CatalogItem> authorizedItems) => DiscoverResumableDownloads(
+            installationRoot,
+            authorizedItems,
+            CancellationToken.None);
+
+    public IReadOnlyList<CatalogResumableDownload> DiscoverResumableDownloads(
+        string installationRoot,
+        IEnumerable<CatalogItem> authorizedItems,
+        CancellationToken cancellationToken) => DiscoverResumableDownloadsCore(
+            installationRoot,
+            authorizedItems,
+            requireAuthorizedDescriptor: true,
+            cancellationToken);
+
+    private List<CatalogResumableDownload> DiscoverResumableDownloadsCore(
+        string installationRoot,
+        IEnumerable<CatalogItem> authorizedItems,
+        bool requireAuthorizedDescriptor,
+        CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(authorizedItems);
+        cancellationToken.ThrowIfCancellationRequested();
         var canonicalRoot = Path.GetFullPath(installationRoot);
-        var records = new List<CatalogResumableDownload>();
-        foreach (var saved in FindResumeFileSets(canonicalRoot))
+        var authorized = new Dictionary<
+            string,
+            (string ItemId, CatalogArtifactDescriptor Artifact, string DestinationPath)>(
+            StringComparer.Ordinal);
+        foreach (var item in authorizedItems)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (item.Artifact is null) continue;
             try
             {
-                if (saved.Metadata.ArchiveReady
-                    && !File.Exists(saved.PartialPath)
-                    && File.Exists(saved.DestinationPath))
+                ValidateArtifact(item.Artifact);
+                authorized[CreateArtifactIdentity(item.Artifact)] = (
+                    item.Id,
+                    item.Artifact,
+                    BuildSafeDestinationPath(canonicalRoot, item));
+            }
+            catch (Exception exception) when (exception is IOException
+                                               or UnauthorizedAccessException
+                                               or InvalidDataException
+                                               or ArgumentException
+                                               or NotSupportedException)
+            {
+                // Invalid catalog entries cannot authorize durable state.
+            }
+        }
+
+        var records = new List<CatalogResumableDownload>();
+        foreach (var saved in FindResumeFileSets(canonicalRoot, cancellationToken))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                var identity = CreateArtifactIdentity(saved.Metadata);
+                var isAuthorized = authorized.TryGetValue(identity, out var authorization)
+                                   && MetadataMatchesArtifact(
+                                       saved.Metadata,
+                                       authorization.Artifact)
+                                   && PathsEqual(
+                                       saved.DestinationPath,
+                                       authorization.DestinationPath);
+                if (requireAuthorizedDescriptor && !isAuthorized) continue;
+                var itemId = isAuthorized ? authorization.ItemId : saved.Metadata.ItemId;
+                var ready = isAuthorized
+                            && saved.Metadata.ArchiveReady
+                            && !File.Exists(saved.PartialPath)
+                            && ValidateFile(
+                                saved.DestinationPath,
+                                authorization.Artifact,
+                                cancellationToken);
+                if (ready)
                 {
-                    var length = new FileInfo(saved.DestinationPath).Length;
                     records.Add(new CatalogResumableDownload(
-                        saved.Metadata.ItemId,
-                        length,
-                        saved.Metadata.TotalBytes is > 0 ? saved.Metadata.TotalBytes : length,
+                        itemId,
+                        authorization.Artifact.ContentLength,
+                        authorization.Artifact.ContentLength,
                         true,
                         true,
                         saved.DestinationPath));
@@ -250,21 +409,20 @@ public sealed class CatalogDownloadService : IDisposable
                     ? new FileInfo(saved.PartialPath).Length
                     : 0;
                 records.Add(new CatalogResumableDownload(
-                    saved.Metadata.ItemId,
-                    bytes,
-                    saved.Metadata.TotalBytes is > 0 ? saved.Metadata.TotalBytes : null,
+                    itemId,
+                    Math.Min(bytes, saved.Metadata.ContentLength),
+                    saved.Metadata.ContentLength,
                     saved.Metadata.IsPaused));
             }
             catch (Exception exception) when (exception is IOException
                                                or UnauthorizedAccessException
-                                               or JsonException
-                                               or ArgumentException)
+                                               or InvalidDataException
+                                               or ArgumentException
+                                               or CryptographicException)
             {
-                // A damaged sidecar cannot be trusted and is ignored. The .part
-                // remains untouched so the user can still recover it manually.
+                // An untrusted sidecar never authorizes a completed artifact.
             }
         }
-
         return records;
     }
 
@@ -275,50 +433,60 @@ public sealed class CatalogDownloadService : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(item);
-
-        Uri sourceUri;
-        string destinationPath;
-        try
+        if (cancellationToken.IsCancellationRequested)
         {
-            if (string.IsNullOrWhiteSpace(item.DownloadUrl))
-                throw new InvalidDataException("Nenhum endereço autorizado foi configurado. Nada foi baixado.");
-            sourceUri = ValidateSourceUri(item.DownloadUrl);
-            if (!Directory.Exists(installationRoot))
-                throw new InvalidDataException("A pasta de instalação não existe. Escolha uma pasta válida.");
-            destinationPath = BuildSafeDestinationPath(installationRoot, item, sourceUri);
-        }
-        catch (Exception exception) when (exception is InvalidDataException
-                                           or UriFormatException
-                                           or IOException
-                                           or UnauthorizedAccessException)
-        {
-            item.SetDownloadState(CatalogDownloadState.Failed, exception.Message);
-            return new CatalogDownloadResult(CatalogDownloadState.Failed, exception.Message);
+            item.PauseDownload("Operação cancelada antes de iniciar — nenhum progresso foi perdido");
+            return new CatalogDownloadResult(
+                CatalogDownloadState.Paused,
+                "Operação cancelada; nenhum progresso foi perdido.");
         }
 
+        CatalogArtifactDescriptor artifact;
+        string canonicalRoot;
+        string destinationPath = string.Empty;
         string partialPath;
         string metadataPath;
         DownloadResumeMetadata metadata;
+        FileStream? artifactLock = null;
+        PathIdentity.DirectoryTreeLease? pathLease = null;
         try
         {
-            var reusable = FindResumeFileSets(
-                    installationRoot,
-                    item.Id,
-                    CreateSourceFingerprint(sourceUri))
-                .OrderByDescending(candidate => candidate.Metadata.UpdatedUtc)
+            artifact = RequireValidArtifact(item);
+            canonicalRoot = ValidateInstallationRoot(installationRoot);
+            destinationPath = BuildSafeDestinationPath(canonicalRoot, item);
+
+            var reusable = FindResumeFileSets(canonicalRoot, cancellationToken)
+                .Where(saved => MetadataMatchesArtifact(saved.Metadata, artifact)
+                                && PathsEqual(saved.DestinationPath, destinationPath))
+                .OrderByDescending(saved => saved.Metadata.UpdatedUtc)
                 .FirstOrDefault();
             if (reusable is not null) destinationPath = reusable.DestinationPath;
 
             partialPath = destinationPath + ".part";
             metadataPath = partialPath + ResumeSuffix;
-            EnsureNoReparsePoints(
-                installationRoot,
-                Path.GetDirectoryName(destinationPath)!);
-            Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
-            EnsureNoReparsePoints(
-                installationRoot,
-                Path.GetDirectoryName(destinationPath)!);
-            metadata = LoadMatchingMetadata(metadataPath, item, sourceUri, destinationPath, partialPath);
+            var destinationDirectory = Path.GetDirectoryName(destinationPath)!;
+            if (!IsWithinRoot(destinationDirectory, canonicalRoot))
+                throw new InvalidDataException("O diretório do artefato saiu da raiz autorizada.");
+            pathLease = PathIdentity.OpenDirectoryTree(
+                destinationDirectory,
+                createIfMissing: true);
+            pathLease.Revalidate();
+            artifactLock = AcquireArtifactLock(destinationPath, pathLease);
+            metadata = LoadMatchingMetadata(
+                metadataPath,
+                item,
+                artifact,
+                partialPath,
+                pathLease);
+        }
+        catch (OperationCanceledException)
+        {
+            DisposeArtifactLock(artifactLock, destinationPath);
+            pathLease?.Dispose();
+            item.PauseDownload("Operação cancelada antes da transferência — o progresso foi preservado");
+            return new CatalogDownloadResult(
+                CatalogDownloadState.Paused,
+                "Operação cancelada; o progresso salvo foi preservado.");
         }
         catch (Exception exception) when (exception is IOException
                                            or UnauthorizedAccessException
@@ -326,22 +494,17 @@ public sealed class CatalogDownloadService : IDisposable
                                            or ArgumentException
                                            or NotSupportedException)
         {
-            item.SetDownloadState(CatalogDownloadState.Failed, exception.Message);
-            return new CatalogDownloadResult(
-                CatalogDownloadState.Failed,
-                $"Não foi possível preparar o download: {exception.Message}");
+            DisposeArtifactLock(artifactLock, destinationPath);
+            pathLease?.Dispose();
+            var message = SafeLocalFailure(exception);
+            item.SetDownloadState(CatalogDownloadState.Failed, message);
+            return new CatalogDownloadResult(CatalogDownloadState.Failed, message);
         }
-
-        if (metadata.ArchiveReady
-            && !File.Exists(partialPath)
-            && File.Exists(destinationPath))
+        catch
         {
-            if (item.Extract) item.MarkArchiveReady(destinationPath);
-            else item.CompleteDownload(destinationPath);
-            return new CatalogDownloadResult(
-                CatalogDownloadState.Completed,
-                "O pacote já foi baixado e está pronto para extrair.",
-                destinationPath);
+            DisposeArtifactLock(artifactLock, destinationPath);
+            pathLease?.Dispose();
+            throw;
         }
 
         metadata.IsPaused = false;
@@ -350,8 +513,10 @@ public sealed class CatalogDownloadService : IDisposable
             metadataPath,
             partialPath,
             destinationPath,
-            Path.GetFullPath(installationRoot),
-            metadata);
+            canonicalRoot,
+            metadata,
+            artifactLock!,
+            pathLease!);
 
         var rejectedBecauseDisposed = false;
         var added = false;
@@ -379,45 +544,51 @@ public sealed class CatalogDownloadService : IDisposable
 
         try
         {
-            EnsureNoReparsePoints(active.InstallationRoot, partialPath);
-            // A zero-byte partial makes a queued/offline transfer discoverable
-            // even if the first response never delivers payload bytes.
-            using var durablePartial = new FileStream(
-                partialPath,
-                FileMode.OpenOrCreate,
-                FileAccess.Write,
-                FileShare.Read);
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            FinishActiveDownload(item.Id, active);
-            item.SetDownloadState(CatalogDownloadState.Failed, exception.Message);
-            return new CatalogDownloadResult(
-                CatalogDownloadState.Failed,
-                $"Não foi possível preparar a retomada: {exception.Message}");
-        }
+            if (await TryCompleteExistingArtifactAsync(item, artifact, active))
+                return CompleteResult(item, active.DestinationPath, artifact);
 
-        var existingBytes = File.Exists(partialPath) ? new FileInfo(partialPath).Length : 0;
-        item.RestoreDownload(existingBytes, metadata.TotalBytes, isPaused: false);
+            EnsureNoReparsePoints(canonicalRoot, partialPath);
+            long existingBytes;
+            await using (var durablePartial = OpenValidatedMutableFile(
+                             partialPath,
+                             canonicalRoot,
+                             FileMode.OpenOrCreate,
+                             asynchronous: true))
+            {
+                if (durablePartial.Length > artifact.ContentLength)
+                    throw new InvalidDataException("O arquivo parcial excede o tamanho autorizado.");
+                existingBytes = durablePartial.Length;
+            }
 
-        try
-        {
+            item.RestoreDownload(existingBytes, artifact.ContentLength, isPaused: false);
             if (!TrySaveResumeMetadata(active))
                 throw new IOException("Não foi possível salvar o estado persistente do download.");
 
             var retryNumber = 0;
+            var immediateRestarts = 0;
             while (true)
             {
                 active.Cancellation.Token.ThrowIfCancellationRequested();
                 var queueEntered = false;
                 try
                 {
-                    item.SetDownloadState(CatalogDownloadState.Queued,
-                        existingBytes > 0 ? "Aguardando na fila para continuar" : "Aguardando na fila");
+                    var currentBytes = File.Exists(partialPath)
+                        ? new FileInfo(partialPath).Length
+                        : 0;
+                    item.SetDownloadState(
+                        CatalogDownloadState.Queued,
+                        currentBytes > 0 ? "Aguardando na fila para continuar" : "Aguardando na fila");
                     await _downloadQueue.WaitAsync(active.Cancellation.Token);
                     queueEntered = true;
-                    await DownloadAttemptAsync(item, sourceUri, active);
+                    await DownloadAttemptAsync(item, artifact, active);
                     break;
+                }
+                catch (RestartDownloadException)
+                {
+                    immediateRestarts++;
+                    if (immediateRestarts > MaximumImmediateRestarts)
+                        throw new InvalidDataException("O servidor não respeitou o contrato de retomada.");
+                    ResetPartialForFreshAttempt(active);
                 }
                 catch (TransientDownloadException exception)
                 {
@@ -437,9 +608,7 @@ public sealed class CatalogDownloadService : IDisposable
                         _downloadQueue.Release();
                         queueEntered = false;
                     }
-
                     await Task.Delay(retryDelay, active.Cancellation.Token);
-                    existingBytes = File.Exists(partialPath) ? new FileInfo(partialPath).Length : 0;
                 }
                 finally
                 {
@@ -447,47 +616,34 @@ public sealed class CatalogDownloadService : IDisposable
                 }
             }
 
-            if (item.Extract)
-                item.MarkArchiveReady(destinationPath);
-            else
-                item.CompleteDownload(destinationPath);
-
-            return new CatalogDownloadResult(
-                CatalogDownloadState.Completed,
-                item.Extract
-                    ? $"Download concluído: {Path.GetFileName(destinationPath)}. Iniciando extração."
-                    : $"Download concluído e verificado: {Path.GetFileName(destinationPath)}",
-                destinationPath);
+            return CompleteResult(item, active.DestinationPath, artifact);
         }
         catch (OperationCanceledException)
         {
             metadata.IsPaused = !active.ShutdownRequested;
             TrySaveResumeMetadata(active);
             var bytes = File.Exists(partialPath) ? new FileInfo(partialPath).Length : 0;
-            item.UpdateDownloadProgress(bytes, metadata.TotalBytes);
+            item.UpdateDownloadProgress(bytes, artifact.ContentLength);
             item.PauseDownload(active.ShutdownRequested
-                ? "Programa fechado — o download continuará automaticamente ao abrir novamente"
+                ? "Programa fechado — o download continuará ao abrir novamente"
                 : "Download pausado — o progresso foi preservado");
             return new CatalogDownloadResult(
                 CatalogDownloadState.Paused,
-                "Download pausado. Todo o progresso foi preservado.",
-                partialPath);
+                "Download pausado; o arquivo parcial foi preservado.");
         }
         catch (Exception exception) when (exception is HttpRequestException
                                            or IOException
-                                           or InvalidDataException
                                            or UnauthorizedAccessException
+                                           or InvalidDataException
                                            or CryptographicException)
         {
-            metadata.IsPaused = true;
+            metadata.IsPaused = false;
             TrySaveResumeMetadata(active);
             var bytes = File.Exists(partialPath) ? new FileInfo(partialPath).Length : 0;
-            item.UpdateDownloadProgress(bytes, metadata.TotalBytes);
-            item.SetDownloadState(CatalogDownloadState.Failed, exception.Message);
-            return new CatalogDownloadResult(
-                CatalogDownloadState.Failed,
-                $"Falha no download: {exception.Message}",
-                partialPath);
+            item.UpdateDownloadProgress(bytes, artifact.ContentLength);
+            var message = SafeDownloadFailure(exception);
+            item.SetDownloadState(CatalogDownloadState.Failed, message);
+            return new CatalogDownloadResult(CatalogDownloadState.Failed, message);
         }
         finally
         {
@@ -495,317 +651,521 @@ public sealed class CatalogDownloadService : IDisposable
         }
     }
 
-    public string BuildSafeDestinationPath(string installationRoot, CatalogItem item, Uri sourceUri)
+    public string BuildSafeDestinationPath(string installationRoot, CatalogItem item)
     {
+        ArgumentNullException.ThrowIfNull(item);
+        var artifact = RequireValidArtifact(item);
         var canonicalRoot = Path.GetFullPath(installationRoot);
-        var categorySegment = SanitizePathSegment(item.CategoryId);
-        var titleSegment = SanitizePathSegment(
-            string.IsNullOrWhiteSpace(item.Title) ? item.Id : item.Title);
-        if (titleSegment.Length > 72) titleSegment = titleSegment[..72].TrimEnd('-');
-        var idSegment = SanitizePathSegment(item.Id);
-        var idHash = Convert.ToHexString(SHA256.HashData(
-                System.Text.Encoding.UTF8.GetBytes(item.Id)))
-            [..12]
-            .ToLowerInvariant();
-        var itemSegment = $"{titleSegment}-{idSegment}-{idHash}";
-        var extension = ResolveSafeExtension(item.DownloadFileExtension, sourceUri);
-        var useGameLibraryLayout = !item.CategoryId.Equals(
-                                       "system-tools",
-                                       StringComparison.OrdinalIgnoreCase)
-                                   && CatalogArchiveExtractor.IsGameLibraryRoot(canonicalRoot);
-        var gameTitleSegment = titleSegment.Length > 48
-            ? titleSegment[..48].TrimEnd('-')
-            : titleSegment;
-        var gameItemFolder = $"{gameTitleSegment}-{idHash}";
-        var gameFileName = $"{idSegment}-{idHash}{extension}";
-        var destination = useGameLibraryLayout
-            ? Path.GetFullPath(Path.Combine(
-                canonicalRoot,
-                categorySegment,
-                gameItemFolder,
-                gameFileName))
-            : Path.GetFullPath(Path.Combine(
-                canonicalRoot,
-                "Turborama",
-                "Downloads",
-                categorySegment,
-                itemSegment + extension));
-
-        if (!IsWithinRoot(destination, canonicalRoot))
+        var packageRoot = Path.Combine(canonicalRoot, "artifacts");
+        var artifactFolder = SanitizePathSegment(artifact.ArtifactId, 96);
+        var versionFolder = artifact.ArtifactVersion.ToString(CultureInfo.InvariantCulture);
+        var fileName = artifact.SafeFileName;
+        var destinationPath = Path.GetFullPath(
+            Path.Combine(packageRoot, artifactFolder, versionFolder, fileName));
+        if (!IsWithinRoot(destinationPath, canonicalRoot))
             throw new InvalidDataException("O destino calculado saiu da pasta autorizada.");
-        return destination;
+        EnsureNoReparsePoints(canonicalRoot, Path.GetDirectoryName(destinationPath)!);
+        return destinationPath;
     }
 
-    private async Task DownloadAttemptAsync(CatalogItem item, Uri sourceUri, ActiveDownload active)
+    // Compatibility overload for UI code being migrated. The transport URI is
+    // ignored deliberately and cannot influence the destination or authority.
+    public string BuildSafeDestinationPath(string installationRoot, CatalogItem item, Uri sourceUri)
+    {
+        ArgumentNullException.ThrowIfNull(sourceUri);
+        return BuildSafeDestinationPath(installationRoot, item);
+    }
+
+    private static async Task<bool> TryCompleteExistingArtifactAsync(
+        CatalogItem item,
+        CatalogArtifactDescriptor artifact,
+        ActiveDownload active)
+    {
+        EnsureNoReparsePoints(active.InstallationRoot, active.DestinationPath);
+        EnsureNoReparsePoints(active.InstallationRoot, active.PartialPath);
+        if (File.Exists(active.DestinationPath))
+        {
+            if (await ValidateFileWithLeaseAsync(
+                    active.DestinationPath,
+                    artifact,
+                    active.PathLease,
+                    active.Cancellation.Token))
+            {
+                active.Metadata.ArchiveReady = artifact.ExtractPolicy == CatalogExtractPolicy.ExtractArchive;
+                if (active.Metadata.ArchiveReady)
+                {
+                    if (!TrySaveResumeMetadata(active))
+                        throw new IOException("Não foi possível registrar o pacote verificado.");
+                }
+                else
+                {
+                    DeleteExactFile(active.MetadataPath);
+                }
+                SetCompletedItem(item, active.DestinationPath, artifact);
+                return true;
+            }
+
+            PreserveFileByHandle(active.DestinationPath, active.PathLease);
+            active.Metadata.ArchiveReady = false;
+            TrySaveResumeMetadata(active);
+        }
+
+        if (!File.Exists(active.PartialPath)) return false;
+        var partialLength = GetValidatedMutableFileLength(
+            active.PartialPath,
+            active.PathLease);
+        if (partialLength > artifact.ContentLength)
+        {
+            PreserveFileByHandle(active.PartialPath, active.PathLease);
+            active.Metadata.ArchiveReady = false;
+            TrySaveResumeMetadata(active);
+            return false;
+        }
+
+        if (partialLength != artifact.ContentLength) return false;
+        item.BeginVerification();
+        if (!await ValidateFileWithLeaseAsync(
+                active.PartialPath,
+                artifact,
+                active.PathLease,
+                active.Cancellation.Token))
+        {
+            PreserveFileByHandle(active.PartialPath, active.PathLease);
+            active.Metadata.ArchiveReady = false;
+            TrySaveResumeMetadata(active);
+            return false;
+        }
+
+        await PublishVerifiedPartialAsync(item, artifact, active);
+        return true;
+    }
+
+    private async Task DownloadAttemptAsync(
+        CatalogItem item,
+        CatalogArtifactDescriptor artifact,
+        ActiveDownload active)
     {
         EnsureNoReparsePoints(active.InstallationRoot, active.PartialPath);
         EnsureNoReparsePoints(active.InstallationRoot, active.DestinationPath);
-        var offset = File.Exists(active.PartialPath) ? new FileInfo(active.PartialPath).Length : 0;
-        if (offset > _options.MaximumFileSizeBytes)
-            throw new InvalidDataException("O arquivo parcial excede o limite seguro configurado.");
-
-        using var response = await SendWithSafeRedirectsAsync(
-            sourceUri,
-            offset,
-            active.Metadata,
-            active.Cancellation.Token);
-
-        if (response.StatusCode == HttpStatusCode.RequestedRangeNotSatisfiable)
-        {
-            var remoteLength = response.Content.Headers.ContentRange?.Length;
-            var hasReliableIdentity = !string.IsNullOrWhiteSpace(item.Sha256)
-                                      || !string.IsNullOrWhiteSpace(active.Metadata.ETag)
-                                      || !string.IsNullOrWhiteSpace(active.Metadata.LastModified);
-            if (offset > 0
-                && remoteLength == offset
-                && active.Metadata.TotalBytes == offset
-                && hasReliableIdentity)
-            {
-                ValidateResumeValidator(active.Metadata, response);
-                await VerifyAndFinalizeAsync(item, active, offset, active.Cancellation.Token);
-                return;
-            }
-
-            if (offset > 0)
-            {
-                PreservePartialBeforeRestart(active.PartialPath);
-                active.Metadata.ETag = string.Empty;
-                active.Metadata.LastModified = string.Empty;
-                active.Metadata.TotalBytes = null;
-                active.Metadata.ArchiveReady = false;
-                active.Metadata.IsPaused = false;
-                if (!TrySaveResumeMetadata(active))
-                    throw new IOException("Não foi possível registrar o reinício seguro do download.");
-                throw new TransientDownloadException(
-                    "O arquivo remoto mudou; o parcial antigo foi preservado e o download será reiniciado.",
-                    TimeSpan.Zero);
-            }
-
-            throw new InvalidDataException("O servidor recusou a retomada porque o arquivo remoto mudou.");
-        }
-
-        if (IsTransientStatus(response.StatusCode))
-            throw new TransientDownloadException(
-                $"O servidor respondeu {(int)response.StatusCode}.",
-                GetRetryAfter(response));
-
-        if (response.StatusCode is not (HttpStatusCode.OK or HttpStatusCode.PartialContent))
-            throw new InvalidDataException(
-                $"O servidor recusou o download (HTTP {(int)response.StatusCode}).");
-
-        var append = response.StatusCode == HttpStatusCode.PartialContent;
-        long? totalBytes;
-        if (append)
-        {
-            var range = response.Content.Headers.ContentRange;
-            if (range?.From != offset || !string.Equals(range.Unit, "bytes", StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException("O servidor retornou uma faixa incompatível com o arquivo parcial.");
-            totalBytes = range.Length;
-            if (totalBytes is not > 0)
-                throw new InvalidDataException("O servidor não informou o tamanho total ao retomar.");
-
-            ValidateResumeValidator(active.Metadata, response);
-        }
-        else
-        {
-            // A 200 response to a Range request means the server ignored Range
-            // or the validator changed. Preserve the old partial before safely
-            // restarting, so even this exceptional case does not erase data.
-            if (offset > 0) PreservePartialBeforeRestart(active.PartialPath);
-            offset = 0;
-            totalBytes = response.Content.Headers.ContentLength;
-        }
-
-        if (totalBytes == 0 || response.Content.Headers.ContentLength == 0)
-            throw new InvalidDataException("O servidor retornou um arquivo vazio. O link precisa ser corrigido.");
-        if (totalBytes > _options.MaximumFileSizeBytes)
-            throw new InvalidDataException("O arquivo excede o limite seguro configurado.");
-
-        var responseStrongEtag = response.Headers.ETag is { IsWeak: false } strongEtag
-            ? strongEtag.ToString()
-            : string.Empty;
-        var responseLastModified = response.Content.Headers.LastModified?.ToString("R", CultureInfo.InvariantCulture)
-                                   ?? string.Empty;
-        if (!append)
-        {
-            active.Metadata.ETag = responseStrongEtag;
-            active.Metadata.LastModified = responseLastModified;
-        }
-        else
-        {
-            // A valid 206 may omit validators. Keep the validator that was used
-            // in If-Range instead of silently making the next retry unsafe.
-            if (responseStrongEtag.Length > 0) active.Metadata.ETag = responseStrongEtag;
-            if (responseLastModified.Length > 0) active.Metadata.LastModified = responseLastModified;
-        }
-        active.Metadata.TotalBytes = totalBytes;
-        active.Metadata.ArchiveReady = false;
-        active.Metadata.IsPaused = false;
-        if (!TrySaveResumeMetadata(active))
-            throw new IOException("Não foi possível salvar os validadores antes de gravar o download.");
-
-        item.SetDownloadState(CatalogDownloadState.Downloading,
-            offset > 0 ? "Continuando download" : "Iniciando download");
-        item.UpdateDownloadProgress(offset, totalBytes);
-
-        await using var input = await ReadContentStreamAsync(response, active.Cancellation.Token);
-        await using var output = new FileStream(
+        active.PathLease.Revalidate();
+        await using var output = active.PathLease.OpenFile(
             active.PartialPath,
-            append ? FileMode.Append : FileMode.Create,
-            FileAccess.Write,
+            FileMode.OpenOrCreate,
+            FileAccess.ReadWrite,
             FileShare.Read,
             BufferSize,
             FileOptions.Asynchronous | FileOptions.SequentialScan);
-
-        var buffer = new byte[BufferSize];
-        var totalRead = offset;
-        while (true)
+        var offset = output.Length;
+        if (offset > artifact.ContentLength)
+            throw new InvalidDataException("O parcial excede o tamanho autorizado.");
+        if (offset == artifact.ContentLength)
         {
-            var read = await ReadWithInactivityTimeoutAsync(input, buffer, active.Cancellation.Token);
-            if (read == 0) break;
-
-            totalRead = checked(totalRead + read);
-            if (totalRead > _options.MaximumFileSizeBytes
-                || totalBytes is > 0 && totalRead > totalBytes.Value)
-                throw new InvalidDataException("O arquivo excedeu o tamanho seguro durante a transferência.");
-
-            await output.WriteAsync(buffer.AsMemory(0, read), active.Cancellation.Token);
-            item.UpdateDownloadProgress(totalRead, totalBytes);
+            await output.DisposeAsync();
+            await VerifyAndPublishAsync(item, artifact, active);
+            return;
         }
 
-        await output.FlushAsync(active.Cancellation.Token);
-        if (totalRead == 0)
-            throw new InvalidDataException("O servidor retornou um arquivo vazio. O link precisa ser corrigido.");
-        if (totalBytes.HasValue && totalRead != totalBytes.Value)
-            throw new TransientDownloadException(
-                $"A conexão terminou antes do arquivo completo ({totalRead}/{totalBytes.Value} bytes).");
+        using var request = await CreateAuthorizedRequestAsync(artifact, offset, active);
+        using var response = await SendWithHeaderTimeoutAsync(request, active.Cancellation.Token);
+        ValidateResponseRequestIdentity(request, response);
 
+        if (IsRedirect(response.StatusCode))
+            throw new InvalidDataException("Redirecionamentos autenticados não são permitidos.");
+        if (IsTransientStatus(response.StatusCode))
+            throw new TransientDownloadException(
+                $"Falha HTTP transitória ({(int)response.StatusCode}).",
+                GetRetryAfter(response));
+        if (response.StatusCode == HttpStatusCode.RequestedRangeNotSatisfiable)
+            throw new InvalidDataException("O servidor recusou a faixa autorizada do artefato.");
+        if (offset == 0 && response.StatusCode != HttpStatusCode.OK)
+            throw new InvalidDataException($"Resposta de download inválida (HTTP {(int)response.StatusCode}).");
+        if (offset > 0 && response.StatusCode == HttpStatusCode.OK)
+            throw new RestartDownloadException();
+        if (offset > 0 && response.StatusCode != HttpStatusCode.PartialContent)
+            throw new InvalidDataException($"Resposta de retomada inválida (HTTP {(int)response.StatusCode}).");
+
+        ValidateResponseEnvelope(response, artifact, offset);
+        ValidateResumeValidator(active.Metadata, response);
+        CaptureResumeValidators(active.Metadata, response);
+        active.Metadata.ArchiveReady = false;
+        if (!TrySaveResumeMetadata(active))
+            throw new IOException("Não foi possível salvar o estado da retomada.");
+
+        item.SetDownloadState(CatalogDownloadState.Downloading,
+            offset > 0 ? "Continuando download verificado" : "Iniciando download verificado");
+
+        await using var input = await ReadContentStreamAsync(response, active.Cancellation.Token);
+        if (output.Length != offset)
+            throw new InvalidDataException("O parcial mudou durante a retomada.");
+        output.Position = offset;
+
+        var buffer = new byte[BufferSize];
+        var total = offset;
+        try
+        {
+            while (true)
+            {
+                int read;
+                try
+                {
+                    read = await ReadWithInactivityTimeoutAsync(
+                        input,
+                        buffer,
+                        active.Cancellation.Token);
+                }
+                catch (OperationCanceledException) when (!active.Cancellation.IsCancellationRequested)
+                {
+                    throw new TransientDownloadException("A transferência ficou inativa.");
+                }
+                catch (Exception exception) when (exception is IOException or HttpRequestException)
+                {
+                    throw new TransientDownloadException("A conexão foi interrompida.", innerException: exception);
+                }
+
+                if (read == 0) break;
+                total = checked(total + read);
+                if (total > artifact.ContentLength)
+                    throw new InvalidDataException("O servidor enviou bytes além do tamanho autorizado.");
+                // Local write/flush failures are deliberately not classified as
+                // network retries (for example, disk full or a revoked ACL).
+                await output.WriteAsync(buffer.AsMemory(0, read), active.Cancellation.Token);
+                await output.FlushAsync(active.Cancellation.Token);
+                item.UpdateDownloadProgress(total, artifact.ContentLength);
+            }
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(buffer);
+        }
+
+        if (total != artifact.ContentLength)
+            throw new TransientDownloadException("A resposta terminou antes do tamanho autorizado.");
+        output.Flush(flushToDisk: true);
+        _ = PathIdentity.CaptureFileIdentity(output.SafeFileHandle, active.PartialPath);
+        active.PathLease.Revalidate();
+        // Close the writer before opening a second handle for hashing. On
+        // Windows, FileShare.Read permits readers but a reader opened while the
+        // write handle remains active can still fail the reciprocal share check.
         await output.DisposeAsync();
-        await VerifyAndFinalizeAsync(item, active, totalRead, active.Cancellation.Token);
+        await VerifyAndPublishAsync(item, artifact, active);
     }
 
-    private async Task VerifyAndFinalizeAsync(
-        CatalogItem item,
-        ActiveDownload active,
-        long expectedLength,
+    private async Task<HttpRequestMessage> CreateAuthorizedRequestAsync(
+        CatalogArtifactDescriptor artifact,
+        long offset,
+        ActiveDownload active)
+    {
+        HttpRequestMessage request;
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(active.Cancellation.Token);
+            timeout.CancelAfter(_options.InactivityTimeout);
+            request = await _requestProvider.CreateRequestAsync(
+                artifact,
+                offset,
+                new CatalogDownloadValidators(active.Metadata.ETag, active.Metadata.LastModified),
+                timeout.Token);
+        }
+        catch (OperationCanceledException) when (!active.Cancellation.IsCancellationRequested)
+        {
+            throw new TransientDownloadException("A autorização temporária não respondeu.");
+        }
+        catch (Exception exception) when (exception is HttpRequestException or IOException)
+        {
+            throw new TransientDownloadException(
+                "A autorização temporária está indisponível.",
+                innerException: exception);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            throw new InvalidDataException(
+                "Não foi possível obter uma autorização temporária para o artefato.",
+                exception);
+        }
+
+        try
+        {
+            ValidateAuthorizedRequest(request, offset, active.Metadata);
+            return request;
+        }
+        catch
+        {
+            request?.Dispose();
+            throw;
+        }
+    }
+
+    private void ValidateAuthorizedRequest(
+        HttpRequestMessage request,
+        long offset,
+        DownloadResumeMetadata metadata)
+    {
+        if (request is null)
+            throw new InvalidDataException("O provedor não criou uma requisição autorizada.");
+        if (request.Method != HttpMethod.Get || request.Content is not null)
+            throw new InvalidDataException("A autorização deve produzir somente um GET sem corpo.");
+        var uri = request.RequestUri
+                  ?? throw new InvalidDataException("A requisição autorizada não possui destino.");
+        if (!uri.IsAbsoluteUri
+            || !uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
+            || uri.Port != 443
+            || uri.UserInfo.Length != 0
+            || uri.Query.Length != 0
+            || uri.Fragment.Length != 0
+            || uri.AbsolutePath.Length is 0 or > 2048
+            || !_options.AllowedHosts.Contains(uri.IdnHost))
+            throw new InvalidDataException("O destino temporário não atende à política de transporte.");
+
+        var authorization = request.Headers.Authorization;
+        if (authorization is null
+            || string.IsNullOrWhiteSpace(authorization.Scheme)
+            || string.IsNullOrWhiteSpace(authorization.Parameter)
+            || authorization.Scheme.Length > 32
+            || authorization.Parameter.Length > 8192
+            || authorization.Parameter.Any(char.IsControl))
+            throw new InvalidDataException("A requisição não contém autorização temporária válida.");
+
+        var ranges = request.Headers.Range?.Ranges.ToArray() ?? [];
+        if (offset == 0)
+        {
+            if (ranges.Length != 0 || request.Headers.IfRange is not null)
+                throw new InvalidDataException("A primeira requisição não pode conter Range/If-Range.");
+        }
+        else
+        {
+            if (request.Headers.Range?.Unit != "bytes"
+                || ranges.Length != 1
+                || ranges[0].From != offset
+                || ranges[0].To is not null)
+                throw new InvalidDataException("A faixa da requisição não corresponde ao parcial local.");
+            if (request.Headers.IfRange is { } ifRange)
+            {
+                var value = ifRange.ToString();
+                if (!value.Equals(metadata.ETag, StringComparison.Ordinal)
+                    && !value.Equals(metadata.LastModified, StringComparison.Ordinal))
+                    throw new InvalidDataException("O validador If-Range não corresponde ao estado local.");
+            }
+        }
+    }
+
+    private async Task<HttpResponseMessage> SendWithHeaderTimeoutAsync(
+        HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
-        item.BeginVerification();
-        var actualLength = new FileInfo(active.PartialPath).Length;
-        if (actualLength == 0 || actualLength != expectedLength)
-            throw new InvalidDataException("O tamanho final do arquivo não corresponde ao informado pelo servidor.");
-
-        if (!string.IsNullOrWhiteSpace(item.Sha256))
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(_options.InactivityTimeout);
+        try
         {
-            await using var stream = new FileStream(
-                active.PartialPath,
+            return await _httpClient.SendAsync(
+                request,
+                HttpCompletionOption.ResponseHeadersRead,
+                timeout.Token);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new TransientDownloadException("O servidor não respondeu a tempo.");
+        }
+        catch (HttpRequestException exception)
+        {
+            throw new TransientDownloadException("A conexão segura falhou.", innerException: exception);
+        }
+    }
+
+    private static void ValidateResponseRequestIdentity(
+        HttpRequestMessage request,
+        HttpResponseMessage response)
+    {
+        var finalUri = response.RequestMessage?.RequestUri;
+        if (finalUri is not null && !finalUri.Equals(request.RequestUri))
+            throw new InvalidDataException("A pilha HTTP seguiu um redirecionamento não autorizado.");
+    }
+
+    private static void ValidateResponseEnvelope(
+        HttpResponseMessage response,
+        CatalogArtifactDescriptor artifact,
+        long offset)
+    {
+        if (response.Content.Headers.ContentEncoding.Count != 0)
+            throw new InvalidDataException("Respostas codificadas ou comprimidas não são aceitas.");
+        var expectedRemaining = artifact.ContentLength - offset;
+        if (response.Content.Headers.ContentLength != expectedRemaining)
+            throw new InvalidDataException("Content-Length não corresponde ao manifesto autorizado.");
+
+        var range = response.Content.Headers.ContentRange;
+        if (offset == 0)
+        {
+            if (range is not null)
+                throw new InvalidDataException("A resposta inicial contém Content-Range inesperado.");
+            return;
+        }
+
+        if (range is null
+            || !range.Unit.Equals("bytes", StringComparison.OrdinalIgnoreCase)
+            || range.From != offset
+            || range.To != artifact.ContentLength - 1
+            || range.Length != artifact.ContentLength)
+            throw new InvalidDataException("Content-Range não corresponde ao manifesto autorizado.");
+    }
+
+    private static async Task VerifyAndPublishAsync(
+        CatalogItem item,
+        CatalogArtifactDescriptor artifact,
+        ActiveDownload active)
+    {
+        item.BeginVerification();
+        await PublishVerifiedPartialAsync(item, artifact, active);
+    }
+
+    private static async Task PublishVerifiedPartialAsync(
+        CatalogItem item,
+        CatalogArtifactDescriptor artifact,
+        ActiveDownload active)
+    {
+        active.PathLease.Revalidate();
+        await using var partial = active.PathLease.OpenFile(
+            active.PartialPath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            BufferSize,
+            FileOptions.Asynchronous | FileOptions.SequentialScan,
+            deleteAccess: true);
+        var partialIdentity = PathIdentity.CaptureFileIdentity(
+            partial.SafeFileHandle,
+            active.PartialPath);
+        if (!await ValidateOpenFileAsync(partial, artifact, active.Cancellation.Token))
+            throw new InvalidDataException("A integridade ou o tamanho do pacote não confere.");
+        _ = PathIdentity.RevalidateFile(
+            partial.SafeFileHandle,
+            active.PartialPath,
+            partialIdentity);
+        active.PathLease.Revalidate();
+
+        var partialWasPublished = false;
+        if (File.Exists(active.DestinationPath))
+        {
+            await using var existing = active.PathLease.OpenFile(
+                active.DestinationPath,
                 FileMode.Open,
                 FileAccess.Read,
                 FileShare.Read,
                 BufferSize,
-                FileOptions.Asynchronous | FileOptions.SequentialScan);
-            var actualHash = Convert.ToHexString(await SHA256.HashDataAsync(stream, cancellationToken));
-            if (!actualHash.Equals(item.Sha256, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException("A verificação SHA-256 falhou. O pacote foi preservado para análise.");
+                FileOptions.Asynchronous | FileOptions.SequentialScan,
+                deleteAccess: true);
+            var existingIdentity = PathIdentity.CaptureFileIdentity(
+                existing.SafeFileHandle,
+                active.DestinationPath);
+            if (await ValidateOpenFileAsync(existing, artifact, active.Cancellation.Token))
+            {
+                PathIdentity.DeleteByHandle(
+                    partial.SafeFileHandle,
+                    active.PartialPath,
+                    partialIdentity);
+            }
+            else
+            {
+                var preservedLeaf = Path.GetFileName(active.DestinationPath)
+                                    + ".preserved-"
+                                    + DateTimeOffset.UtcNow.ToString(
+                                        "yyyyMMddHHmmssfff",
+                                        CultureInfo.InvariantCulture)
+                                    + "-" + Guid.NewGuid().ToString("N");
+                _ = PathIdentity.RenameByHandle(
+                    existing.SafeFileHandle,
+                    existingIdentity,
+                    active.PathLease.AnchorHandle,
+                    Path.GetDirectoryName(active.DestinationPath)!,
+                    preservedLeaf,
+                    replaceIfExists: false);
+                _ = PathIdentity.RenameByHandle(
+                    partial.SafeFileHandle,
+                    partialIdentity,
+                    active.PathLease.AnchorHandle,
+                    Path.GetDirectoryName(active.DestinationPath)!,
+                    Path.GetFileName(active.DestinationPath),
+                    replaceIfExists: false);
+                partialWasPublished = true;
+            }
+        }
+        else
+        {
+            _ = PathIdentity.RenameByHandle(
+                partial.SafeFileHandle,
+                partialIdentity,
+                active.PathLease.AnchorHandle,
+                Path.GetDirectoryName(active.DestinationPath)!,
+                Path.GetFileName(active.DestinationPath),
+                replaceIfExists: false);
+            partialWasPublished = true;
         }
 
-        active.Metadata.TotalBytes = actualLength;
-        active.Metadata.ArchiveReady = true;
-        active.Metadata.IsPaused = true;
-        if (!TrySaveResumeMetadata(active))
-            throw new IOException("Não foi possível registrar a conclusão antes de publicar o arquivo.");
+        active.PathLease.Revalidate();
+        if (partialWasPublished)
+        {
+            partial.Position = 0;
+            if (!await ValidateOpenFileAsync(partial, artifact, active.Cancellation.Token))
+                throw new InvalidDataException("O arquivo publicado não preservou a integridade autorizada.");
+        }
+        else if (!await ValidateFileWithLeaseAsync(
+                     active.DestinationPath,
+                     artifact,
+                     active.PathLease,
+                     active.Cancellation.Token))
+            throw new InvalidDataException("O arquivo publicado não preservou a integridade autorizada.");
 
-        EnsureNoReparsePoints(active.InstallationRoot, active.PartialPath);
-        EnsureNoReparsePoints(active.InstallationRoot, active.DestinationPath);
-        File.Move(active.PartialPath, active.DestinationPath, overwrite: true);
+        active.Metadata.ArchiveReady = artifact.ExtractPolicy == CatalogExtractPolicy.ExtractArchive;
+        active.Metadata.IsPaused = false;
+        if (active.Metadata.ArchiveReady)
+        {
+            if (!TrySaveResumeMetadata(active))
+                throw new IOException("Não foi possível registrar o pacote verificado.");
+        }
+        else
+        {
+            _ = TryDeleteFileStrict(active.MetadataPath, active.InstallationRoot, out _);
+        }
         DeletePreservedPartials(active.PartialPath);
-        if (!item.Extract) DeleteExactFile(active.MetadataPath);
+        SetCompletedItem(item, active.DestinationPath, artifact);
     }
 
-    private async Task<HttpResponseMessage> SendWithSafeRedirectsAsync(
-        Uri sourceUri,
-        long offset,
-        DownloadResumeMetadata metadata,
-        CancellationToken cancellationToken)
+    private static CatalogDownloadResult CompleteResult(
+        CatalogItem item,
+        string destinationPath,
+        CatalogArtifactDescriptor artifact)
     {
-        var currentUri = sourceUri;
-        for (var redirect = 0; redirect <= _options.MaximumRedirects; redirect++)
-        {
-            ValidateSourceUri(currentUri.AbsoluteUri);
-            using var request = new HttpRequestMessage(HttpMethod.Get, currentUri);
-            request.Headers.UserAgent.ParseAdd("Turborama/2.1-resumable");
-            request.Headers.AcceptEncoding.Clear();
-            request.Headers.TryAddWithoutValidation("Accept-Encoding", "identity");
-            if (offset > 0)
-            {
-                request.Headers.Range = new RangeHeaderValue(offset, null);
-                var validator = !string.IsNullOrWhiteSpace(metadata.ETag)
-                    ? metadata.ETag
-                    : metadata.LastModified;
-                if (!string.IsNullOrWhiteSpace(validator))
-                    request.Headers.TryAddWithoutValidation("If-Range", validator);
-            }
+        SetCompletedItem(item, destinationPath, artifact);
+        return new CatalogDownloadResult(
+            CatalogDownloadState.Completed,
+            artifact.ExtractPolicy == CatalogExtractPolicy.ExtractArchive
+                ? $"Download concluído: {Path.GetFileName(destinationPath)}. Iniciando extração."
+                : $"Download concluído e verificado: {Path.GetFileName(destinationPath)}",
+            destinationPath);
+    }
 
-            HttpResponseMessage response;
-            using var headerTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            headerTimeout.CancelAfter(_options.InactivityTimeout);
-            try
-            {
-                response = await _httpClient.SendAsync(
-                    request,
-                    HttpCompletionOption.ResponseHeadersRead,
-                    headerTimeout.Token);
-            }
-            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-            {
-                throw new TransientDownloadException("A conexão excedeu o tempo limite.");
-            }
-            catch (HttpRequestException exception)
-            {
-                throw new TransientDownloadException(
-                    $"Não foi possível alcançar o servidor: {exception.Message}",
-                    innerException: exception);
-            }
-
-            var effectiveUri = response.RequestMessage?.RequestUri ?? currentUri;
-            try
-            {
-                ValidateSourceUri(effectiveUri.AbsoluteUri);
-            }
-            catch
-            {
-                response.Dispose();
-                throw;
-            }
-
-            if (!IsRedirect(response.StatusCode)) return response;
-
-            var location = response.Headers.Location;
-            response.Dispose();
-            if (location is null)
-                throw new InvalidDataException("O servidor retornou um redirecionamento sem destino.");
-            currentUri = location.IsAbsoluteUri ? location : new Uri(currentUri, location);
-        }
-
-        throw new InvalidDataException("O download excedeu o limite de redirecionamentos.");
+    private static void SetCompletedItem(
+        CatalogItem item,
+        string destinationPath,
+        CatalogArtifactDescriptor artifact)
+    {
+        if (artifact.ExtractPolicy == CatalogExtractPolicy.ExtractArchive)
+            item.MarkArchiveReady(destinationPath);
+        else
+            item.CompleteDownload(destinationPath);
     }
 
     private async Task<Stream> ReadContentStreamAsync(
         HttpResponseMessage response,
         CancellationToken cancellationToken)
     {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(_options.InactivityTimeout);
         try
         {
-            return await response.Content.ReadAsStreamAsync(cancellationToken);
+            return await response.Content.ReadAsStreamAsync(timeout.Token);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            throw new TransientDownloadException("A conexão ficou sem resposta.");
-        }
-        catch (Exception exception) when (exception is IOException or HttpRequestException)
-        {
-            throw new TransientDownloadException("A conexão foi interrompida antes de receber os dados.",
-                innerException: exception);
+            throw new TransientDownloadException("O corpo da resposta não ficou disponível a tempo.");
         }
     }
 
@@ -814,83 +1174,123 @@ public sealed class CatalogDownloadService : IDisposable
         byte[] buffer,
         CancellationToken cancellationToken)
     {
-        using var inactivity = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        inactivity.CancelAfter(_options.InactivityTimeout);
-        try
-        {
-            return await input.ReadAsync(buffer, inactivity.Token);
-        }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-        {
-            throw new TransientDownloadException("A conexão ficou inativa e será retomada.");
-        }
-        catch (Exception exception) when (exception is IOException or HttpRequestException)
-        {
-            throw new TransientDownloadException("A conexão caiu e será retomada.",
-                innerException: exception);
-        }
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(_options.InactivityTimeout);
+        return await input.ReadAsync(buffer.AsMemory(), timeout.Token);
     }
 
-    private static IReadOnlyList<ResumeFileSet> FindResumeFileSets(
-        string installationRoot,
-        string? itemId = null,
-        string? sourceFingerprint = null)
+    private DownloadResumeMetadata LoadMatchingMetadata(
+        string metadataPath,
+        CatalogItem item,
+        CatalogArtifactDescriptor artifact,
+        string partialPath,
+        PathIdentity.DirectoryTreeLease pathLease)
     {
-        var canonicalRoot = Path.GetFullPath(installationRoot);
-        var downloadsRoot = Path.Combine(canonicalRoot, "Turborama", "Downloads");
-        if (!Directory.Exists(downloadsRoot)) return [];
+        var metadata = LoadResumeMetadata(metadataPath, pathLease);
+        if (metadata is not null && MetadataMatchesArtifact(metadata, artifact))
+        {
+            metadata.ItemId = item.Id;
+            return metadata;
+        }
 
-        string[] metadataPaths;
+        if (File.Exists(partialPath)) PreserveFileByHandle(partialPath, pathLease);
+        if (File.Exists(metadataPath)) PreserveFileByHandle(metadataPath, pathLease);
+        return CreateMetadata(item, artifact);
+    }
+
+    private static DownloadResumeMetadata CreateMetadata(
+        CatalogItem item,
+        CatalogArtifactDescriptor artifact) => new()
+        {
+            SchemaVersion = ResumeSchemaVersion,
+            ItemId = IsSafeIdentity(item.Id, 128) ? item.Id : artifact.ArtifactId,
+            ProductId = artifact.ProductId,
+            ArtifactId = artifact.ArtifactId,
+            ArtifactVersion = artifact.ArtifactVersion,
+            Sha256 = artifact.Sha256,
+            ContentLength = artifact.ContentLength,
+            ManifestIdentity = artifact.ManifestIdentity,
+            ExtractPolicy = artifact.ExtractPolicy,
+            SafeFileName = artifact.SafeFileName,
+            FileExtension = artifact.FileExtension.ToLowerInvariant(),
+            UpdatedUtc = DateTimeOffset.UtcNow
+        };
+
+    private List<ResumeFileSet> FindResumeFileSets(
+        string installationRoot,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var root = Path.GetFullPath(installationRoot);
+        if (!Directory.Exists(root)) return [];
+        EnsureNoReparsePoints(root, root);
+        var artifactRoot = Path.Combine(root, "artifacts");
+        if (!Directory.Exists(artifactRoot)) return [];
+        EnsureNoReparsePoints(root, artifactRoot);
+        var matches = new List<ResumeFileSet>();
+        var candidates = new List<string>();
         try
         {
-            EnsureNoReparsePoints(canonicalRoot, downloadsRoot);
-            metadataPaths = Directory.EnumerateFiles(
-                    downloadsRoot,
-                    "*.part" + ResumeSuffix,
-                    new EnumerationOptions
+            const int maximumVisitedEntries = 100_000;
+            const int maximumDepth = 4;
+            var visitedEntries = 0;
+            var pendingDirectories = new Stack<(string Path, int Depth)>();
+            pendingDirectories.Push((artifactRoot, 0));
+            var enumerationOptions = new EnumerationOptions
+            {
+                RecurseSubdirectories = false,
+                IgnoreInaccessible = true,
+                AttributesToSkip = FileAttributes.ReparsePoint,
+                ReturnSpecialDirectories = false,
+                MatchCasing = MatchCasing.CaseInsensitive
+            };
+
+            while (pendingDirectories.Count > 0)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var (directory, depth) = pendingDirectories.Pop();
+                foreach (var entry in Directory.EnumerateFileSystemEntries(
+                             directory,
+                             "*",
+                             enumerationOptions))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    visitedEntries++;
+                    if (visitedEntries > maximumVisitedEntries) return [];
+
+                    var attributes = File.GetAttributes(entry);
+                    if ((attributes & FileAttributes.ReparsePoint) != 0) continue;
+                    if ((attributes & FileAttributes.Directory) != 0)
                     {
-                        RecurseSubdirectories = true,
-                        IgnoreInaccessible = true,
-                        ReturnSpecialDirectories = false,
-                        AttributesToSkip = FileAttributes.ReparsePoint
-                    })
-                .ToArray();
+                        if (depth < maximumDepth)
+                            pendingDirectories.Push((entry, depth + 1));
+                        continue;
+                    }
+
+                    if (!entry.EndsWith(".part" + ResumeSuffix, StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    candidates.Add(entry);
+                    if (candidates.Count > 10_000) return [];
+                }
+            }
         }
-        catch (Exception exception) when (exception is IOException
-                                           or UnauthorizedAccessException
-                                           or ArgumentException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             return [];
         }
-
-        var matches = new List<ResumeFileSet>();
-        foreach (var metadataPath in metadataPaths)
+        foreach (var metadataPath in candidates)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                EnsureNoReparsePoints(canonicalRoot, metadataPath);
+                EnsureNoReparsePoints(root, metadataPath);
                 var metadata = LoadResumeMetadata(metadataPath);
-                if (metadata is null || string.IsNullOrWhiteSpace(metadata.ItemId)) continue;
-                if (itemId is not null
-                    && !metadata.ItemId.Equals(itemId, StringComparison.OrdinalIgnoreCase))
-                    continue;
-                if (sourceFingerprint is not null
-                    && !metadata.SourceFingerprint.Equals(sourceFingerprint, StringComparison.Ordinal))
-                    continue;
-
+                if (metadata is null) continue;
                 var partialPath = metadataPath[..^ResumeSuffix.Length];
-                if (!partialPath.EndsWith(".part", StringComparison.OrdinalIgnoreCase)) continue;
-                var destinationPath = partialPath[..^5];
-                if (!IsWithinRoot(metadataPath, canonicalRoot)
-                    || !IsWithinRoot(partialPath, canonicalRoot)
-                    || !IsWithinRoot(destinationPath, canonicalRoot)
-                    || string.IsNullOrWhiteSpace(metadata.DestinationPath)
-                    || !Path.GetFullPath(metadata.DestinationPath)
-                        .Equals(Path.GetFullPath(destinationPath), StringComparison.OrdinalIgnoreCase))
-                    continue;
-
-                EnsureNoReparsePoints(canonicalRoot, partialPath);
-                EnsureNoReparsePoints(canonicalRoot, destinationPath);
+                var destinationPath = partialPath[..^".part".Length];
+                if (!IsWithinRoot(destinationPath, root)) continue;
+                EnsureNoReparsePoints(root, partialPath);
+                EnsureNoReparsePoints(root, destinationPath);
                 matches.Add(new ResumeFileSet(
                     metadataPath,
                     partialPath,
@@ -899,83 +1299,60 @@ public sealed class CatalogDownloadService : IDisposable
             }
             catch (Exception exception) when (exception is IOException
                                                or UnauthorizedAccessException
-                                               or JsonException
+                                               or InvalidDataException
                                                or ArgumentException
                                                or NotSupportedException)
             {
+                // Malformed/untrusted resume state is ignored, never promoted.
             }
         }
-
         return matches;
     }
 
-    private DownloadResumeMetadata LoadMatchingMetadata(
-        string metadataPath,
-        CatalogItem item,
-        Uri sourceUri,
-        string destinationPath,
-        string partialPath)
-    {
-        var metadata = LoadResumeMetadata(metadataPath);
-        var matches = false;
-        try
-        {
-            var sourceFingerprint = CreateSourceFingerprint(sourceUri);
-            matches = metadata is not null
-                      && metadata.ItemId.Equals(item.Id, StringComparison.OrdinalIgnoreCase)
-                      && metadata.SourceFingerprint.Equals(sourceFingerprint, StringComparison.Ordinal)
-                      && Path.GetFullPath(metadata.DestinationPath)
-                          .Equals(Path.GetFullPath(destinationPath), StringComparison.OrdinalIgnoreCase);
-        }
-        catch (Exception exception) when (exception is ArgumentException
-                                           or NotSupportedException
-                                           or PathTooLongException)
-        {
-            matches = false;
-        }
-
-        if (!matches)
-        {
-            // A sidecar for another URL cannot safely authorize appending. Move
-            // the old partial aside instead of deleting it; only Discard erases.
-            PreservePartialBeforeRestart(partialPath);
-            PreservePartialBeforeRestart(metadataPath);
-            return new DownloadResumeMetadata
-            {
-                ItemId = item.Id,
-                SourceFingerprint = CreateSourceFingerprint(sourceUri),
-                DestinationPath = destinationPath,
-                UpdatedUtc = DateTimeOffset.UtcNow
-            };
-        }
-
-        return metadata!;
-    }
-
-    private static DownloadResumeMetadata? LoadResumeMetadata(string metadataPath)
+    private DownloadResumeMetadata? LoadResumeMetadata(string metadataPath)
     {
         if (!File.Exists(metadataPath)) return null;
         try
         {
+            var info = new FileInfo(metadataPath);
+            if (info.Length is <= 0 or > MaximumMetadataBytes) return null;
             var json = File.ReadAllText(metadataPath);
             var metadata = JsonSerializer.Deserialize<DownloadResumeMetadata>(json, ResumeJsonOptions);
-            if (metadata is null) return null;
-
-            // Migrate sidecars created by older builds. The original address is
-            // converted to an irreversible fingerprint and removed immediately.
-            if (string.IsNullOrWhiteSpace(metadata.SourceFingerprint))
-            {
-                using var document = JsonDocument.Parse(json);
-                if (document.RootElement.TryGetProperty("SourceUrl", out var legacyValue)
-                    && legacyValue.ValueKind == JsonValueKind.String
-                    && Uri.TryCreate(legacyValue.GetString(), UriKind.Absolute, out var legacyUri))
-                {
-                    metadata.SourceFingerprint = CreateSourceFingerprint(legacyUri);
-                    TryRewriteSanitizedResumeMetadata(metadataPath, metadata);
-                }
-            }
-
+            if (metadata is null || !ValidateMetadataShape(metadata)) return null;
             return metadata;
+        }
+        catch (Exception exception) when (exception is IOException
+                                           or UnauthorizedAccessException
+                                           or JsonException
+                                           or InvalidDataException)
+        {
+            return null;
+        }
+    }
+
+    private DownloadResumeMetadata? LoadResumeMetadata(
+        string metadataPath,
+        PathIdentity.DirectoryTreeLease pathLease)
+    {
+        if (!File.Exists(metadataPath)) return null;
+        try
+        {
+            pathLease.Revalidate();
+            using var stream = pathLease.OpenFile(
+                metadataPath,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                MaximumMetadataBytes,
+                FileOptions.SequentialScan);
+            var identity = PathIdentity.CaptureFileIdentity(stream.SafeFileHandle, metadataPath);
+            if (stream.Length is <= 0 or > MaximumMetadataBytes) return null;
+            var metadata = JsonSerializer.Deserialize<DownloadResumeMetadata>(
+                stream,
+                ResumeJsonOptions);
+            _ = PathIdentity.RevalidateFile(stream.SafeFileHandle, metadataPath, identity);
+            pathLease.Revalidate();
+            return metadata is not null && ValidateMetadataShape(metadata) ? metadata : null;
         }
         catch (Exception exception) when (exception is IOException
                                            or UnauthorizedAccessException
@@ -985,121 +1362,384 @@ public sealed class CatalogDownloadService : IDisposable
         }
     }
 
-    private static void TryRewriteSanitizedResumeMetadata(
-        string metadataPath,
-        DownloadResumeMetadata metadata)
+    private bool ValidateMetadataShape(DownloadResumeMetadata metadata)
     {
-        var temporaryPath = metadataPath + ".sanitize-" + Guid.NewGuid().ToString("N");
-        try
-        {
-            File.WriteAllText(temporaryPath, JsonSerializer.Serialize(metadata, ResumeJsonOptions));
-            File.Move(temporaryPath, metadataPath, overwrite: true);
-        }
-        catch (Exception exception) when (exception is IOException
-                                           or UnauthorizedAccessException
-                                           or JsonException)
-        {
-            try { File.Delete(temporaryPath); }
-            catch (Exception cleanupException) when (cleanupException is IOException or UnauthorizedAccessException) { }
-        }
-    }
-
-    private static string CreateSourceFingerprint(Uri sourceUri)
-    {
-        var bytes = Encoding.UTF8.GetBytes(sourceUri.AbsoluteUri);
-        try
-        {
-            return Convert.ToHexString(SHA256.HashData(bytes));
-        }
-        finally
-        {
-            CryptographicOperations.ZeroMemory(bytes);
-        }
+        if (metadata.SchemaVersion != ResumeSchemaVersion
+            || metadata.ProductId != CatalogArtifactDescriptor.TurboramaSuiteProductId
+            || metadata.ContentLength <= 0
+            || metadata.ContentLength > _options.MaximumFileSizeBytes
+            || !IsCanonicalSha256(metadata.Sha256)
+            || !IsSafeIdentity(metadata.ItemId, 128)
+            || !IsLowerHex(metadata.ArtifactId, 32)
+            || metadata.ArtifactVersion <= 0
+            || !IsLowerHex(metadata.ManifestIdentity, 64)
+            || !IsSafeExtension(metadata.FileExtension)
+            || !IsSafeFileName(metadata.SafeFileName, metadata.FileExtension)
+            || !Enum.IsDefined(metadata.ExtractPolicy)
+            || !IsValidPersistedEtag(metadata.ETag)
+            || !IsValidPersistedLastModified(metadata.LastModified))
+            return false;
+        return true;
     }
 
     private static bool TrySaveResumeMetadata(ActiveDownload active)
     {
+        string? temporaryPath = null;
         try
         {
             lock (active.MetadataGate)
             {
-                if (active.PauseRequested)
-                    active.Metadata.IsPaused = true;
+                if (active.PauseRequested) active.Metadata.IsPaused = true;
                 active.Metadata.UpdatedUtc = DateTimeOffset.UtcNow;
-                var temporaryPath = active.MetadataPath + ".tmp-" + Guid.NewGuid().ToString("N");
-                Directory.CreateDirectory(Path.GetDirectoryName(active.MetadataPath)!);
-                File.WriteAllText(
-                    temporaryPath,
-                    JsonSerializer.Serialize(active.Metadata, ResumeJsonOptions));
-                File.Move(temporaryPath, active.MetadataPath, overwrite: true);
+                temporaryPath = active.MetadataPath + ".tmp-" + Guid.NewGuid().ToString("N");
+                active.PathLease.Revalidate();
+                var serialized = JsonSerializer.SerializeToUtf8Bytes(
+                    active.Metadata,
+                    ResumeJsonOptions);
+                using (var temporary = active.PathLease.OpenFile(
+                           temporaryPath,
+                           FileMode.CreateNew,
+                           FileAccess.ReadWrite,
+                           FileShare.None,
+                           BufferSize,
+                           FileOptions.WriteThrough,
+                           deleteAccess: true))
+                {
+                    var temporaryIdentity = PathIdentity.CaptureFileIdentity(
+                        temporary.SafeFileHandle,
+                        temporaryPath);
+                    temporary.Write(serialized);
+                    temporary.Flush(flushToDisk: true);
+                    _ = PathIdentity.RevalidateFile(
+                        temporary.SafeFileHandle,
+                        temporaryPath,
+                        temporaryIdentity);
+                    active.PathLease.Revalidate();
+                    _ = PathIdentity.RenameByHandle(
+                        temporary.SafeFileHandle,
+                        temporaryIdentity,
+                        active.PathLease.AnchorHandle,
+                        Path.GetDirectoryName(active.MetadataPath)!,
+                        Path.GetFileName(active.MetadataPath),
+                        replaceIfExists: true);
+                }
+                temporaryPath = null;
+                active.PathLease.Revalidate();
                 return true;
             }
         }
         catch (Exception exception) when (exception is IOException
                                            or UnauthorizedAccessException
+                                           or InvalidDataException
                                            or JsonException)
         {
-            // The transfer may continue; if persistence is unavailable the
-            // existing partial file is still never deleted implicitly.
             return false;
         }
+        finally
+        {
+            if (temporaryPath is not null)
+            {
+                try { _ = PathIdentity.DeleteFileExact(temporaryPath, active.InstallationRoot); }
+                catch (Exception exception) when (exception is IOException
+                                                   or UnauthorizedAccessException
+                                                   or InvalidDataException)
+                {
+                }
+            }
+        }
+    }
+
+    private static void CaptureResumeValidators(
+        DownloadResumeMetadata metadata,
+        HttpResponseMessage response)
+    {
+        var etag = response.Headers.ETag;
+        if (etag is { IsWeak: false } && etag.ToString().Length <= 512)
+            metadata.ETag = etag.ToString();
+        if (response.Content.Headers.LastModified is { } modified)
+            metadata.LastModified = modified.ToString("R", CultureInfo.InvariantCulture);
     }
 
     private static void ValidateResumeValidator(
         DownloadResumeMetadata metadata,
         HttpResponseMessage response)
     {
-        var responseEtag = response.Headers.ETag?.ToString();
-        if (!string.IsNullOrWhiteSpace(metadata.ETag)
-            && !string.IsNullOrWhiteSpace(responseEtag)
-            && !metadata.ETag.Equals(responseEtag, StringComparison.Ordinal))
-            throw new InvalidDataException("O arquivo remoto mudou desde o início do download.");
+        var responseEtag = response.Headers.ETag;
+        if (metadata.ETag.Length > 0
+            && responseEtag is not null
+            && !metadata.ETag.Equals(responseEtag.ToString(), StringComparison.Ordinal))
+            throw new InvalidDataException("O validador do artefato mudou durante a retomada.");
 
-        var responseLastModified = response.Content.Headers.LastModified?.ToString("R", CultureInfo.InvariantCulture);
-        if (string.IsNullOrWhiteSpace(metadata.ETag)
-            && !string.IsNullOrWhiteSpace(metadata.LastModified)
-            && !string.IsNullOrWhiteSpace(responseLastModified)
+        var responseLastModified = response.Content.Headers.LastModified?
+            .ToString("R", CultureInfo.InvariantCulture);
+        if (metadata.ETag.Length == 0
+            && metadata.LastModified.Length > 0
+            && responseLastModified is not null
             && !metadata.LastModified.Equals(responseLastModified, StringComparison.Ordinal))
-            throw new InvalidDataException("O arquivo remoto foi atualizado durante a pausa.");
+            throw new InvalidDataException("A data do artefato mudou durante a retomada.");
     }
 
-    private Uri ValidateSourceUri(string value)
+    private CatalogArtifactDescriptor RequireValidArtifact(CatalogItem item)
     {
-        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri))
-            throw new UriFormatException("O endereço de download é inválido.");
-        if (!uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException("Somente downloads HTTPS são permitidos.");
-        if (!_options.AllowedHosts.Contains(uri.Host))
-            throw new InvalidDataException($"O host de download não está autorizado: {uri.Host}.");
-        return uri;
+        var artifact = item.Artifact
+                       ?? throw new InvalidDataException(
+                           "O catálogo não forneceu um descritor autorizado para este artefato.");
+        ValidateArtifact(artifact);
+        return artifact;
     }
 
-    private static string ResolveSafeExtension(string configuredExtension, Uri sourceUri)
+    private void ValidateArtifact(CatalogArtifactDescriptor artifact)
     {
-        var extension = configuredExtension;
-        if (string.IsNullOrWhiteSpace(extension))
-            extension = Path.GetExtension(Uri.UnescapeDataString(sourceUri.AbsolutePath));
-        if (string.IsNullOrWhiteSpace(extension)) return ".bin";
-
-        extension = extension.ToLowerInvariant();
-        if (extension.Length is < 2 or > 10
-            || extension[0] != '.'
-            || extension.Skip(1).Any(character => !char.IsAsciiLetterOrDigit(character)))
-            throw new InvalidDataException("A extensão do arquivo é inválida.");
-        return extension;
+        if (artifact.ProductId != CatalogArtifactDescriptor.TurboramaSuiteProductId)
+            throw new InvalidDataException("O produto do artefato não é autorizado.");
+        if (!IsLowerHex(artifact.ArtifactId, 32))
+            throw new InvalidDataException("O identificador do artefato é inválido.");
+        if (artifact.ArtifactVersion <= 0)
+            throw new InvalidDataException("A versão do artefato é inválida.");
+        if (artifact.ContentLength <= 0 || artifact.ContentLength > _options.MaximumFileSizeBytes)
+            throw new InvalidDataException("O tamanho exato do artefato é ausente ou excede o limite.");
+        if (!IsCanonicalSha256(artifact.Sha256))
+            throw new InvalidDataException("O SHA-256 obrigatório do artefato é inválido.");
+        if (!IsSafeExtension(artifact.FileExtension))
+            throw new InvalidDataException("A extensão autorizada é inválida.");
+        if (!IsSafeFileName(artifact.SafeFileName, artifact.FileExtension))
+            throw new InvalidDataException("O nome seguro do arquivo é inválido.");
+        if (!IsLowerHex(artifact.ManifestIdentity, 64))
+            throw new InvalidDataException("A identidade do manifesto é inválida.");
+        if (!Enum.IsDefined(artifact.ExtractPolicy))
+            throw new InvalidDataException("A política de extração é inválida.");
     }
 
-    private static string SanitizePathSegment(string value)
+    private static bool MetadataMatchesArtifact(
+        DownloadResumeMetadata metadata,
+        CatalogArtifactDescriptor artifact) =>
+        metadata.ProductId.Equals(artifact.ProductId, StringComparison.Ordinal)
+        && metadata.ArtifactId.Equals(artifact.ArtifactId, StringComparison.Ordinal)
+        && metadata.ArtifactVersion == artifact.ArtifactVersion
+        && metadata.Sha256.Equals(artifact.Sha256, StringComparison.Ordinal)
+        && metadata.ContentLength == artifact.ContentLength
+        && metadata.ManifestIdentity.Equals(artifact.ManifestIdentity, StringComparison.Ordinal)
+        && metadata.ExtractPolicy == artifact.ExtractPolicy
+        && metadata.SafeFileName.Equals(artifact.SafeFileName, StringComparison.Ordinal)
+        && metadata.FileExtension.Equals(artifact.FileExtension, StringComparison.Ordinal);
+
+    private static string CreateArtifactIdentity(CatalogArtifactDescriptor artifact) =>
+        string.Join('\u001F',
+            artifact.ProductId,
+            artifact.ArtifactId,
+            artifact.ArtifactVersion.ToString(CultureInfo.InvariantCulture),
+            artifact.Sha256,
+            artifact.ContentLength.ToString(CultureInfo.InvariantCulture));
+
+    private static string CreateArtifactIdentity(DownloadResumeMetadata metadata) =>
+        string.Join('\u001F',
+            metadata.ProductId,
+            metadata.ArtifactId,
+            metadata.ArtifactVersion.ToString(CultureInfo.InvariantCulture),
+            metadata.Sha256,
+            metadata.ContentLength.ToString(CultureInfo.InvariantCulture));
+
+    private static async Task<bool> ValidateFileAsync(
+        string path,
+        CatalogArtifactDescriptor artifact,
+        CancellationToken cancellationToken)
     {
-        var safe = new string(value
-            .Select(character => char.IsAsciiLetterOrDigit(character) || character is '-' or '_'
-                ? character
-                : '-')
-            .ToArray())
-            .Trim('-', '.', ' ');
-        if (safe.Length == 0)
-            throw new InvalidDataException("O item não possui um identificador de arquivo seguro.");
-        return safe.Length <= 96 ? safe : safe[..96];
+        try
+        {
+            if (!File.Exists(path)) return false;
+            await using var stream = OpenValidatedFile(
+                path,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                asynchronous: true);
+            if (stream.Length != artifact.ContentLength) return false;
+            var hash = await SHA256.HashDataAsync(stream, cancellationToken);
+            return CryptographicOperations.FixedTimeEquals(
+                hash,
+                Convert.FromHexString(artifact.Sha256));
+        }
+        catch (Exception exception) when (exception is IOException
+                                           or UnauthorizedAccessException
+                                           or FormatException
+                                           or CryptographicException)
+        {
+            return false;
+        }
+    }
+
+    private static async Task<bool> ValidateFileWithLeaseAsync(
+        string path,
+        CatalogArtifactDescriptor artifact,
+        PathIdentity.DirectoryTreeLease pathLease,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            pathLease.Revalidate();
+            await using var stream = pathLease.OpenFile(
+                path,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                BufferSize,
+                FileOptions.Asynchronous | FileOptions.SequentialScan);
+            var identity = PathIdentity.CaptureFileIdentity(stream.SafeFileHandle, path);
+            var valid = await ValidateOpenFileAsync(stream, artifact, cancellationToken);
+            _ = PathIdentity.RevalidateFile(stream.SafeFileHandle, path, identity);
+            pathLease.Revalidate();
+            return valid;
+        }
+        catch (Exception exception) when (exception is IOException
+                                           or UnauthorizedAccessException
+                                           or FormatException
+                                           or CryptographicException)
+        {
+            return false;
+        }
+    }
+
+    private static async Task<bool> ValidateOpenFileAsync(
+        FileStream stream,
+        CatalogArtifactDescriptor artifact,
+        CancellationToken cancellationToken)
+    {
+        if (stream.Length != artifact.ContentLength) return false;
+        stream.Position = 0;
+        var hash = await SHA256.HashDataAsync(stream, cancellationToken);
+        stream.Position = 0;
+        return CryptographicOperations.FixedTimeEquals(
+            hash,
+            Convert.FromHexString(artifact.Sha256));
+    }
+
+    private static bool ValidateFile(
+        string path,
+        CatalogArtifactDescriptor artifact,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        try
+        {
+            if (!File.Exists(path)) return false;
+            using var stream = OpenValidatedFile(
+                path,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                asynchronous: false);
+            if (stream.Length != artifact.ContentLength) return false;
+            var buffer = GC.AllocateUninitializedArray<byte>(BufferSize);
+            try
+            {
+                using var hasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+                int bytesRead;
+                while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    hasher.AppendData(buffer, 0, bytesRead);
+                }
+                cancellationToken.ThrowIfCancellationRequested();
+                var hash = hasher.GetHashAndReset();
+                return CryptographicOperations.FixedTimeEquals(
+                    hash,
+                    Convert.FromHexString(artifact.Sha256));
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(buffer);
+            }
+        }
+        catch (Exception exception) when (exception is IOException
+                                           or UnauthorizedAccessException
+                                           or FormatException
+                                           or CryptographicException)
+        {
+            return false;
+        }
+    }
+
+    private static string ValidateInstallationRoot(string installationRoot)
+    {
+        var canonicalRoot = Path.GetFullPath(installationRoot);
+        if (!Directory.Exists(canonicalRoot))
+            throw new InvalidDataException("A pasta de instalação não existe. Escolha uma pasta válida.");
+        EnsureNoReparsePoints(canonicalRoot, canonicalRoot);
+        return canonicalRoot;
+    }
+
+    private static bool IsCanonicalSha256(string value) => IsLowerHex(value, 64);
+
+    private static bool IsLowerHex(string value, int exactLength) =>
+        value is not null
+        && value.Length == exactLength
+        && value.All(character => character is >= '0' and <= '9' or >= 'a' and <= 'f');
+
+    private static bool IsSafeIdentity(string value, int maximumLength) =>
+        IsBoundedText(value, 1, maximumLength)
+        && value.All(character => char.IsAsciiLetterOrDigit(character)
+                                  || character is '-' or '_' or '.');
+
+    private static bool IsSafeFileName(string value, string extension)
+    {
+        if (!IsBoundedText(value, 1, 128)
+            || value is "." or ".."
+            || !Path.GetFileName(value).Equals(value, StringComparison.Ordinal)
+            || value.EndsWith(' ')
+            || value.EndsWith('.'))
+            return false;
+        if (!value.EndsWith(extension, StringComparison.Ordinal)) return false;
+        if (value.Any(character => !char.IsAsciiLetterOrDigit(character)
+                                   && character is not ('-' or '_' or '.')))
+            return false;
+        var baseName = value.Split('.')[0];
+        return !WindowsReservedFileNames.Contains(baseName);
+    }
+
+    private static bool IsSafeExtension(string value) =>
+        value is not null
+        && value.Length is >= 2 and <= 10
+        && value[0] == '.'
+        && value.Skip(1).All(character => character is >= 'a' and <= 'z' or >= '0' and <= '9');
+
+    private static bool IsBoundedText(string value, int minimumLength, int maximumLength) =>
+        value is not null && value.Length >= minimumLength && value.Length <= maximumLength;
+
+    private static bool IsValidPersistedEtag(string value)
+    {
+        if (value is null) return false;
+        if (value.Length == 0) return true;
+        return value.Length <= 512
+               && EntityTagHeaderValue.TryParse(value, out var parsed)
+               && !parsed.IsWeak;
+    }
+
+    private static bool IsValidPersistedLastModified(string value)
+    {
+        if (value is null) return false;
+        if (value.Length == 0) return true;
+        return value.Length <= 128
+               && DateTimeOffset.TryParseExact(
+                   value,
+                   "R",
+                   CultureInfo.InvariantCulture,
+                   DateTimeStyles.AssumeUniversal,
+                   out _);
+    }
+
+    private static readonly HashSet<string> WindowsReservedFileNames = new(
+        [
+            "CON", "PRN", "AUX", "NUL",
+            "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+            "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
+        ],
+        StringComparer.OrdinalIgnoreCase);
+
+    private static string SanitizePathSegment(string value, int maximumLength)
+    {
+        if (!IsSafeIdentity(value, maximumLength))
+            throw new InvalidDataException("A identidade do caminho não é segura.");
+        return value;
     }
 
     private static bool IsWithinRoot(string candidatePath, string rootPath)
@@ -1115,6 +1755,11 @@ public sealed class CatalogDownloadService : IDisposable
             StringComparison.OrdinalIgnoreCase);
     }
 
+    private static bool PathsEqual(string firstPath, string secondPath) =>
+        Path.GetFullPath(firstPath).Equals(
+            Path.GetFullPath(secondPath),
+            StringComparison.OrdinalIgnoreCase);
+
     private static void EnsureNoReparsePoints(string rootPath, string candidatePath)
     {
         var canonicalRoot = Path.GetFullPath(rootPath);
@@ -1122,32 +1767,348 @@ public sealed class CatalogDownloadService : IDisposable
         if (!IsWithinRoot(canonicalCandidate, canonicalRoot))
             throw new InvalidDataException("O caminho saiu da pasta autorizada.");
 
-        var relative = Path.GetRelativePath(canonicalRoot, canonicalCandidate);
-        if (relative == ".") return;
-        var current = canonicalRoot;
-        foreach (var segment in relative.Split(
+        if (!Directory.Exists(canonicalRoot))
+            throw new InvalidDataException("A raiz autorizada não existe.");
+
+        var volumeRoot = Path.GetPathRoot(canonicalCandidate);
+        if (string.IsNullOrWhiteSpace(volumeRoot))
+            throw new InvalidDataException("O caminho autorizado não possui raiz física.");
+        var current = volumeRoot;
+        EnsureExistingPathIsNotReparsePoint(current);
+        foreach (var segment in Path.GetRelativePath(volumeRoot, canonicalCandidate).Split(
                      [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
                      StringSplitOptions.RemoveEmptyEntries))
         {
             current = Path.Combine(current, segment);
-            FileAttributes attributes;
             try
             {
-                attributes = File.GetAttributes(current);
+                EnsureExistingPathIsNotReparsePoint(current);
             }
             catch (FileNotFoundException)
             {
-                continue;
+                break;
             }
             catch (DirectoryNotFoundException)
             {
-                continue;
+                break;
             }
-
-            if ((attributes & FileAttributes.ReparsePoint) != 0)
-                throw new InvalidDataException(
-                    $"O caminho contém um atalho ou junção não autorizado: {current}");
         }
+    }
+
+    private static void EnsureExistingPathIsNotReparsePoint(string path)
+    {
+        if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+            throw new InvalidDataException(
+                $"O caminho contém um atalho ou junção não autorizado: {path}");
+    }
+
+    private static FileStream OpenValidatedMutableFile(
+        string path,
+        string installationRoot,
+        FileMode mode,
+        bool asynchronous,
+        FileShare share = FileShare.Read,
+        bool writeThrough = false)
+    {
+        EnsureNoReparsePoints(installationRoot, path);
+        FileStream? stream = null;
+        try
+        {
+            stream = OpenValidatedFile(
+                path,
+                mode,
+                FileAccess.ReadWrite,
+                share,
+                asynchronous,
+                writeThrough);
+            EnsureNoReparsePoints(installationRoot, path);
+            ValidateMutableHandle(stream.SafeFileHandle, path);
+            return stream;
+        }
+        catch
+        {
+            stream?.Dispose();
+            throw;
+        }
+    }
+
+    private static FileStream OpenValidatedFile(
+        string path,
+        FileMode mode,
+        FileAccess access,
+        FileShare share,
+        bool asynchronous,
+        bool writeThrough = false)
+    {
+        if (!OperatingSystem.IsWindows())
+            throw new PlatformNotSupportedException("A validação segura de arquivos requer Windows.");
+
+        var creationDisposition = mode switch
+        {
+            FileMode.CreateNew => CreateNewDisposition,
+            FileMode.Open => OpenExistingDisposition,
+            FileMode.OpenOrCreate => OpenAlwaysDisposition,
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(mode),
+                "O modo solicitado pode truncar antes da validação.")
+        };
+        var desiredAccess = access switch
+        {
+            FileAccess.Read => GenericRead,
+            FileAccess.Write => GenericWrite,
+            FileAccess.ReadWrite => GenericRead | GenericWrite,
+            _ => throw new ArgumentOutOfRangeException(nameof(access))
+        };
+        var flags = FileAttributeNormal | FileFlagOpenReparsePoint | FileFlagSequentialScan;
+        if (asynchronous) flags |= FileFlagOverlapped;
+        if (writeThrough) flags |= FileFlagWriteThrough;
+
+        var handle = CreateFile(
+            ToExtendedLengthPath(path),
+            desiredAccess,
+            (uint)share,
+            IntPtr.Zero,
+            creationDisposition,
+            flags,
+            IntPtr.Zero);
+        if (handle.IsInvalid)
+        {
+            var error = Marshal.GetLastWin32Error();
+            handle.Dispose();
+            throw new IOException(
+                "Não foi possível abrir o arquivo por um handle seguro.",
+                new Win32Exception(error));
+        }
+
+        try
+        {
+            ValidateMutableHandle(handle, path);
+            return new FileStream(handle, access, BufferSize, asynchronous);
+        }
+        catch
+        {
+            handle.Dispose();
+            throw;
+        }
+    }
+
+    private static long GetValidatedMutableFileLength(string path, string installationRoot)
+    {
+        using var stream = OpenValidatedMutableFile(
+            path,
+            installationRoot,
+            FileMode.Open,
+            asynchronous: false);
+        return stream.Length;
+    }
+
+    private static long GetValidatedMutableFileLength(
+        string path,
+        PathIdentity.DirectoryTreeLease pathLease)
+    {
+        pathLease.Revalidate();
+        using var stream = pathLease.OpenFile(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            BufferSize,
+            FileOptions.SequentialScan);
+        _ = PathIdentity.CaptureFileIdentity(stream.SafeFileHandle, path);
+        pathLease.Revalidate();
+        return stream.Length;
+    }
+
+    private static void ValidateMutableFilePath(string path, string installationRoot)
+    {
+        using var stream = OpenValidatedMutableFile(
+            path,
+            installationRoot,
+            FileMode.Open,
+            asynchronous: false);
+    }
+
+    private static void ValidateMutableFilePath(string path)
+    {
+        using var stream = OpenValidatedFile(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            asynchronous: false);
+    }
+
+    private static SafeFileHandle AcquireDirectoryGuard(string directoryPath, string installationRoot)
+    {
+        EnsureNoReparsePoints(installationRoot, directoryPath);
+        var handle = CreateFile(
+            ToExtendedLengthPath(directoryPath),
+            0,
+            FileShareRead | FileShareWrite,
+            IntPtr.Zero,
+            OpenExistingDisposition,
+            FileFlagBackupSemantics | FileFlagOpenReparsePoint,
+            IntPtr.Zero);
+        if (handle.IsInvalid)
+        {
+            var error = Marshal.GetLastWin32Error();
+            handle.Dispose();
+            throw new IOException(
+                "Não foi possível proteger a pasta do artefato.",
+                new Win32Exception(error));
+        }
+
+        try
+        {
+            ValidateDirectoryGuard(handle, directoryPath);
+            EnsureNoReparsePoints(installationRoot, directoryPath);
+            ValidateDirectoryGuard(handle, directoryPath);
+            return handle;
+        }
+        catch
+        {
+            handle.Dispose();
+            throw;
+        }
+    }
+
+    private static void ValidateMutableHandle(SafeFileHandle handle, string expectedPath)
+    {
+        var information = GetHandleInformation(handle);
+        var attributes = (FileAttributes)information.FileAttributes;
+        if ((attributes & (FileAttributes.ReparsePoint | FileAttributes.Directory)) != 0)
+            throw new InvalidDataException("O arquivo aberto é um reparse point ou diretório.");
+        if (information.NumberOfLinks != 1)
+            throw new InvalidDataException("Hardlinks não são aceitos para arquivos mutáveis.");
+        ValidateHandlePath(handle, expectedPath);
+    }
+
+    private static void ValidateDirectoryGuard(SafeFileHandle handle, string expectedPath)
+    {
+        var information = GetHandleInformation(handle);
+        var attributes = (FileAttributes)information.FileAttributes;
+        if ((attributes & FileAttributes.Directory) == 0
+            || (attributes & FileAttributes.ReparsePoint) != 0)
+            throw new InvalidDataException("A pasta protegida não é um diretório físico.");
+        ValidateHandlePath(handle, expectedPath);
+    }
+
+    private static ByHandleFileInformation GetHandleInformation(SafeFileHandle handle)
+    {
+        if (handle.IsInvalid || handle.IsClosed
+            || !GetFileInformationByHandle(handle, out var information))
+            throw new IOException(
+                "Não foi possível revalidar o handle do arquivo.",
+                new Win32Exception(Marshal.GetLastWin32Error()));
+        return information;
+    }
+
+    private static void ValidateHandlePath(SafeFileHandle handle, string expectedPath)
+    {
+        var capacity = 512;
+        while (capacity <= 32_768)
+        {
+            var buffer = new char[capacity];
+            var length = GetFinalPathNameByHandle(handle, buffer, (uint)buffer.Length, 0);
+            if (length == 0)
+                throw new IOException(
+                    "Não foi possível confirmar o caminho físico do arquivo.",
+                    new Win32Exception(Marshal.GetLastWin32Error()));
+            if (length < buffer.Length)
+            {
+                var actual = NormalizeHandlePath(new string(buffer, 0, (int)length));
+                var expected = Path.TrimEndingDirectorySeparator(Path.GetFullPath(expectedPath));
+                if (!actual.Equals(expected, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException(
+                        "O handle aberto não corresponde ao caminho autorizado.");
+                return;
+            }
+            capacity = checked((int)length + 1);
+        }
+        throw new InvalidDataException("O caminho físico do arquivo excede o limite seguro.");
+    }
+
+    private static string NormalizeHandlePath(string path)
+    {
+        const string extendedUncPrefix = @"\\?\UNC\";
+        const string extendedPrefix = @"\\?\";
+        var normalized = path.StartsWith(extendedUncPrefix, StringComparison.OrdinalIgnoreCase)
+            ? @"\\" + path[extendedUncPrefix.Length..]
+            : path.StartsWith(extendedPrefix, StringComparison.OrdinalIgnoreCase)
+                ? path[extendedPrefix.Length..]
+                : path;
+        return Path.TrimEndingDirectorySeparator(Path.GetFullPath(normalized));
+    }
+
+    private static string ToExtendedLengthPath(string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        if (fullPath.StartsWith(@"\\?\", StringComparison.Ordinal)) return fullPath;
+        if (fullPath.StartsWith(@"\\.\", StringComparison.Ordinal))
+            throw new InvalidDataException("Namespaces de dispositivo não são aceitos.");
+        return fullPath.StartsWith(@"\\", StringComparison.Ordinal)
+            ? @"\\?\UNC\" + fullPath[2..]
+            : @"\\?\" + fullPath;
+    }
+
+    private static FileStream AcquireArtifactLock(
+        string destinationPath,
+        PathIdentity.DirectoryTreeLease pathLease)
+    {
+        var lockPath = destinationPath + LockSuffix;
+        try
+        {
+            return pathLease.OpenFile(
+                lockPath,
+                FileMode.OpenOrCreate,
+                FileAccess.ReadWrite,
+                FileShare.None,
+                1,
+                FileOptions.WriteThrough,
+                deleteAccess: true);
+        }
+        catch (IOException exception)
+        {
+            throw new IOException("Este artefato já está sendo processado por outra instância.", exception);
+        }
+    }
+
+    private static void DisposeArtifactLock(FileStream? artifactLock, string destinationPath)
+    {
+        if (artifactLock is null) return;
+        try
+        {
+            var lockPath = destinationPath + LockSuffix;
+            var identity = PathIdentity.CaptureFileIdentity(
+                artifactLock.SafeFileHandle,
+                lockPath);
+            PathIdentity.DeleteByHandle(
+                artifactLock.SafeFileHandle,
+                lockPath,
+                identity);
+        }
+        catch (Exception exception) when (exception is IOException
+                                           or UnauthorizedAccessException
+                                           or InvalidDataException)
+        {
+            // Fail closed: never fall back to pathname deletion. A stale lock is
+            // safer than deleting an object whose identity could not be proven.
+        }
+        finally
+        {
+            artifactLock.Dispose();
+        }
+    }
+
+    private static void ResetPartialForFreshAttempt(ActiveDownload active)
+    {
+        if (File.Exists(active.PartialPath))
+            PreserveFileByHandle(active.PartialPath, active.PathLease);
+        active.Metadata.ETag = string.Empty;
+        active.Metadata.LastModified = string.Empty;
+        active.Metadata.ArchiveReady = false;
+        if (!TrySaveResumeMetadata(active))
+            throw new IOException("Não foi possível registrar a reinicialização segura.");
     }
 
     private static bool IsRedirect(HttpStatusCode statusCode) => statusCode is
@@ -1180,6 +2141,7 @@ public sealed class CatalogDownloadService : IDisposable
         {
             AllowAutoRedirect = false,
             AutomaticDecompression = DecompressionMethods.None,
+            SslOptions = { CertificateRevocationCheckMode = X509RevocationMode.Online },
             ConnectTimeout = TimeSpan.FromSeconds(30),
             PooledConnectionLifetime = TimeSpan.FromMinutes(10)
         };
@@ -1190,7 +2152,9 @@ public sealed class CatalogDownloadService : IDisposable
     {
         try
         {
-            if (File.Exists(path)) File.Delete(path);
+            var parent = Path.GetDirectoryName(Path.GetFullPath(path));
+            if (parent is not null)
+                _ = PathIdentity.DeleteFileExact(path, parent);
         }
         catch (IOException)
         {
@@ -1198,24 +2162,58 @@ public sealed class CatalogDownloadService : IDisposable
         catch (UnauthorizedAccessException)
         {
         }
+        catch (InvalidDataException)
+        {
+        }
     }
 
     private static void PreservePartialBeforeRestart(string path)
     {
         if (!File.Exists(path)) return;
+        ValidateMutableFilePath(path);
+        var preservedPath = path + ".preserved-"
+                            + DateTimeOffset.UtcNow.ToString("yyyyMMddHHmmssfff", CultureInfo.InvariantCulture)
+                            + "-" + Guid.NewGuid().ToString("N");
         try
         {
-            var preservedPath = path + ".preserved-" + DateTimeOffset.UtcNow.ToString("yyyyMMddHHmmssfff", CultureInfo.InvariantCulture);
-            if (File.Exists(preservedPath))
-                preservedPath += "-" + Guid.NewGuid().ToString("N");
-            File.Move(path, preservedPath);
+            File.Move(path, preservedPath, overwrite: false);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             throw new IOException(
-                "O arquivo parcial antigo foi preservado, mas não pôde ser separado para reiniciar com segurança.",
+                "O arquivo antigo foi preservado, mas não pôde ser separado com segurança.",
                 exception);
         }
+    }
+
+    private static void PreserveFileByHandle(
+        string path,
+        PathIdentity.DirectoryTreeLease pathLease)
+    {
+        pathLease.Revalidate();
+        using var stream = pathLease.OpenFile(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            BufferSize,
+            FileOptions.SequentialScan,
+            deleteAccess: true);
+        var identity = PathIdentity.CaptureFileIdentity(stream.SafeFileHandle, path);
+        var preservedLeaf = Path.GetFileName(path)
+                            + ".preserved-"
+                            + DateTimeOffset.UtcNow.ToString(
+                                "yyyyMMddHHmmssfff",
+                                CultureInfo.InvariantCulture)
+                            + "-" + Guid.NewGuid().ToString("N");
+        _ = PathIdentity.RenameByHandle(
+            stream.SafeFileHandle,
+            identity,
+            pathLease.AnchorHandle,
+            Path.GetDirectoryName(path)!,
+            preservedLeaf,
+            replaceIfExists: false);
+        pathLease.Revalidate();
     }
 
     private static void DeletePreservedPartials(string partialPath)
@@ -1249,15 +2247,19 @@ public sealed class CatalogDownloadService : IDisposable
         EnsureNoReparsePoints(installationRoot, saved.PartialPath);
         EnsureNoReparsePoints(installationRoot, saved.MetadataPath);
         EnsureNoReparsePoints(installationRoot, saved.DestinationPath);
-        if (!TryDeleteFileStrict(saved.PartialPath, out failure)) return false;
-        if (!TryDeletePreservedPartialsStrict(saved.PartialPath, out failure)) return false;
-        if (saved.Metadata.ArchiveReady
-            && !TryDeleteFileStrict(saved.DestinationPath, out failure))
-            return false;
-        return TryDeleteFileStrict(saved.MetadataPath, out failure);
+        if (!TryDeleteFileStrict(saved.PartialPath, installationRoot, out failure)) return false;
+        if (!TryDeletePreservedPartialsStrict(
+                saved.PartialPath,
+                installationRoot,
+                out failure)) return false;
+        if (!TryDeleteFileStrict(saved.DestinationPath, installationRoot, out failure)) return false;
+        return TryDeleteFileStrict(saved.MetadataPath, installationRoot, out failure);
     }
 
-    private static bool TryDeletePreservedPartialsStrict(string partialPath, out string failure)
+    private static bool TryDeletePreservedPartialsStrict(
+        string partialPath,
+        string installationRoot,
+        out string failure)
     {
         failure = string.Empty;
         try
@@ -1276,57 +2278,54 @@ public sealed class CatalogDownloadService : IDisposable
                 .ToArray();
             foreach (var candidate in candidates)
             {
-                if (!TryDeleteFileStrict(candidate, out failure)) return false;
+                if (!TryDeleteFileStrict(candidate, installationRoot, out failure)) return false;
             }
             return true;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            failure = exception.Message;
+            failure = "Não foi possível remover um parcial preservado.";
             return false;
         }
     }
 
-    private static bool TryDeleteFileStrict(string path, out string failure)
+    private static bool TryDeleteFileStrict(
+        string path,
+        string installationRoot,
+        out string failure)
     {
         failure = string.Empty;
         try
         {
-            try
-            {
-                _ = File.GetAttributes(path);
-            }
-            catch (FileNotFoundException)
-            {
-                return true;
-            }
-            catch (DirectoryNotFoundException)
-            {
-                return true;
-            }
-
-            File.Delete(path);
-            try
-            {
-                _ = File.GetAttributes(path);
-                failure = $"O arquivo permaneceu no disco: {path}";
-                return false;
-            }
-            catch (FileNotFoundException)
-            {
-                return true;
-            }
-            catch (DirectoryNotFoundException)
-            {
-                return true;
-            }
+            if (!File.Exists(path)) return true;
+            _ = PathIdentity.DeleteFileExact(path, installationRoot);
+            return true;
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is IOException
+                                           or UnauthorizedAccessException
+                                           or InvalidDataException)
         {
-            failure = $"{path}: {exception.Message}";
+            failure = "O arquivo está em uso ou não pôde ser removido.";
             return false;
         }
     }
+
+    private static string SafeLocalFailure(Exception exception) => exception switch
+    {
+        InvalidDataException => exception.Message,
+        UnauthorizedAccessException => "A pasta escolhida não permite esta operação.",
+        IOException => exception.Message,
+        _ => "Não foi possível preparar o artefato com segurança."
+    };
+
+    private static string SafeDownloadFailure(Exception exception) => exception switch
+    {
+        InvalidDataException => exception.Message,
+        UnauthorizedAccessException => "A gravação do pacote não foi autorizada.",
+        CryptographicException => "Não foi possível verificar a integridade do pacote.",
+        IOException => exception.Message,
+        _ => "O download falhou; o progresso parcial foi preservado."
+    };
 
     public void Dispose()
     {
@@ -1341,16 +2340,19 @@ public sealed class CatalogDownloadService : IDisposable
 
         foreach (var active in activeDownloads)
         {
-            active.ShutdownRequested = true;
-            active.Metadata.IsPaused = false;
-            TrySaveResumeMetadata(active);
-            try
+            lock (active.MetadataGate)
             {
-                active.Cancellation.Cancel();
-            }
-            catch (ObjectDisposedException)
-            {
-                // The transfer completed between the lifetime snapshot and cancel.
+                if (active.IsDisposed) continue;
+                active.ShutdownRequested = true;
+                active.Metadata.IsPaused = false;
+                TrySaveResumeMetadata(active);
+                try
+                {
+                    active.Cancellation.Cancel();
+                }
+                catch (ObjectDisposedException)
+                {
+                }
             }
         }
     }
@@ -1366,11 +2368,55 @@ public sealed class CatalogDownloadService : IDisposable
     private void FinishActiveDownload(string itemId, ActiveDownload active)
     {
         _active.TryRemove(itemId, out _);
-        active.Dispose();
+        lock (active.MetadataGate)
+        {
+            active.IsDisposed = true;
+            active.Dispose();
+        }
         lock (_lifetimeGate)
         {
             if (_disposed && _active.IsEmpty) DisposeOwnedResourcesUnderLock();
         }
+    }
+
+    [DllImport("kernel32.dll", EntryPoint = "CreateFileW", CharSet = CharSet.Unicode,
+        SetLastError = true)]
+    private static extern SafeFileHandle CreateFile(
+        string fileName,
+        uint desiredAccess,
+        uint shareMode,
+        IntPtr securityAttributes,
+        uint creationDisposition,
+        uint flagsAndAttributes,
+        IntPtr templateFile);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetFileInformationByHandle(
+        SafeFileHandle file,
+        out ByHandleFileInformation information);
+
+    [DllImport("kernel32.dll", EntryPoint = "GetFinalPathNameByHandleW",
+        CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern uint GetFinalPathNameByHandle(
+        SafeFileHandle file,
+        [Out] char[] filePath,
+        uint filePathLength,
+        uint flags);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ByHandleFileInformation
+    {
+        public uint FileAttributes;
+        public System.Runtime.InteropServices.ComTypes.FILETIME CreationTime;
+        public System.Runtime.InteropServices.ComTypes.FILETIME LastAccessTime;
+        public System.Runtime.InteropServices.ComTypes.FILETIME LastWriteTime;
+        public uint VolumeSerialNumber;
+        public uint FileSizeHigh;
+        public uint FileSizeLow;
+        public uint NumberOfLinks;
+        public uint FileIndexHigh;
+        public uint FileIndexLow;
     }
 
     private sealed class ActiveDownload : IDisposable
@@ -1381,7 +2427,9 @@ public sealed class CatalogDownloadService : IDisposable
             string partialPath,
             string destinationPath,
             string installationRoot,
-            DownloadResumeMetadata metadata)
+            DownloadResumeMetadata metadata,
+            FileStream artifactLock,
+            PathIdentity.DirectoryTreeLease pathLease)
         {
             Cancellation = cancellation;
             MetadataPath = metadataPath;
@@ -1389,6 +2437,8 @@ public sealed class CatalogDownloadService : IDisposable
             DestinationPath = destinationPath;
             InstallationRoot = installationRoot;
             Metadata = metadata;
+            ArtifactLock = artifactLock;
+            PathLease = pathLease;
         }
 
         public CancellationTokenSource Cancellation { get; }
@@ -1396,22 +2446,38 @@ public sealed class CatalogDownloadService : IDisposable
         public string PartialPath { get; }
         public string DestinationPath { get; }
         public string InstallationRoot { get; }
+        public string LockPath => DestinationPath + LockSuffix;
         public DownloadResumeMetadata Metadata { get; }
+        public FileStream ArtifactLock { get; }
+        public PathIdentity.DirectoryTreeLease PathLease { get; }
         public object MetadataGate { get; } = new();
+        public bool IsDisposed { get; set; }
         public bool PauseRequested { get; set; }
         public bool ShutdownRequested { get; set; }
 
-        public void Dispose() => Cancellation.Dispose();
+        public void Dispose()
+        {
+            Cancellation.Dispose();
+            DisposeArtifactLock(ArtifactLock, DestinationPath);
+            PathLease.Dispose();
+        }
     }
 
     private sealed class DownloadResumeMetadata
     {
+        public int SchemaVersion { get; set; }
         public string ItemId { get; set; } = string.Empty;
-        public string SourceFingerprint { get; set; } = string.Empty;
-        public string DestinationPath { get; set; } = string.Empty;
+        public string ProductId { get; set; } = string.Empty;
+        public string ArtifactId { get; set; } = string.Empty;
+        public int ArtifactVersion { get; set; }
+        public string Sha256 { get; set; } = string.Empty;
+        public long ContentLength { get; set; }
+        public string ManifestIdentity { get; set; } = string.Empty;
+        public CatalogExtractPolicy ExtractPolicy { get; set; }
+        public string SafeFileName { get; set; } = string.Empty;
+        public string FileExtension { get; set; } = string.Empty;
         public string ETag { get; set; } = string.Empty;
         public string LastModified { get; set; } = string.Empty;
-        public long? TotalBytes { get; set; }
         public bool IsPaused { get; set; }
         public bool ArchiveReady { get; set; }
         public DateTimeOffset UpdatedUtc { get; set; }
@@ -1422,6 +2488,21 @@ public sealed class CatalogDownloadService : IDisposable
         string PartialPath,
         string DestinationPath,
         DownloadResumeMetadata Metadata);
+
+    private sealed class FailClosedRequestProvider : ICatalogDownloadRequestProvider
+    {
+        public static FailClosedRequestProvider Instance { get; } = new();
+
+        public ValueTask<HttpRequestMessage> CreateRequestAsync(
+            CatalogArtifactDescriptor artifact,
+            long offset,
+            CatalogDownloadValidators validators,
+            CancellationToken cancellationToken) =>
+            ValueTask.FromException<HttpRequestMessage>(
+                new InvalidOperationException("Nenhuma sessão autorizada está disponível."));
+    }
+
+    private sealed class RestartDownloadException : IOException;
 
     private sealed class TransientDownloadException : IOException
     {

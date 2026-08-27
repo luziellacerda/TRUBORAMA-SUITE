@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.0.0 — candidato em 2026-08-27
+
+- removidos login demonstrativo, catálogo privado reversível, URL permanente e arquivo de chave incorporado;
+- introduzido protocolo de licença Suite fail-closed com configuração de autoridade assinada, identidade CNG e sessões curtas;
+- catálogo público estrito: os cards sem descriptor autorizado ficam indisponíveis e não simulam downloads;
+- fronteira do downloader preparada para grants efêmeros, ainda em modo fail-closed até existir o provedor real; SHA-256/tamanho, retomada segura e lock entre processos já são obrigatórios;
+- extração ZIP, RAR e 7z reforçada com limites, cancelamento, staging e política proveniente do descriptor autorizado; assinatura de catálogo/manifests continua bloqueio de produção;
+- incluídos 15 vídeos de fundo com enquadramento responsivo, roteamento semântico por sistema e derivado Nintendo Switch otimizado para 1080p30, além dos 38 vídeos de sistemas;
+- conferidas e indexadas 98 capas Windows, com tamanho e SHA-256 iguais nas cópias organizada e de catálogo;
+- migração para .NET 10, dependências bloqueadas e assinadas, SBOM SPDX 2.3 e pipeline de candidato Authenticode;
+- adicionado checklist explícito que impede chamar o pacote de produção enquanto backend, catálogo/grants, direitos e assinatura do pacote completo estiverem pendentes.
+
 ## 1.7.0 — 2026-08-25
 
 - Central de downloads com a capa exata de cada jogo em andamento ou preservado;

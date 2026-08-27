@@ -275,7 +275,7 @@
                                 <TextBlock Text="Entre no seu hangar." FontSize="29" FontWeight="SemiBold" Foreground="#F7F9F7" Margin="0,6,0,0"/>
                                 <TextBlock Text="Sua biblioteca. Seus jogos. Um só lugar." FontSize="12" Foreground="#909B93" Margin="0,5,0,0"/>
 
-                                <TextBlock Text="CHAVE DE ACESSO" Foreground="#8A968E" FontSize="10" FontWeight="Bold" Margin="0,22,0,8"/>
+                                <TextBlock Text="ID DA LICENÇA" Foreground="#8A968E" FontSize="10" FontWeight="Bold" Margin="0,22,0,8"/>
                                 <Border Height="54" Background="#C6070B08" BorderBrush="#53637468" BorderThickness="1" CornerRadius="10">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -288,11 +288,32 @@
                                         </Border>
                                         <TextBox x:Name="LicenseInput" Grid.Column="1" Margin="14,0,8,0" Background="Transparent" BorderThickness="0"
                                                  Foreground="White" CaretBrush="{StaticResource Lime}" FontSize="13"
-                                                 VerticalContentAlignment="Center" AutomationProperties.Name="Chave de acesso Turborama"/>
-                                        <TextBlock Grid.Column="2" Text="KEY" Foreground="#7C887F" FontSize="9" FontWeight="Bold"
+                                                 VerticalContentAlignment="Center" AutomationProperties.Name="ID da licença Turborama"/>
+                                        <TextBlock Grid.Column="2" Text="ID" Foreground="#7C887F" FontSize="9" FontWeight="Bold"
                                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     </Grid>
                                 </Border>
+
+                                <TextBlock Text="CÓDIGO DE ATIVAÇÃO (USO ÚNICO)" Foreground="#8A968E" FontSize="10" FontWeight="Bold" Margin="0,13,0,8"/>
+                                <Border Height="54" Background="#C6070B08" BorderBrush="#53637468" BorderThickness="1" CornerRadius="10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="46"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="42"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" BorderBrush="#2E607066" BorderThickness="0,0,1,0">
+                                            <TextBlock Text="●" Foreground="{StaticResource Red}" FontSize="9" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <PasswordBox x:Name="ActivationCodeInput" Grid.Column="1" Margin="14,0,8,0" Background="Transparent" BorderThickness="0"
+                                                     Foreground="White" CaretBrush="{StaticResource Lime}" FontSize="13"
+                                                     VerticalContentAlignment="Center" AutomationProperties.Name="Código de ativação Turborama"/>
+                                        <TextBlock Grid.Column="2" Text="OTP" Foreground="#7C887F" FontSize="9" FontWeight="Bold"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                                <TextBlock Text="O código é enviado somente para ativação e nunca é salvo neste computador."
+                                           Foreground="#737E76" FontSize="9" Margin="2,6,0,0" TextWrapping="Wrap"/>
 
                                 <TextBlock x:Name="StatusText" Visibility="Collapsed" Foreground="#FF6072" FontSize="9" AutomationProperties.Name="Status da licença"
                                            FontWeight="Bold" Margin="2,7,0,0"/>
@@ -301,7 +322,8 @@
                                     <Grid.Effect>
                                         <DropShadowEffect Color="#5DFF73" BlurRadius="18" ShadowDepth="0" Opacity="0.34"/>
                                     </Grid.Effect>
-                                    <Button Content="ENTRAR NA TURBORAMA    →" Style="{StaticResource PrimaryButton}" Click="Enter_Click" AutomationProperties.Name="Entrar na Turborama"/>
+                                    <Button x:Name="EnterButton" Content="ATIVAR E ENTRAR    →" Style="{StaticResource PrimaryButton}" Click="Enter_Click"
+                                            IsDefault="True" AutomationProperties.Name="Ativar licença e entrar na Turborama"/>
                                     <Canvas IsHitTestVisible="False">
                                         <Rectangle x:Name="ButtonSweep" Canvas.Left="-120" Canvas.Top="-18" Width="72" Height="92" Opacity="0">
                                             <Rectangle.Fill>
@@ -334,14 +356,13 @@
                                     <Grid>
                                         <StackPanel Orientation="Horizontal">
                                             <Grid Width="10" Height="10" Margin="0,0,8,0">
-                                                <Ellipse x:Name="OnlineDot" Width="7" Height="7" Fill="#62F36B" Opacity="0.8" RenderTransformOrigin="0.5,0.5">
+                                                <Ellipse x:Name="OnlineDot" Width="7" Height="7" Fill="#6B746E" Opacity="0.8" RenderTransformOrigin="0.5,0.5">
                                                     <Ellipse.RenderTransform><ScaleTransform x:Name="OnlineDotScale"/></Ellipse.RenderTransform>
-                                                    <Ellipse.Effect><DropShadowEffect Color="#62F36B" BlurRadius="7" ShadowDepth="0" Opacity="0.8"/></Ellipse.Effect>
                                                 </Ellipse>
                                             </Grid>
-                                            <TextBlock Text="SERVIÇO ONLINE" FontSize="9" Foreground="#929E95" FontWeight="Bold" VerticalAlignment="Center"/>
+                                            <TextBlock x:Name="ServiceStatusText" Text="AUTORIDADE NÃO VERIFICADA" FontSize="9" Foreground="#929E95" FontWeight="Bold" VerticalAlignment="Center"/>
                                         </StackPanel>
-                                        <TextBlock Text="CONEXÃO PROTEGIDA" HorizontalAlignment="Right" FontSize="9" Foreground="#87938B" FontWeight="Bold"/>
+                                        <TextBlock Text="VALIDAÇÃO OBRIGATÓRIA" HorizontalAlignment="Right" FontSize="9" Foreground="#87938B" FontWeight="Bold"/>
                                     </Grid>
                                 </Border>
                             </StackPanel>
@@ -352,8 +373,8 @@
                 <!-- One quiet brand signature; the aircraft remains completely unobstructed. -->
                 <StackPanel HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,36,30" Opacity="0.70">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Ellipse Width="5" Height="5" Fill="{StaticResource Lime}" Margin="0,0,8,0"/>
-                        <TextBlock Text="HANGAR DIGITAL ONLINE" FontSize="10" Foreground="#E5EBE7" FontWeight="Bold"/>
+                        <Ellipse Width="5" Height="5" Fill="#6B746E" Margin="0,0,8,0"/>
+                        <TextBlock Text="HANGAR DIGITAL" FontSize="10" Foreground="#E5EBE7" FontWeight="Bold"/>
                     </StackPanel>
                     <TextBlock Text="GAMES  •  ARCADE  •  EMULAÇÃO" FontSize="9" Foreground="#929E95" HorizontalAlignment="Right" Margin="0,5,0,0"/>
                 </StackPanel>

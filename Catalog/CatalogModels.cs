@@ -1,18 +1,18 @@
 using System.ComponentModel;
 using System.Globalization;
 using System.IO;
+using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace TurboBoxManager.Catalog;
 
 public sealed class CatalogManifest
 {
-    public int SchemaVersion { get; init; } = 3;
+    public int SchemaVersion { get; init; }
     public string DefaultImage { get; init; } = string.Empty;
-    public bool EnableTestDownloads { get; init; }
-    public CatalogDownloadDefinition TestDownload { get; init; } = new();
     public List<CatalogCategory> Categories { get; init; } = [];
     public List<CatalogItemDefinition> Items { get; init; } = [];
 
@@ -122,14 +122,6 @@ public sealed class CatalogPackageTemplate
     public int Order { get; init; }
 }
 
-public sealed class CatalogDownloadDefinition
-{
-    public string Url { get; init; } = string.Empty;
-    public string Sha256 { get; init; } = string.Empty;
-    public string Size { get; init; } = string.Empty;
-    public string FileExtension { get; init; } = string.Empty;
-}
-
 public enum CatalogDownloadState
 {
     Idle,
@@ -145,6 +137,48 @@ public enum CatalogDownloadState
     Failed,
     Canceled,
     Discarded
+}
+
+public enum CatalogExtractPolicy
+{
+    None,
+    ExtractArchive
+}
+
+/// <summary>
+/// Immutable, server-authorized identity of one downloadable artifact. A URL
+/// is deliberately not part of this descriptor: transport grants are minted
+/// per request and must never become catalog or resume-state authority.
+/// </summary>
+public sealed record CatalogArtifactDescriptor
+{
+    public const string TurboramaSuiteProductId = "TURBORAMA_SUITE";
+
+    public string ProductId { get; } = TurboramaSuiteProductId;
+    public required string ArtifactId { get; init; }
+    public required int ArtifactVersion { get; init; }
+    public required long ContentLength { get; init; }
+    public required string Sha256 { get; init; }
+    public required string SafeFileName { get; init; }
+    public required string FileExtension { get; init; }
+    public CatalogExtractPolicy ExtractPolicy { get; init; }
+    public required string ManifestIdentity { get; init; }
+}
+
+public sealed record CatalogDownloadValidators(string ETag = "", string LastModified = "");
+
+/// <summary>
+/// Creates one complete, single-use GET request for the current session. The
+/// returned request (including Authorization/proof) is consumed and disposed
+/// without ever being serialized to disk.
+/// </summary>
+public interface ICatalogDownloadRequestProvider
+{
+    ValueTask<HttpRequestMessage> CreateRequestAsync(
+        CatalogArtifactDescriptor artifact,
+        long offset,
+        CatalogDownloadValidators validators,
+        CancellationToken cancellationToken);
 }
 
 public sealed class CatalogItem : INotifyPropertyChanged
@@ -175,10 +209,14 @@ public sealed class CatalogItem : INotifyPropertyChanged
     public string SystemGlyph { get; init; } = string.Empty;
     public int Order { get; init; }
     public SolidColorBrush AccentBrush { get; init; } = Brushes.LawnGreen;
-    public string DownloadUrl { get; init; } = string.Empty;
-    public string Sha256 { get; init; } = string.Empty;
-    public string DownloadFileExtension { get; init; } = string.Empty;
+    // Untrusted visual-catalog hint retained only to reject a mismatch with the
+    // server-authorized artifact. It must never authorize extraction by itself.
     public bool Extract { get; init; }
+    public CatalogArtifactDescriptor? Artifact { get; init; }
+
+    public bool HasExtractPolicyConflict => Artifact is not null
+        && Extract != (Artifact.ExtractPolicy == CatalogExtractPolicy.ExtractArchive);
+    public bool HasAuthorizedArtifact => Artifact is not null && !HasExtractPolicyConflict;
 
     public string ImageSource
     {
@@ -188,8 +226,16 @@ public sealed class CatalogItem : INotifyPropertyChanged
             if (_imageSource == value) return;
             _imageSource = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(Thumbnail384));
+            OnPropertyChanged(nameof(Thumbnail160));
         }
     }
+
+    [JsonIgnore]
+    public BitmapSource? Thumbnail384 => CatalogThumbnailLoader.Load(ImageSource, 384);
+
+    [JsonIgnore]
+    public BitmapSource? Thumbnail160 => CatalogThumbnailLoader.Load(ImageSource, 160);
 
     public CatalogDownloadState DownloadState
     {
@@ -292,38 +338,44 @@ public sealed class CatalogItem : INotifyPropertyChanged
         or CatalogDownloadState.Extracting;
     public bool CanPause => IsDownloading;
     public bool CanCancel => CanPause;
-    public bool CanResume => DownloadState is CatalogDownloadState.Paused
-        or CatalogDownloadState.Canceled
-        or CatalogDownloadState.Failed;
+    public bool CanResume => HasAuthorizedArtifact
+        && DownloadState is (CatalogDownloadState.Paused
+            or CatalogDownloadState.Canceled
+            or CatalogDownloadState.Failed);
     public bool CanDiscard => !IsBusy
         && DownloadState is not (CatalogDownloadState.Completed or CatalogDownloadState.Discarded)
         && (BytesReceived > 0
             || ArchiveFilePath.Length > 0
             || DownloadState == CatalogDownloadState.Paused);
     public bool CanRetryExtraction => !IsBusy
-        && Extract
+        && HasAuthorizedArtifact
+        && Artifact!.ExtractPolicy == CatalogExtractPolicy.ExtractArchive
         && ArchiveFilePath.Length > 0
         && DownloadState is CatalogDownloadState.AwaitingExtractionLocation
             or CatalogDownloadState.ExtractionFailed;
-    public bool CanDownload => !IsBusy;
-    public bool CanOpen => DownloadState == CatalogDownloadState.Completed && LocalFilePath.Length > 0;
+    public bool CanDownload => HasAuthorizedArtifact && !IsBusy;
+    public bool CanOpen => HasAuthorizedArtifact
+        && DownloadState == CatalogDownloadState.Completed
+        && LocalFilePath.Length > 0;
 
-    public string DownloadActionLabel => DownloadState switch
-    {
-        CatalogDownloadState.Queued => "NA FILA • PAUSAR",
-        CatalogDownloadState.Downloading => $"{ProgressPercentage:0}% • PAUSAR",
-        CatalogDownloadState.WaitingForNetwork => "SEM INTERNET • PAUSAR",
-        CatalogDownloadState.Paused => "CONTINUAR DOWNLOAD",
-        CatalogDownloadState.Verifying => "VERIFICANDO...",
-        CatalogDownloadState.Extracting => "DESCOMPACTANDO...",
-        CatalogDownloadState.AwaitingExtractionLocation => "ESCOLHER OUTRO HD",
-        CatalogDownloadState.ExtractionFailed => "TENTAR EXTRAÇÃO",
-        CatalogDownloadState.Completed => "ABRIR PASTA  ✓",
-        CatalogDownloadState.Failed when BytesReceived > 0 => "CONTINUAR DOWNLOAD",
-        CatalogDownloadState.Failed => "REPETIR DOWNLOAD",
-        CatalogDownloadState.Canceled => "CONTINUAR DOWNLOAD",
-        _ => "BAIXAR PACOTE  ↓"
-    };
+    public string DownloadActionLabel => !HasAuthorizedArtifact
+        ? "INDISPONÍVEL"
+        : DownloadState switch
+        {
+            CatalogDownloadState.Queued => "NA FILA • PAUSAR",
+            CatalogDownloadState.Downloading => $"{ProgressPercentage:0}% • PAUSAR",
+            CatalogDownloadState.WaitingForNetwork => "SEM INTERNET • PAUSAR",
+            CatalogDownloadState.Paused => "CONTINUAR DOWNLOAD",
+            CatalogDownloadState.Verifying => "VERIFICANDO...",
+            CatalogDownloadState.Extracting => "DESCOMPACTANDO...",
+            CatalogDownloadState.AwaitingExtractionLocation => "ESCOLHER OUTRO HD",
+            CatalogDownloadState.ExtractionFailed => "TENTAR EXTRAÇÃO",
+            CatalogDownloadState.Completed => "ABRIR PASTA  ✓",
+            CatalogDownloadState.Failed when BytesReceived > 0 => "CONTINUAR DOWNLOAD",
+            CatalogDownloadState.Failed => "REPETIR DOWNLOAD",
+            CatalogDownloadState.Canceled => "CONTINUAR DOWNLOAD",
+            _ => "BAIXAR PACOTE  ↓"
+        };
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -358,7 +410,10 @@ public sealed class CatalogItem : INotifyPropertyChanged
     internal void CompleteDownload(string localFilePath)
     {
         LocalFilePath = localFilePath;
-        ArchiveFilePath = Extract ? localFilePath : string.Empty;
+        ArchiveFilePath = HasAuthorizedArtifact
+                          && Artifact!.ExtractPolicy == CatalogExtractPolicy.ExtractArchive
+            ? localFilePath
+            : string.Empty;
         ProgressPercentage = 100;
         DownloadState = CatalogDownloadState.Completed;
         DownloadStatus = "Download concluído e verificado";
@@ -439,6 +494,8 @@ public sealed class LibrarySystemSummary
     public SolidColorBrush AccentBrush => Category.AccentBrush;
     public Color AccentColor => Category.AccentBrush.Color;
     public required string CoverImageSource { get; init; }
+    public BitmapSource? CoverThumbnail320 =>
+        CatalogThumbnailLoader.Load(CoverImageSource, 320);
     public required int ItemCount { get; init; }
     public string CountLabel => ItemCount == 1 ? "1 jogo" : $"{ItemCount} jogos";
 }

@@ -1,241 +1,456 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Text;
 using TurboBoxManager.Catalog;
 
 internal static class DownloadResumeVerifier
 {
+    private static readonly TimeSpan ScenarioTimeout = TimeSpan.FromSeconds(15);
+
     public static async Task RunAsync(string root)
     {
         Directory.CreateDirectory(root);
-        await VerifyAutomaticRangeResumeAsync(Path.Combine(root, "automatic"));
-        await VerifyPauseAndExplicitDiscardAsync(Path.Combine(root, "pause"));
-        await VerifyResumeAfterCatalogRenameAsync(Path.Combine(root, "renamed"));
-        await VerifyZeroByteRestartIntentAsync(Path.Combine(root, "restart-zero"));
-        await VerifyPendingPublishUsesPartialAsync(Path.Combine(root, "pending-publish"));
-        await VerifyUnsafe416RestartsAsync(Path.Combine(root, "unsafe-416"));
-        await VerifyHeaderTimeoutRetriesAsync(Path.Combine(root, "header-timeout"));
+        VerifyPublicTransportCannotBeInjected();
+        await VerifyDescriptorFailsClosedAsync(Path.Combine(root, "descriptor"));
+        VerifyDiscoveryHonorsCancellation(Path.Combine(root, "discovery-cancellation"));
+        await VerifyNonCanonicalSidecarIsRejectedAsync(Path.Combine(root, "sidecar-casing"));
+        await VerifyUnauthorizedSidecarCannotAutoResumeAsync(
+            Path.Combine(root, "sidecar-authorization"));
+        await VerifySidecarCannotChooseDestinationAsync(Path.Combine(root, "sidecar-path"));
+        await VerifyRotatingGrantResumesWithoutPersistenceAsync(Path.Combine(root, "rotating-grant"));
+        await VerifyReadySidecarIsRehashedAsync(Path.Combine(root, "ready-rehash"));
+        await VerifyRedirectIsDeniedAsync(Path.Combine(root, "redirect"));
+        await VerifyInvalidRangeIsDeniedBeforeNetworkAsync(Path.Combine(root, "invalid-range"));
+        await VerifyHardLinkedPartialCannotModifyTargetAsync(Path.Combine(root, "hardlink-partial"));
+        await VerifyExactResponseLengthIsRequiredAsync(Path.Combine(root, "response-length"));
     }
 
-    private static async Task VerifyAutomaticRangeResumeAsync(string root)
+    private static async Task VerifyUnauthorizedSidecarCannotAutoResumeAsync(string root)
+    {
+        Directory.CreateDirectory(root);
+        var bytes = CreatePayload(160_000);
+        const int pauseOffset = 48_000;
+        var item = CreateItem("sidecar-authorization", bytes);
+
+        using (var handler = new PausingHandler(bytes, pauseOffset))
+        using (var client = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan })
+        using (var service = new CatalogDownloadService(
+                   client,
+                   new RotatingGrantProvider(),
+            CreateOptions()))
+        {
+            var running = service.DownloadAsync(item, root);
+            await WaitForPrefixOrEarlyCompletionAsync(
+                handler.PrefixDelivered.Task,
+                running,
+                "sidecar-authorization");
+            for (var attempt = 0; attempt < 100 && item.BytesReceived < pauseOffset; attempt++)
+                await Task.Delay(10);
+            Check(service.Pause(item.Id), "O sidecar para teste de autorização não pôde ser preparado.");
+            await running.WaitAsync(ScenarioTimeout);
+        }
+
+        var sidecar = Directory.EnumerateFiles(
+                root,
+                "*.part.resume.json",
+                SearchOption.AllDirectories)
+            .Single();
+        var canonical = await File.ReadAllTextAsync(sidecar);
+        var forgedManifestIdentity = new string(
+            item.Artifact!.ManifestIdentity[0] == 'a' ? 'b' : 'a',
+            64);
+        var forged = canonical.Replace(
+            item.Artifact.ManifestIdentity,
+            forgedManifestIdentity,
+            StringComparison.Ordinal);
+        Check(!canonical.Equals(forged, StringComparison.Ordinal),
+            "O teste não conseguiu trocar a identidade do manifest no sidecar.");
+        await File.WriteAllTextAsync(sidecar, forged);
+
+        using var verifier = new CatalogDownloadService(CreateOptions());
+        Check(verifier.DiscoverResumableDownloads(root, [item]).Count == 0,
+            "Sidecar sem correspondência integral ao descritor não pode disparar retomada autorizada.");
+        Check(verifier.DiscoverResumableDownloads(root).Count == 1,
+            "O parcial não autorizado deve ser preservado para diagnóstico/descarte explícito.");
+    }
+
+    private static void VerifyDiscoveryHonorsCancellation(string root)
+    {
+        Directory.CreateDirectory(root);
+        using var service = new CatalogDownloadService(CreateOptions());
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        var canceled = false;
+        try
+        {
+            _ = service.DiscoverResumableDownloads(root, [], cancellation.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            canceled = true;
+        }
+
+        Check(canceled,
+            "A descoberta de downloads deve ser cancelável quando a autorização termina.");
+    }
+
+    private static void VerifyPublicTransportCannotBeInjected()
+    {
+        var publicHttpClientConstructor = typeof(CatalogDownloadService)
+            .GetConstructors()
+            .Any(constructor => constructor.GetParameters()
+                .Any(parameter => parameter.ParameterType == typeof(HttpClient)));
+        Check(!publicHttpClientConstructor,
+            "O transporte HTTP público não pode aceitar um cliente que siga redirects autenticados.");
+    }
+
+    private static async Task VerifyDescriptorFailsClosedAsync(string root)
+    {
+        Directory.CreateDirectory(root);
+        using var service = new CatalogDownloadService(CreateOptions());
+
+        var missing = new CatalogItem { Id = "missing", CategoryId = "tests" };
+        var missingResult = await service.DownloadAsync(missing, root);
+        Check(missingResult.State == CatalogDownloadState.Failed,
+            "Um item sem descritor não pode iniciar download.");
+
+        var bytes = CreatePayload(128);
+        var invalidHash = WithArtifact(
+            CreateItem("invalid-hash", bytes),
+            artifact => artifact with { Sha256 = string.Empty });
+        var hashResult = await service.DownloadAsync(invalidHash, root);
+        Check(hashResult.State == CatalogDownloadState.Failed,
+            "SHA-256 ausente deve falhar antes de criar requisição.");
+
+        var invalidLength = WithArtifact(
+            CreateItem("invalid-length", bytes),
+            artifact => artifact with { ContentLength = 0 });
+        var lengthResult = await service.DownloadAsync(invalidLength, root);
+        Check(lengthResult.State == CatalogDownloadState.Failed,
+            "Tamanho exato ausente deve falhar antes de criar requisição.");
+
+        var invalidId = WithArtifact(
+            CreateItem("invalid-id", bytes),
+            artifact => artifact with { ArtifactId = new string('A', 32) });
+        Check((await service.DownloadAsync(invalidId, root)).State == CatalogDownloadState.Failed,
+            "ArtifactId deve ser exatamente 32 hex minúsculos.");
+
+        var invalidManifest = WithArtifact(
+            CreateItem("invalid-manifest", bytes),
+            artifact => artifact with { ManifestIdentity = new string('F', 64) });
+        Check((await service.DownloadAsync(invalidManifest, root)).State == CatalogDownloadState.Failed,
+            "manifestSha256 deve ser exatamente 64 hex minúsculos.");
+
+        var invalidFileName = WithArtifact(
+            CreateItem("invalid-file-name", bytes),
+            artifact => artifact with { SafeFileName = "package.zip" });
+        Check((await service.DownloadAsync(invalidFileName, root)).State == CatalogDownloadState.Failed,
+            "SafeFileName deve terminar na FileExtension autorizada.");
+
+        var aboveConfiguredMaximum = WithArtifact(
+            CreateItem("above-maximum", bytes),
+            artifact => artifact with { ContentLength = 2L * 1024 * 1024 + 1 });
+        Check((await service.DownloadAsync(aboveConfiguredMaximum, root)).State == CatalogDownloadState.Failed,
+            "ContentLength acima de MaximumFileSizeBytes deve falhar antes da rede.");
+
+    }
+
+    private static async Task VerifyNonCanonicalSidecarIsRejectedAsync(string root)
+    {
+        // Exercise the native handle-validation path beyond legacy MAX_PATH even
+        // when the verifier itself runs under a short TEMP directory.
+        root = Path.Combine(root, new string('d', 96));
+        Directory.CreateDirectory(root);
+        var bytes = CreatePayload(160_000);
+        const int pauseOffset = 48_000;
+        var item = CreateItem("sidecar-casing", bytes);
+
+        using (var handler = new PausingHandler(bytes, pauseOffset))
+        using (var client = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan })
+        using (var service = new CatalogDownloadService(
+                   client,
+                   new RotatingGrantProvider(),
+                   CreateOptions()))
+        {
+            var running = service.DownloadAsync(item, root);
+            await WaitForPrefixOrEarlyCompletionAsync(
+                handler.PrefixDelivered.Task,
+                running,
+                "sidecar-casing");
+            for (var attempt = 0; attempt < 100 && item.BytesReceived < pauseOffset; attempt++)
+                await Task.Delay(10);
+            Check(service.Pause(item.Id), "O sidecar canônico não pôde ser preparado.");
+            await running.WaitAsync(ScenarioTimeout);
+        }
+
+        var sidecar = Directory.EnumerateFiles(root, "*.resume.json", SearchOption.AllDirectories).Single();
+        var canonical = await File.ReadAllTextAsync(sidecar);
+        var nonCanonical = canonical.Replace(
+            item.Artifact!.ArtifactId,
+            item.Artifact.ArtifactId.ToUpperInvariant(),
+            StringComparison.Ordinal);
+        Check(!canonical.Equals(nonCanonical, StringComparison.Ordinal),
+            "O teste não conseguiu adulterar o casing do ArtifactId.");
+        await File.WriteAllTextAsync(sidecar, nonCanonical);
+
+        using var verifier = new CatalogDownloadService(CreateOptions());
+        Check(verifier.DiscoverResumableDownloads(root, [item]).Count == 0,
+            "Sidecar com ArtifactId fora do casing canônico deve ser rejeitado integralmente.");
+        Check(Directory.EnumerateFiles(root, "*.part", SearchOption.AllDirectories).Any(),
+            "Rejeitar sidecar adulterado não pode apagar o parcial.");
+    }
+
+    private static async Task VerifyRotatingGrantResumesWithoutPersistenceAsync(string root)
     {
         Directory.CreateDirectory(root);
         var bytes = CreatePayload(420_000);
-        const int firstInterruptionOffset = 137_777;
-        const int secondInterruptionOffset = 278_123;
-        using var handler = new InterruptedTransferHandler(
-            bytes,
-            firstInterruptionOffset,
-            secondInterruptionOffset);
+        const int interruptionOffset = 137_777;
+        using var handler = new InterruptedTransferHandler(bytes, interruptionOffset);
         using var client = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
-        using var service = new CatalogDownloadService(client, CreateOptions());
-        var item = CreateItem("resume-auto", bytes);
+        var provider = new RotatingGrantProvider();
+        using var service = new CatalogDownloadService(client, provider, CreateOptions());
+        var item = CreateItem("rotating-resume", bytes, extract: true);
 
-        var result = await service.DownloadAsync(item, root).WaitAsync(TimeSpan.FromSeconds(10));
+        var result = await service.DownloadAsync(item, root).WaitAsync(ScenarioTimeout);
 
         Check(result.Succeeded, result.Message);
-        Check(handler.RequestCount == 3, "As duas quedas deveriam produzir duas novas tentativas.");
-        Check(handler.ObservedRangeStarts.SequenceEqual(
-                new long[] { firstInterruptionOffset, secondInterruptionOffset }),
-            "As requisições não retomaram exatamente dos bytes salvos.");
-        Check(handler.LastObservedIfRange == "\"resume-v1\"",
-            "O validador original deveria sobreviver a um 206 que o omitiu.");
-        Check(await File.ReadAllBytesAsync(result.LocalFilePath) is var downloaded
-              && downloaded.SequenceEqual(bytes),
-            "O arquivo retomado ficou diferente do original.");
-        Check(!Directory.EnumerateFiles(root, "*.part", SearchOption.AllDirectories).Any(),
-            "O parcial deveria virar o arquivo final após a retomada.");
+        Check(provider.Offsets.SequenceEqual(new long[] { 0, interruptionOffset }),
+            "Cada tentativa deve receber o offset realmente persistido.");
+        Check(provider.RequestPaths.Distinct(StringComparer.Ordinal).Count() == 2,
+            "A retomada deve aceitar uma concessão com destino efêmero rotacionado.");
+        Check(provider.AuthorizationValues.Distinct(StringComparer.Ordinal).Count() == 2,
+            "Cada tentativa deve usar uma autorização nova.");
+        Check(provider.ObservedValidators[1].ETag == "\"artifact-v1\"",
+            "O provedor deve receber o validador capturado na tentativa anterior.");
+        Check((await File.ReadAllBytesAsync(result.LocalFilePath)).SequenceEqual(bytes),
+            "O arquivo retomado não corresponde ao artefato autorizado.");
+
+        var sidecar = Directory.EnumerateFiles(root, "*.resume.json", SearchOption.AllDirectories).Single();
+        var durableText = await File.ReadAllTextAsync(sidecar);
+        Check(!durableText.Contains("https://", StringComparison.OrdinalIgnoreCase)
+              && !durableText.Contains("Authorization", StringComparison.OrdinalIgnoreCase)
+              && !provider.AuthorizationValues.Any(value =>
+                  durableText.Contains(value, StringComparison.Ordinal)),
+            "URL, grant ou Authorization não podem ser persistidos no sidecar.");
+        Check(durableText.Contains("TURBORAMA_SUITE", StringComparison.Ordinal)
+              && durableText.Contains(item.Artifact!.ArtifactId, StringComparison.Ordinal)
+              && durableText.Contains(item.Artifact.Sha256, StringComparison.OrdinalIgnoreCase),
+            "O sidecar deve conter somente a identidade estável do artefato.");
     }
 
-    private static async Task VerifyPauseAndExplicitDiscardAsync(string root)
+    private static async Task VerifySidecarCannotChooseDestinationAsync(string root)
     {
         Directory.CreateDirectory(root);
-        var bytes = CreatePayload(300_000);
-        const int pauseOffset = 96_000;
-        using var handler = new PausableTransferHandler(bytes, pauseOffset);
-        using var client = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
-        using var service = new CatalogDownloadService(client, CreateOptions());
-        var item = CreateItem("resume-pause", bytes);
+        var bytes = CreatePayload(160_000);
+        const int pauseOffset = 48_000;
+        var item = CreateItem("sidecar-path", bytes);
 
-        var running = service.DownloadAsync(item, root);
-        await handler.PrefixDelivered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        for (var attempt = 0; attempt < 100 && item.BytesReceived < pauseOffset; attempt++)
-            await Task.Delay(10);
-
-        Check(item.BytesReceived == pauseOffset, "O primeiro trecho não chegou ao arquivo parcial.");
-        Check(service.Pause(item.Id), "O download ativo não aceitou pausa.");
-        var paused = await running.WaitAsync(TimeSpan.FromSeconds(5));
-
-        Check(paused.State == CatalogDownloadState.Paused, "Pausar não preservou o estado correto.");
-        var partial = Directory.EnumerateFiles(root, "*.part", SearchOption.AllDirectories).Single();
-        Check(new FileInfo(partial).Length == pauseOffset, "A pausa perdeu bytes já recebidos.");
-        var restored = service.DiscoverResumableDownloads(root).Single();
-        Check(restored.IsPaused && restored.BytesReceived == pauseOffset,
-            "O download pausado não pôde ser restaurado.");
-
-        await using (var lockedPartial = new FileStream(
-                         partial,
-                         FileMode.Open,
-                         FileAccess.Read,
-                         FileShare.None))
+        using (var handler = new PausingHandler(bytes, pauseOffset))
+        using (var client = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan })
+        using (var service = new CatalogDownloadService(
+                   client,
+                   new RotatingGrantProvider(),
+                   CreateOptions()))
         {
-            Check(!service.Discard(item, root),
-                "O descarte não pode confirmar sucesso enquanto o parcial continua bloqueado.");
-            Check(File.Exists(partial), "Uma falha de descarte não deveria fingir que removeu o parcial.");
+            var running = service.DownloadAsync(item, root);
+            await WaitForPrefixOrEarlyCompletionAsync(
+                handler.PrefixDelivered.Task,
+                running,
+                "sidecar-path");
+            for (var attempt = 0; attempt < 100 && item.BytesReceived < pauseOffset; attempt++)
+                await Task.Delay(10);
+            Check(service.Pause(item.Id), "O sidecar para teste de caminho não pôde ser preparado.");
+            await running.WaitAsync(ScenarioTimeout);
         }
 
-        Check(service.Discard(item, root), "O descarte explícito deveria ser aceito após liberar o arquivo.");
-        Check(!Directory.EnumerateFiles(root, "*.part*", SearchOption.AllDirectories).Any(),
-            "Somente o descarte explícito deveria apagar o parcial e seu registro.");
+        var canonicalSidecar = Directory
+            .EnumerateFiles(root, "*.part.resume.json", SearchOption.AllDirectories)
+            .Single();
+        var canonicalPartial = canonicalSidecar[..^".resume.json".Length];
+        var unrelatedDestination = Path.Combine(root, "unrelated.bin");
+        var misplacedPartial = unrelatedDestination + ".part";
+        var misplacedSidecar = misplacedPartial + ".resume.json";
+        File.Move(canonicalPartial, misplacedPartial);
+        File.Move(canonicalSidecar, misplacedSidecar);
+        var sentinel = Encoding.UTF8.GetBytes("do-not-delete-or-overwrite");
+        await File.WriteAllBytesAsync(unrelatedDestination, sentinel);
+
+        using var verifier = new CatalogDownloadService(CreateOptions());
+        Check(verifier.Discard(item, root),
+            "Descartar o artefato canônico deveria continuar sendo uma operação válida.");
+        Check((await File.ReadAllBytesAsync(unrelatedDestination)).SequenceEqual(sentinel)
+              && File.Exists(misplacedPartial)
+              && File.Exists(misplacedSidecar),
+            "Um sidecar fora do caminho canônico não pode escolher arquivos para descarte.");
     }
 
-    private static async Task VerifyZeroByteRestartIntentAsync(string root)
+    private static async Task VerifyReadySidecarIsRehashedAsync(string root)
     {
         Directory.CreateDirectory(root);
-        var bytes = CreatePayload(32_000);
-        using var handler = new OfflineHandler();
+        var bytes = CreatePayload(96_000);
+        var item = CreateItem("ready-rehash", bytes, extract: true);
+
+        string completedPath;
+        using (var firstHandler = new PayloadHandler(bytes))
+        using (var firstClient = new HttpClient(firstHandler) { Timeout = Timeout.InfiniteTimeSpan })
+        using (var firstService = new CatalogDownloadService(
+                   firstClient,
+                   new RotatingGrantProvider(),
+                   CreateOptions()))
+        {
+            var first = await firstService.DownloadAsync(item, root);
+            Check(first.Succeeded, first.Message);
+            completedPath = first.LocalFilePath;
+        }
+
+        await File.WriteAllBytesAsync(completedPath, Enumerable.Repeat((byte)0xA5, bytes.Length).ToArray());
+
+        using var handler = new PayloadHandler(bytes);
         using var client = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
-        var service = new CatalogDownloadService(client, CreateOptions());
-        var item = CreateItem("resume-before-first-byte", bytes);
+        using var service = new CatalogDownloadService(
+            client,
+            new RotatingGrantProvider(),
+            CreateOptions());
 
-        var running = service.DownloadAsync(item, root);
-        await handler.RequestArrived.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        for (var attempt = 0;
-             attempt < 100 && item.DownloadState != CatalogDownloadState.WaitingForNetwork;
-             attempt++)
-            await Task.Delay(10);
+        var untrustedDiscovery = service.DiscoverResumableDownloads(root, [item]).Single();
+        Check(!untrustedDiscovery.ArchiveReady,
+            "ArchiveReady adulterado não pode ser aceito sem recalcular tamanho e SHA.");
 
-        Check(item.DownloadState == CatalogDownloadState.WaitingForNetwork,
-            "HTTP 503 deveria manter o download aguardando a rede.");
-        Check(item.DownloadStatus.Contains("300 s", StringComparison.Ordinal),
-            "Retry-After excessivo deveria ser limitado a cinco minutos.");
-        service.Dispose();
-        var stopped = await running.WaitAsync(TimeSpan.FromSeconds(5));
-        Check(stopped.State == CatalogDownloadState.Paused,
-            "Fechar o serviço deveria preservar a intenção de retomada.");
-
-        using var restoredService = new CatalogDownloadService(client, CreateOptions());
-        var restored = restoredService.DiscoverResumableDownloads(root).Single();
-        Check(restored.BytesReceived == 0 && !restored.IsPaused,
-            "Um download ativo sem primeiro byte deveria continuar automaticamente ao reabrir.");
-        Check(restoredService.Discard(item, root), "O registro restaurado deveria aceitar descarte explícito.");
+        var recovered = await service.DownloadAsync(item, root).WaitAsync(ScenarioTimeout);
+        Check(recovered.Succeeded && handler.RequestCount == 1,
+            "O arquivo final adulterado deve ser rejeitado e baixado novamente.");
+        Check((await File.ReadAllBytesAsync(recovered.LocalFilePath)).SequenceEqual(bytes),
+            "A recuperação não restaurou o artefato autorizado.");
+        Check(Directory.EnumerateFiles(root, "*.preserved-*", SearchOption.AllDirectories).Any(),
+            "O arquivo adulterado deve ser preservado, não promovido nem apagado silenciosamente.");
     }
 
-    private static async Task VerifyResumeAfterCatalogRenameAsync(string root)
+    private static async Task VerifyRedirectIsDeniedAsync(string root)
     {
         Directory.CreateDirectory(root);
-        var bytes = CreatePayload(260_000);
-        const int pauseOffset = 80_000;
-        using var handler = new PausableTransferHandler(bytes, pauseOffset);
+        var bytes = CreatePayload(256);
+        using var handler = new RedirectHandler();
         using var client = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
-        using var service = new CatalogDownloadService(client, CreateOptions());
-        var original = CreateItem("stable-id-after-rename", bytes, "Título antigo", "categoria-antiga");
+        using var service = new CatalogDownloadService(
+            client,
+            new RotatingGrantProvider(),
+            CreateOptions());
 
-        var firstRun = service.DownloadAsync(original, root);
-        await handler.PrefixDelivered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        for (var attempt = 0; attempt < 100 && original.BytesReceived < pauseOffset; attempt++)
-            await Task.Delay(10);
-        Check(service.Pause(original.Id), "A preparação do teste de renomeação não pausou.");
-        await firstRun.WaitAsync(TimeSpan.FromSeconds(5));
-
-        var renamed = CreateItem("stable-id-after-rename", bytes, "Título novo", "categoria-nova");
-        var resumed = await service.DownloadAsync(renamed, root).WaitAsync(TimeSpan.FromSeconds(5));
-        Check(resumed.Succeeded, resumed.Message);
-        Check(handler.ObservedRangeStart == pauseOffset,
-            "Renomear título/categoria não deveria abandonar o parcial do mesmo ID.");
-        Check((await File.ReadAllBytesAsync(resumed.LocalFilePath)).SequenceEqual(bytes),
-            "A retomada após renomear o catálogo ficou corrompida.");
+        var result = await service.DownloadAsync(CreateItem("redirect-denied", bytes), root);
+        Check(result.State == CatalogDownloadState.Failed && handler.RequestCount == 1,
+            "Redirect autenticado deve falhar sem seguir o Location.");
     }
 
-    private static async Task VerifyPendingPublishUsesPartialAsync(string root)
+    private static async Task VerifyInvalidRangeIsDeniedBeforeNetworkAsync(string root)
+    {
+        Directory.CreateDirectory(root);
+        var bytes = CreatePayload(200_000);
+        const int pauseOffset = 64_000;
+        var item = CreateItem("invalid-range", bytes);
+
+        using (var pausingHandler = new PausingHandler(bytes, pauseOffset))
+        using (var pausingClient = new HttpClient(pausingHandler) { Timeout = Timeout.InfiniteTimeSpan })
+        using (var pausingService = new CatalogDownloadService(
+                   pausingClient,
+                   new RotatingGrantProvider(),
+                   CreateOptions()))
+        {
+            var running = pausingService.DownloadAsync(item, root);
+            await WaitForPrefixOrEarlyCompletionAsync(
+                pausingHandler.PrefixDelivered.Task,
+                running,
+                "invalid-range");
+            for (var attempt = 0; attempt < 100 && item.BytesReceived < pauseOffset; attempt++)
+                await Task.Delay(10);
+            Check(pausingService.Pause(item.Id), "O cenário de Range inválido não conseguiu pausar.");
+            var paused = await running.WaitAsync(ScenarioTimeout);
+            Check(paused.State == CatalogDownloadState.Paused,
+                "A pausa deve preservar o parcial usado no teste de Range.");
+        }
+
+        using var countingHandler = new CountingHandler();
+        using var client = new HttpClient(countingHandler) { Timeout = Timeout.InfiniteTimeSpan };
+        using var service = new CatalogDownloadService(
+            client,
+            new InvalidRangeProvider(),
+            CreateOptions());
+        var result = await service.DownloadAsync(item, root).WaitAsync(ScenarioTimeout);
+
+        Check(result.State == CatalogDownloadState.Failed && countingHandler.RequestCount == 0,
+            "Range diferente do offset local deve ser recusado antes de chegar à rede.");
+        Check(Directory.EnumerateFiles(root, "*.part", SearchOption.AllDirectories).Single()
+                  is var partial
+              && new FileInfo(partial).Length == pauseOffset,
+            "Uma requisição inválida não pode apagar o parcial.");
+    }
+
+    private static async Task VerifyExactResponseLengthIsRequiredAsync(string root)
+    {
+        Directory.CreateDirectory(root);
+        var bytes = CreatePayload(4_096);
+        using var handler = new WrongLengthHandler(bytes);
+        using var client = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
+        using var service = new CatalogDownloadService(
+            client,
+            new RotatingGrantProvider(),
+            CreateOptions());
+
+        var result = await service.DownloadAsync(CreateItem("wrong-length", bytes), root);
+        Check(result.State == CatalogDownloadState.Failed,
+            "Content-Length divergente deve falhar antes de promover o arquivo.");
+    }
+
+    private static async Task VerifyHardLinkedPartialCannotModifyTargetAsync(string root)
     {
         Directory.CreateDirectory(root);
         var bytes = CreatePayload(180_000);
-        using var handler = new PublishRetryHandler(bytes);
-        using var client = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
-        using var service = new CatalogDownloadService(client, CreateOptions());
-        var item = CreateItem("publish-after-locked-destination", bytes);
-        var destination = service.BuildSafeDestinationPath(
-            root,
-            item,
-            new Uri(item.DownloadUrl));
-        Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-        await File.WriteAllBytesAsync(destination, [1, 2, 3, 4]);
+        const int pauseOffset = 52_000;
+        var item = CreateItem("hardlink-partial", bytes);
 
-        CatalogDownloadResult firstResult;
-        await using (var lockedDestination = new FileStream(
-                         destination,
-                         FileMode.Open,
-                         FileAccess.Read,
-                         FileShare.None))
+        using (var pausingHandler = new PausingHandler(bytes, pauseOffset))
+        using (var pausingClient = new HttpClient(pausingHandler) { Timeout = Timeout.InfiniteTimeSpan })
+        using (var pausingService = new CatalogDownloadService(
+                   pausingClient,
+                   new RotatingGrantProvider(),
+                   CreateOptions()))
         {
-            firstResult = await service.DownloadAsync(item, root).WaitAsync(TimeSpan.FromSeconds(5));
+            var running = pausingService.DownloadAsync(item, root);
+            await WaitForPrefixOrEarlyCompletionAsync(
+                pausingHandler.PrefixDelivered.Task,
+                running,
+                "hardlink-partial");
+            for (var attempt = 0; attempt < 100 && item.BytesReceived < pauseOffset; attempt++)
+                await Task.Delay(10);
+            Check(pausingService.Pause(item.Id),
+                "O parcial para o teste de hardlink não pôde ser preparado.");
+            var paused = await running.WaitAsync(ScenarioTimeout);
+            Check(paused.State == CatalogDownloadState.Paused,
+                "O teste de hardlink exige um parcial persistido.");
         }
 
-        Check(firstResult.State == CatalogDownloadState.Failed,
-            "Publicar sobre um destino bloqueado deveria manter o parcial como falha recuperável.");
-        Check(Directory.EnumerateFiles(root, "*.part", SearchOption.AllDirectories).Any(),
-            "O parcial verificado deveria permanecer após falhar o rename final.");
+        var partialPath = Directory.EnumerateFiles(root, "*.part", SearchOption.AllDirectories).Single();
+        var sentinelPath = Path.Combine(root, "hardlink-target.bin");
+        var sentinel = Enumerable.Repeat((byte)0xA7, pauseOffset).ToArray();
+        await File.WriteAllBytesAsync(sentinelPath, sentinel);
+        File.Delete(partialPath);
+        Check(CreateHardLink(partialPath, sentinelPath, IntPtr.Zero),
+            $"O teste não conseguiu criar o hardlink hostil (Win32 {Marshal.GetLastWin32Error()}).");
 
-        var retried = await service.DownloadAsync(item, root).WaitAsync(TimeSpan.FromSeconds(5));
-        Check(retried.Succeeded, retried.Message);
-        Check(handler.ObservedRangeStart == bytes.Length,
-            "O retry de publicação deveria reconhecer o parcial completo.");
-        Check((await File.ReadAllBytesAsync(retried.LocalFilePath)).SequenceEqual(bytes),
-            "O destino antigo foi confundido com o parcial novo verificado.");
-    }
-
-    private static async Task VerifyUnsafe416RestartsAsync(string root)
-    {
-        Directory.CreateDirectory(root);
-        var oldBytes = CreatePayload(120_000);
-        var replacement = Enumerable.Repeat((byte)0xE7, 60_000).ToArray();
-        using var handler = new ShrinkingTransferHandler(oldBytes, replacement);
+        using var handler = new PayloadHandler(bytes);
         using var client = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
-        using var service = new CatalogDownloadService(client, CreateOptions());
-        var item = new CatalogItem
-        {
-            Id = "unsafe-416",
-            CategoryId = "tests",
-            Title = "unsafe-416",
-            Category = "Testes",
-            DownloadUrl = "https://resume.test/package.bin",
-            DownloadFileExtension = ".bin"
-        };
+        using var service = new CatalogDownloadService(
+            client,
+            new RotatingGrantProvider(),
+            CreateOptions());
+        var result = await service.DownloadAsync(item, root).WaitAsync(ScenarioTimeout);
 
-        var running = service.DownloadAsync(item, root);
-        await handler.PrefixDelivered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        for (var attempt = 0; attempt < 100 && item.BytesReceived < replacement.Length; attempt++)
-            await Task.Delay(10);
-        Check(service.Pause(item.Id), "A preparação do cenário 416 não pausou.");
-        await running.WaitAsync(TimeSpan.FromSeconds(5));
-
-        var result = await service.DownloadAsync(item, root).WaitAsync(TimeSpan.FromSeconds(5));
-        Check(result.Succeeded, result.Message);
-        Check(handler.RequestCount == 3 && handler.FinalRequestHadNoRange,
-            "Um 416 sem identidade confiável deveria reiniciar com GET completo.");
-        Check((await File.ReadAllBytesAsync(result.LocalFilePath)).SequenceEqual(replacement),
-            "O parcial antigo foi promovido incorretamente após o recurso remoto encolher.");
-    }
-
-    private static async Task VerifyHeaderTimeoutRetriesAsync(string root)
-    {
-        Directory.CreateDirectory(root);
-        var bytes = CreatePayload(20_000);
-        using var handler = new HangingHeadersHandler(bytes);
-        using var client = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
-        using var service = new CatalogDownloadService(client, new CatalogDownloadOptions
-        {
-            MaximumFileSizeBytes = 2 * 1024 * 1024,
-            InactivityTimeout = TimeSpan.FromMilliseconds(50),
-            RetryDelays = [TimeSpan.FromMilliseconds(10)],
-            AllowedHosts = new HashSet<string>(["resume.test"], StringComparer.OrdinalIgnoreCase)
-        });
-        var item = CreateItem("headers-timeout", bytes);
-
-        var result = await service.DownloadAsync(item, root).WaitAsync(TimeSpan.FromSeconds(5));
-        Check(result.Succeeded && handler.RequestCount == 2,
-            "Um servidor que trava antes dos headers deveria liberar a fila e tentar novamente.");
+        Check(result.State == CatalogDownloadState.Failed && handler.RequestCount == 0,
+            "Um parcial com mais de um hardlink deve falhar antes da rede e de qualquer escrita.");
+        Check((await File.ReadAllBytesAsync(sentinelPath)).SequenceEqual(sentinel),
+            "O downloader alterou o alvo de um hardlink hostil.");
     }
 
     private static CatalogDownloadOptions CreateOptions() => new()
@@ -246,20 +461,75 @@ internal static class DownloadResumeVerifier
         AllowedHosts = new HashSet<string>(["resume.test"], StringComparer.OrdinalIgnoreCase)
     };
 
-    private static CatalogItem CreateItem(
-        string id,
-        byte[] bytes,
-        string? title = null,
-        string categoryId = "tests") => new()
+    private static CatalogItem CreateItem(string id, byte[] bytes, bool extract = false) => new()
     {
         Id = id,
-        CategoryId = categoryId,
-        Title = title ?? id,
+        CategoryId = "tests",
+        Title = id,
         Category = "Testes",
-        DownloadUrl = "https://resume.test/package.bin",
-        DownloadFileExtension = ".bin",
-        Sha256 = Convert.ToHexString(SHA256.HashData(bytes))
+        Extract = extract,
+        Artifact = new CatalogArtifactDescriptor
+        {
+            ArtifactId = CreateArtifactId(id),
+            ArtifactVersion = 1,
+            ContentLength = bytes.LongLength,
+            Sha256 = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant(),
+            SafeFileName = id + ".bin",
+            FileExtension = ".bin",
+            ExtractPolicy = extract
+                ? CatalogExtractPolicy.ExtractArchive
+                : CatalogExtractPolicy.None,
+            ManifestIdentity = Convert.ToHexString(
+                    SHA256.HashData("manifest-tests-v1"u8))
+                .ToLowerInvariant()
+        }
     };
+
+    private static string CreateArtifactId(string id) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(id)))
+            .ToLowerInvariant()[..32];
+
+    private static CatalogItem WithArtifact(
+        CatalogItem source,
+        Func<CatalogArtifactDescriptor, CatalogArtifactDescriptor> transform) => new()
+        {
+            Id = source.Id,
+            CategoryId = source.CategoryId,
+            Title = source.Title,
+            Category = source.Category,
+            Extract = source.Extract,
+            Artifact = transform(source.Artifact!)
+        };
+
+    private static async Task WaitForPrefixOrEarlyCompletionAsync(
+        Task prefixDelivered,
+        Task<CatalogDownloadResult> download,
+        string scenario)
+    {
+        Task completed;
+        try
+        {
+            completed = await Task.WhenAny(prefixDelivered, download).WaitAsync(ScenarioTimeout);
+        }
+        catch (TimeoutException exception)
+        {
+            throw new TimeoutException(
+                $"O cenário '{scenario}' não alcançou a rede nem concluiu em "
+                + $"{ScenarioTimeout.TotalSeconds:0} segundos.",
+                exception);
+        }
+
+        if (ReferenceEquals(completed, prefixDelivered))
+        {
+            await prefixDelivered;
+            return;
+        }
+
+        var result = await download;
+        throw new InvalidDataException(
+            $"O cenário '{scenario}' terminou antes de entregar o prefixo HTTP: "
+            + $"estado={result.State}; mensagem={result.Message}");
+    }
 
     private static byte[] CreatePayload(int length)
     {
@@ -274,236 +544,191 @@ internal static class DownloadResumeVerifier
         if (!condition) throw new InvalidOperationException(message);
     }
 
-    private sealed class InterruptedTransferHandler(
-        byte[] payload,
-        int firstInterruptionOffset,
-        int secondInterruptionOffset)
+    [DllImport("kernel32.dll", EntryPoint = "CreateHardLinkW", CharSet = CharSet.Unicode,
+        SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CreateHardLink(
+        string fileName,
+        string existingFileName,
+        IntPtr securityAttributes);
+
+    private sealed class RotatingGrantProvider : ICatalogDownloadRequestProvider
+    {
+        private int _requestCount;
+        public List<long> Offsets { get; } = [];
+        public List<string> RequestPaths { get; } = [];
+        public List<string> AuthorizationValues { get; } = [];
+        public List<CatalogDownloadValidators> ObservedValidators { get; } = [];
+
+        public ValueTask<HttpRequestMessage> CreateRequestAsync(
+            CatalogArtifactDescriptor artifact,
+            long offset,
+            CatalogDownloadValidators validators,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            _requestCount++;
+            var path = $"/ephemeral-grant-{_requestCount}/{artifact.ArtifactId}{artifact.FileExtension}";
+            var token = $"test-only-grant-{_requestCount}-{Guid.NewGuid():N}";
+            var request = new HttpRequestMessage(
+                HttpMethod.Get,
+                new Uri("https://resume.test" + path));
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            if (offset > 0) request.Headers.Range = new RangeHeaderValue(offset, null);
+            Offsets.Add(offset);
+            RequestPaths.Add(path);
+            AuthorizationValues.Add(token);
+            ObservedValidators.Add(validators);
+            return ValueTask.FromResult(request);
+        }
+    }
+
+    private sealed class InvalidRangeProvider : ICatalogDownloadRequestProvider
+    {
+        public ValueTask<HttpRequestMessage> CreateRequestAsync(
+            CatalogArtifactDescriptor artifact,
+            long offset,
+            CatalogDownloadValidators validators,
+            CancellationToken cancellationToken)
+        {
+            var request = new HttpRequestMessage(
+                HttpMethod.Get,
+                new Uri("https://resume.test/invalid-range/package.bin"));
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", "test-only-invalid-range");
+            request.Headers.Range = new RangeHeaderValue(offset + 1, null);
+            return ValueTask.FromResult(request);
+        }
+    }
+
+    private sealed class InterruptedTransferHandler(byte[] payload, int interruptionOffset)
         : HttpMessageHandler
     {
+        private int _requestCount;
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            _requestCount++;
+            Check(request.Headers.Authorization?.Scheme == "Bearer",
+                "A concessão efêmera não chegou à camada HTTP.");
+            if (_requestCount == 1)
+            {
+                Check(request.Headers.Range is null, "A primeira tentativa não deve conter Range.");
+                return Task.FromResult(CreateResponse(
+                    HttpStatusCode.OK,
+                    new InterruptingReadStream(payload, interruptionOffset),
+                    0));
+            }
+
+            var offset = request.Headers.Range?.Ranges.Single().From
+                         ?? throw new InvalidOperationException("A retomada não enviou Range.");
+            return Task.FromResult(CreateResponse(
+                HttpStatusCode.PartialContent,
+                new MemoryStream(payload, (int)offset, payload.Length - (int)offset, writable: false),
+                offset));
+        }
+
+        private HttpResponseMessage CreateResponse(HttpStatusCode status, Stream stream, long offset)
+        {
+            var response = new HttpResponseMessage(status) { Content = new StreamContent(stream) };
+            response.Headers.ETag = new EntityTagHeaderValue("\"artifact-v1\"");
+            response.Content.Headers.ContentLength = payload.LongLength - offset;
+            if (offset > 0)
+                response.Content.Headers.ContentRange =
+                    new ContentRangeHeaderValue(offset, payload.LongLength - 1, payload.LongLength);
+            return response;
+        }
+    }
+
+    private sealed class PayloadHandler(byte[] payload) : HttpMessageHandler
+    {
         public int RequestCount { get; private set; }
-        public List<long> ObservedRangeStarts { get; } = [];
-        public string LastObservedIfRange { get; private set; } = string.Empty;
 
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
             RequestCount++;
-            if (RequestCount == 1)
-            {
-                Check(request.Headers.Range is null, "A primeira requisição não deveria conter Range.");
-                return Task.FromResult(CreateResponse(
-                    HttpStatusCode.OK,
-                    new InterruptingReadStream(payload, firstInterruptionOffset),
-                    0,
-                    includeValidators: true));
-            }
-
-            var rangeStart = request.Headers.Range?.Ranges.Single().From
-                             ?? throw new InvalidOperationException("A retomada não enviou Range.");
-            ObservedRangeStarts.Add(rangeStart);
-            LastObservedIfRange = request.Headers.TryGetValues("If-Range", out var values)
-                ? values.Single()
-                : string.Empty;
-
-            if (RequestCount == 2)
-            {
-                var remaining = payload[(int)rangeStart..];
-                return Task.FromResult(CreateResponse(
-                    HttpStatusCode.PartialContent,
-                    new InterruptingReadStream(
-                        remaining,
-                        secondInterruptionOffset - (int)rangeStart),
-                    rangeStart,
-                    includeValidators: false));
-            }
-
-            return Task.FromResult(CreateResponse(
-                HttpStatusCode.PartialContent,
-                new MemoryStream(payload, (int)rangeStart,
-                    payload.Length - (int)rangeStart, writable: false),
-                rangeStart,
-                includeValidators: true));
-        }
-
-        private HttpResponseMessage CreateResponse(
-            HttpStatusCode status,
-            Stream stream,
-            long offset,
-            bool includeValidators)
-        {
+            var offset = request.Headers.Range?.Ranges.Single().From ?? 0;
+            var status = offset == 0 ? HttpStatusCode.OK : HttpStatusCode.PartialContent;
             var response = new HttpResponseMessage(status)
             {
-                Content = new StreamContent(stream)
+                Content = new ByteArrayContent(payload[(int)offset..])
             };
-            if (includeValidators)
-            {
-                response.Headers.ETag = new EntityTagHeaderValue("\"resume-v1\"");
-                response.Content.Headers.LastModified =
-                    new DateTimeOffset(2026, 8, 21, 0, 0, 0, TimeSpan.Zero);
-            }
-            response.Content.Headers.ContentLength = payload.Length - offset;
-            if (status == HttpStatusCode.PartialContent)
+            response.Headers.ETag = new EntityTagHeaderValue("\"payload-v1\"");
+            response.Content.Headers.ContentLength = payload.LongLength - offset;
+            if (offset > 0)
                 response.Content.Headers.ContentRange =
-                    new ContentRangeHeaderValue(offset, payload.Length - 1, payload.Length);
-            return response;
-        }
-    }
-
-    private sealed class OfflineHandler : HttpMessageHandler
-    {
-        public TaskCompletionSource RequestArrived { get; } =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        protected override Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request,
-            CancellationToken cancellationToken)
-        {
-            RequestArrived.TrySetResult();
-            var response = new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
-            response.Headers.RetryAfter =
-                new RetryConditionHeaderValue(DateTimeOffset.UtcNow.AddYears(1));
-            response.Content = new ByteArrayContent([]);
+                    new ContentRangeHeaderValue(offset, payload.LongLength - 1, payload.LongLength);
             return Task.FromResult(response);
         }
     }
 
-    private sealed class PublishRetryHandler(byte[] payload) : HttpMessageHandler
+    private sealed class RedirectHandler : HttpMessageHandler
     {
-        private int _requestCount;
-        public long? ObservedRangeStart { get; private set; }
+        public int RequestCount { get; private set; }
 
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
-            _requestCount++;
-            if (_requestCount == 1)
-            {
-                var response = new HttpResponseMessage(HttpStatusCode.OK)
-                {
-                    Content = new ByteArrayContent(payload)
-                };
-                response.Headers.ETag = new EntityTagHeaderValue("\"publish-v1\"");
-                response.Content.Headers.ContentLength = payload.Length;
-                return Task.FromResult(response);
-            }
-
-            ObservedRangeStart = request.Headers.Range?.Ranges.Single().From;
-            var unsatisfied = new HttpResponseMessage(HttpStatusCode.RequestedRangeNotSatisfiable)
+            RequestCount++;
+            var response = new HttpResponseMessage(HttpStatusCode.TemporaryRedirect)
             {
                 Content = new ByteArrayContent([])
             };
-            unsatisfied.Headers.ETag = new EntityTagHeaderValue("\"publish-v1\"");
-            unsatisfied.Content.Headers.ContentRange = new ContentRangeHeaderValue(payload.Length);
-            return Task.FromResult(unsatisfied);
+            response.Headers.Location = new Uri("https://resume.test/redirected/package.bin");
+            return Task.FromResult(response);
         }
     }
 
-    private sealed class ShrinkingTransferHandler(byte[] oldPayload, byte[] replacement)
-        : HttpMessageHandler
+    private sealed class CountingHandler : HttpMessageHandler
     {
-        public TaskCompletionSource PrefixDelivered { get; } =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
         public int RequestCount { get; private set; }
-        public bool FinalRequestHadNoRange { get; private set; }
 
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
             RequestCount++;
-            if (RequestCount == 1)
-            {
-                var first = new HttpResponseMessage(HttpStatusCode.OK)
-                {
-                    Content = new StreamContent(
-                        new PausingReadStream(oldPayload, replacement.Length, PrefixDelivered))
-                };
-                first.Content.Headers.ContentLength = oldPayload.Length;
-                return Task.FromResult(first);
-            }
-
-            if (RequestCount == 2)
-            {
-                Check(request.Headers.Range?.Ranges.Single().From == replacement.Length,
-                    "O cenário 416 deveria começar no tamanho do parcial.");
-                var unsatisfied = new HttpResponseMessage(HttpStatusCode.RequestedRangeNotSatisfiable)
-                {
-                    Content = new ByteArrayContent([])
-                };
-                unsatisfied.Content.Headers.ContentRange =
-                    new ContentRangeHeaderValue(replacement.Length);
-                return Task.FromResult(unsatisfied);
-            }
-
-            FinalRequestHadNoRange = request.Headers.Range is null;
-            var final = new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new ByteArrayContent(replacement)
-            };
-            final.Content.Headers.ContentLength = replacement.Length;
-            return Task.FromResult(final);
+            throw new InvalidOperationException("A requisição inválida não deveria chegar à rede.");
         }
     }
 
-    private sealed class HangingHeadersHandler(byte[] payload) : HttpMessageHandler
+    private sealed class WrongLengthHandler(byte[] payload) : HttpMessageHandler
     {
-        public int RequestCount { get; private set; }
-
-        protected override async Task<HttpResponseMessage> SendAsync(
+        protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
-            RequestCount++;
-            if (RequestCount == 1)
-                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
-
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new ByteArrayContent(payload)
+                Content = new ByteArrayContent(payload[..^1])
             };
-            response.Headers.ETag = new EntityTagHeaderValue("\"headers-v1\"");
-            response.Content.Headers.ContentLength = payload.Length;
-            return response;
+            response.Content.Headers.ContentLength = payload.LongLength - 1;
+            return Task.FromResult(response);
         }
     }
 
-    private sealed class PausableTransferHandler(byte[] payload, int pauseOffset) : HttpMessageHandler
+    private sealed class PausingHandler(
+        byte[] payload,
+        int pauseOffset) : HttpMessageHandler
     {
         public TaskCompletionSource PrefixDelivered { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
-        public long? ObservedRangeStart { get; private set; }
-        private int _requestCount;
 
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
-            _requestCount++;
-            if (_requestCount > 1)
-            {
-                ObservedRangeStart = request.Headers.Range?.Ranges.Single().From;
-                var rangeStart = ObservedRangeStart
-                                 ?? throw new InvalidOperationException("A continuação deveria enviar Range.");
-                var resumedResponse = new HttpResponseMessage(HttpStatusCode.PartialContent)
-                {
-                    Content = new ByteArrayContent(payload[(int)rangeStart..])
-                };
-                resumedResponse.Headers.ETag = new EntityTagHeaderValue("\"pause-v1\"");
-                resumedResponse.Content.Headers.ContentLength = payload.Length - rangeStart;
-                resumedResponse.Content.Headers.ContentRange =
-                    new ContentRangeHeaderValue(rangeStart, payload.Length - 1, payload.Length);
-                return Task.FromResult(resumedResponse);
-            }
-
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StreamContent(
                     new PausingReadStream(payload, pauseOffset, PrefixDelivered))
             };
             response.Headers.ETag = new EntityTagHeaderValue("\"pause-v1\"");
-            response.Content.Headers.ContentLength = payload.Length;
+            response.Content.Headers.ContentLength = payload.LongLength;
             return Task.FromResult(response);
         }
     }
@@ -512,7 +737,6 @@ internal static class DownloadResumeVerifier
     {
         private int _position;
         private bool _failed;
-
         public override bool CanRead => true;
         public override bool CanSeek => false;
         public override bool CanWrite => false;
@@ -534,7 +758,7 @@ internal static class DownloadResumeVerifier
             if (_position >= failAfter && !_failed)
             {
                 _failed = true;
-                throw new IOException("Queda simulada da conexão.");
+                throw new IOException("Interrupção simulada.");
             }
             if (_position >= payload.Length) return 0;
             var count = Math.Min(buffer.Length, Math.Min(payload.Length, failAfter) - _position);
