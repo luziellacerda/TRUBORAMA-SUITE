@@ -292,7 +292,7 @@ public sealed class SuiteLicensingRuntime : IAsyncDisposable
             new CatalogDownloadOptions
             {
                 MaximumFileSizeBytes = options.MaximumFileSizeBytes,
-                MaximumRedirects = 0,
+                MaximumRedirects = 1,
                 InactivityTimeout = options.InactivityTimeout,
                 RetryDelays = options.RetryDelays,
                 AllowedHosts = new HashSet<string>(

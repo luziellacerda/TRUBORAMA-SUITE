@@ -19,7 +19,7 @@ namespace TurboBoxManager.Catalog;
 public sealed class CatalogDownloadOptions
 {
     public long MaximumFileSizeBytes { get; init; } = 256L * 1024L * 1024L;
-    // Kept for source compatibility. Authenticated redirects are always denied.
+    // One redirect may be used after the API authorizes a direct origin download.
     public int MaximumRedirects { get; init; }
     public TimeSpan InactivityTimeout { get; init; } = TimeSpan.FromMinutes(2);
     public IReadOnlyList<TimeSpan> RetryDelays { get; init; } =
@@ -84,6 +84,7 @@ public sealed class CatalogDownloadService : IDisposable
     };
 
     private readonly HttpClient _httpClient;
+    private readonly HttpClient _directHttpClient = CreateHttpClient();
     private readonly ICatalogDownloadRequestProvider _requestProvider;
     private readonly CatalogDownloadOptions _options;
     private readonly bool _ownsHttpClient;
@@ -764,11 +765,22 @@ public sealed class CatalogDownloadService : IDisposable
 
         using var request = await CreateAuthorizedRequestAsync(
             item.Id, artifact, offset, active);
-        using var response = await SendWithHeaderTimeoutAsync(request, active.Cancellation.Token);
-        ValidateResponseRequestIdentity(request, response);
-
-        if (IsRedirect(response.StatusCode))
-            throw new InvalidDataException("Redirecionamentos autenticados não são permitidos.");
+        var authorizationResponse = await SendWithHeaderTimeoutAsync(
+            _httpClient, request, active.Cancellation.Token);
+        ValidateResponseRequestIdentity(request, authorizationResponse);
+        HttpResponseMessage response;
+        if (IsRedirect(authorizationResponse.StatusCode))
+        {
+            try
+            {
+                response = await FollowAuthorizedRedirectAsync(authorizationResponse, request,
+                    active.Cancellation.Token);
+            }
+            finally { authorizationResponse.Dispose(); }
+        }
+        else response = authorizationResponse;
+        using (response)
+        {
         if (IsTransientStatus(response.StatusCode))
             throw new TransientDownloadException(
                 $"Falha HTTP transitória ({(int)response.StatusCode}).",
@@ -846,6 +858,7 @@ public sealed class CatalogDownloadService : IDisposable
         // write handle remains active can still fail the reciprocal share check.
         await output.DisposeAsync();
         await VerifyAndPublishAsync(item, artifact, active);
+    }
     }
 
     private async Task<HttpRequestMessage> CreateAuthorizedRequestAsync(
@@ -956,6 +969,7 @@ public sealed class CatalogDownloadService : IDisposable
     }
 
     private async Task<HttpResponseMessage> SendWithHeaderTimeoutAsync(
+        HttpClient client,
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
@@ -963,7 +977,7 @@ public sealed class CatalogDownloadService : IDisposable
         timeout.CancelAfter(_options.InactivityTimeout);
         try
         {
-            return await _httpClient.SendAsync(
+            return await client.SendAsync(
                 request,
                 HttpCompletionOption.ResponseHeadersRead,
                 timeout.Token);
@@ -976,6 +990,37 @@ public sealed class CatalogDownloadService : IDisposable
         {
             throw new TransientDownloadException("A conexão segura falhou.", innerException: exception);
         }
+    }
+
+    private async Task<HttpResponseMessage> FollowAuthorizedRedirectAsync(
+        HttpResponseMessage authorizationResponse,
+        HttpRequestMessage authorizedRequest,
+        CancellationToken cancellationToken)
+    {
+        if (_options.MaximumRedirects < 1
+            || authorizationResponse.StatusCode is not (HttpStatusCode.TemporaryRedirect
+                or HttpStatusCode.PermanentRedirect))
+            throw new InvalidDataException("O redirecionamento de download não foi autorizado.");
+        var destination = authorizationResponse.Headers.Location;
+        if (destination is null || !destination.IsAbsoluteUri
+            || destination.Scheme != Uri.UriSchemeHttps
+            || destination.Port != 443
+            || destination.UserInfo.Length != 0
+            || destination.Fragment.Length != 0)
+            throw new InvalidDataException("O destino direto autorizado é inválido.");
+
+        using var directRequest = new HttpRequestMessage(HttpMethod.Get, destination);
+        directRequest.Headers.Range = authorizedRequest.Headers.Range;
+        // Never forward the API bearer or If-Range to the external host.
+        var response = await SendWithHeaderTimeoutAsync(
+            _directHttpClient, directRequest, cancellationToken);
+        ValidateResponseRequestIdentity(directRequest, response);
+        if (IsRedirect(response.StatusCode))
+        {
+            response.Dispose();
+            throw new InvalidDataException("A hospedagem tentou redirecionar novamente.");
+        }
+        return response;
     }
 
     private static void ValidateResponseRequestIdentity(
@@ -1040,6 +1085,16 @@ public sealed class CatalogDownloadService : IDisposable
         var partialIdentity = PathIdentity.CaptureFileIdentity(
             partial.SafeFileHandle,
             active.PartialPath);
+        if (IsDeferredSha256(artifact.Sha256))
+        {
+            partial.Position = 0;
+            var resolvedHash = Convert.ToHexString(
+                    await SHA256.HashDataAsync(partial, active.Cancellation.Token))
+                .ToLowerInvariant();
+            partial.Position = 0;
+            item.ResolveDeferredArtifactHash(resolvedHash);
+            artifact = artifact with { Sha256 = resolvedHash };
+        }
         if (!await ValidateOpenFileAsync(partial, artifact, active.Cancellation.Token))
             throw new InvalidDataException("A integridade ou o tamanho do pacote não confere.");
         _ = PathIdentity.RevalidateFile(
@@ -1676,6 +1731,9 @@ public sealed class CatalogDownloadService : IDisposable
     }
 
     private static bool IsCanonicalSha256(string value) => IsLowerHex(value, 64);
+
+    private static bool IsDeferredSha256(string value) =>
+        value.Length == 64 && value.All(character => character == '0');
 
     private static bool IsLowerHex(string value, int exactLength) =>
         value is not null
@@ -2371,6 +2429,7 @@ public sealed class CatalogDownloadService : IDisposable
         if (_ownedResourcesDisposed) return;
         _ownedResourcesDisposed = true;
         if (_ownsHttpClient) _httpClient.Dispose();
+        _directHttpClient.Dispose();
         _downloadQueue.Dispose();
     }
 

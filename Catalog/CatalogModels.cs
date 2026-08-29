@@ -213,13 +213,20 @@ public sealed class CatalogItem : INotifyPropertyChanged
     // Untrusted visual-catalog hint retained only to reject a mismatch with the
     // server-authorized artifact. It must never authorize extraction by itself.
     public bool Extract { get; init; }
-    public CatalogArtifactDescriptor? Artifact { get; init; }
+    private CatalogArtifactDescriptor? _artifact;
+    public CatalogArtifactDescriptor? Artifact { get => _artifact; init => _artifact = value; }
     public bool IsMaintenance { get; init; }
     public string MaintenanceReasonCode { get; init; } = string.Empty;
 
     public bool HasExtractPolicyConflict => Artifact is not null
         && Extract != (Artifact.ExtractPolicy == CatalogExtractPolicy.ExtractArchive);
     public bool HasAuthorizedArtifact => Artifact is not null && !HasExtractPolicyConflict;
+
+    internal void ResolveDeferredArtifactHash(string sha256)
+    {
+        if (_artifact is null || !_artifact.Sha256.All(character => character == '0')) return;
+        _artifact = _artifact with { Sha256 = sha256 };
+    }
 
     public string ImageSource
     {
