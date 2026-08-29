@@ -111,18 +111,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             ["70065c3c55f2d95c857444c546a4776e"] = "Plataforma de arcade criada por Nintendo, Sega e Namco com base no GameCube, usada em títulos como Mario Kart Arcade GP e F-Zero AX."
         };
 
-    private readonly CatalogDownloadService _downloadService = new(new CatalogDownloadOptions
-    {
-        MaximumFileSizeBytes = 512L * 1024L * 1024L * 1024L,
-        AllowedHosts = new HashSet<string>(
-            [
-                "github.com",
-                "objects.githubusercontent.com",
-                "release-assets.githubusercontent.com",
-                "raw.githubusercontent.com"
-            ],
-            StringComparer.OrdinalIgnoreCase)
-    });
+    private readonly CatalogDownloadService _downloadService;
     private readonly AuthorizedStoreContext _authorization;
     private readonly SuiteLicensingRuntime _licensingRuntime;
     private readonly SuiteAuthorizationSubscription _authorizationSubscription;
@@ -391,10 +380,26 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     internal StoreWindow(
         AuthorizedStoreContext authorization,
         SuiteLicensingRuntime licensingRuntime)
+        : this(authorization, licensingRuntime, SuiteAuthorizedCatalog.Empty)
+    {
+    }
+
+    internal StoreWindow(
+        AuthorizedStoreContext authorization,
+        SuiteLicensingRuntime licensingRuntime,
+        SuiteAuthorizedCatalog authorizedCatalog)
     {
         _authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
         _licensingRuntime = licensingRuntime
                             ?? throw new ArgumentNullException(nameof(licensingRuntime));
+        ArgumentNullException.ThrowIfNull(authorizedCatalog);
+        _downloadService = _licensingRuntime.CreateCatalogDownloadService(
+            _authorization,
+            authorizedCatalog,
+            new CatalogDownloadOptions
+            {
+                MaximumFileSizeBytes = 512L * 1024L * 1024L * 1024L
+            });
         _authorizationSubscription = _licensingRuntime.AttachAuthorizationConsumer(
             _authorization,
             LicensingRuntime_AuthorizationRevoked);
@@ -411,7 +416,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             RememberApprovedRoot(_installFolderPath);
             if (IsExistingGameLibraryFolder(_gameLibraryFolderPath))
                 RememberApprovedRoot(_gameLibraryFolderPath);
-            InitializeCatalog();
+            InitializeCatalog(authorizedCatalog);
             ThrowIfOperationUnauthorized();
             UpdateFolderLabels();
             Loaded += StoreWindow_Loaded;
@@ -435,13 +440,17 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         }
     }
 
-    private void InitializeCatalog()
+    private void InitializeCatalog(SuiteAuthorizedCatalog authorizedCatalog)
     {
         try
         {
             var catalogDirectory = Path.Combine(AppContext.BaseDirectory, "Assets", "Catalog");
             var publicManifestPath = Path.Combine(catalogDirectory, "catalog.json");
-            _catalogRepository = CatalogRepository.Load(publicManifestPath);
+            _catalogRepository = CatalogRepository.Load(
+                publicManifestPath,
+                authorizedCatalog.Descriptors,
+                authorizedCatalog.MaintenanceItems,
+                authorizedCatalog.RequiresCompleteCoverage);
 
             CatalogCategories.Clear();
             foreach (var category in _catalogRepository.Categories)
@@ -3537,7 +3546,9 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
         if (!item.HasAuthorizedArtifact)
         {
-            SetCatalogStatus(item.HasExtractPolicyConflict
+            SetCatalogStatus(item.IsMaintenance
+                ? $"{item.Title}: conteúdo temporariamente em manutenção."
+                : item.HasExtractPolicyConflict
                 ? $"{item.Title}: a política visual diverge do manifesto autorizado. Nada foi iniciado."
                 : $"{item.Title}: conteúdo indisponível para esta sessão. Nada foi iniciado.");
             return;

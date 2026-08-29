@@ -42,7 +42,14 @@ param(
     [ValidatePattern('\A(?:|[0-9a-f]{64})\z')]
     [string]$AuthorityConfigurationSha256 = '',
 
-    [string]$AuthorityIssuerSpkiBase64 = ''
+    [string]$AuthorityIssuerSpkiBase64 = '',
+
+    [string]$ContentAuthorityConfigurationBase64 = '',
+
+    [ValidatePattern('\A(?:|[0-9a-f]{64})\z')]
+    [string]$ContentAuthorityConfigurationSha256 = '',
+
+    [string]$ContentAuthorityIssuerSpkiBase64 = ''
 )
 
 Set-StrictMode -Version Latest
@@ -122,14 +129,90 @@ $signatureBlock = [ordered]@{
 }
 
 $authorityBlock = $null
+$contentAuthorityBlock = $null
 $hasAuthorityInput = -not [string]::IsNullOrWhiteSpace($AuthorityConfigurationBase64) -or
     -not [string]::IsNullOrWhiteSpace($AuthorityConfigurationSha256) -or
     -not [string]::IsNullOrWhiteSpace($AuthorityIssuerSpkiBase64)
-if ($Unsigned -and $hasAuthorityInput) {
+$hasContentAuthorityInput = `
+    -not [string]::IsNullOrWhiteSpace($ContentAuthorityConfigurationBase64) -or
+    -not [string]::IsNullOrWhiteSpace($ContentAuthorityConfigurationSha256) -or
+    -not [string]::IsNullOrWhiteSpace($ContentAuthorityIssuerSpkiBase64)
+if ($Unsigned -and ($hasAuthorityInput -or $hasContentAuthorityInput)) {
     throw 'Um staging unsigned nao pode declarar configuracao de autoridade.'
 }
-if (-not $Unsigned -and -not $hasAuthorityInput) {
-    throw 'Um candidato assinado exige configuracao de autoridade capturada.'
+if (-not $Unsigned -and (-not $hasAuthorityInput -or
+        -not $hasContentAuthorityInput)) {
+    throw 'Um candidato assinado exige as duas autoridades capturadas.'
+}
+
+if ($hasContentAuthorityInput) {
+    if ([string]::IsNullOrWhiteSpace($ContentAuthorityConfigurationBase64) -or
+        [string]::IsNullOrWhiteSpace($ContentAuthorityConfigurationSha256) -or
+        [string]::IsNullOrWhiteSpace($ContentAuthorityIssuerSpkiBase64) -or
+        $ContentAuthorityConfigurationBase64.Length -gt 10924 -or
+        $ContentAuthorityIssuerSpkiBase64.Length -gt 1368 -or
+        $ContentAuthorityConfigurationBase64 -match '\s' -or
+        $ContentAuthorityIssuerSpkiBase64 -match '\s') {
+        throw 'Envelope, hash e SPKI da autoridade de conteudo precisam ser informados juntos.'
+    }
+
+    $contentAuthorityConfigurationBytes = [Convert]::FromBase64String(
+        $ContentAuthorityConfigurationBase64)
+    $contentAuthorityIssuerSpkiBytes = [Convert]::FromBase64String(
+        $ContentAuthorityIssuerSpkiBase64)
+    try {
+        if ($contentAuthorityConfigurationBytes.Length -lt 64 -or
+            $contentAuthorityConfigurationBytes.Length -gt 8KB -or
+            $contentAuthorityIssuerSpkiBytes.Length -lt 256 -or
+            $contentAuthorityIssuerSpkiBytes.Length -gt 1KB -or
+            -not [Convert]::ToBase64String(
+                $contentAuthorityConfigurationBytes).Equals(
+                    $ContentAuthorityConfigurationBase64,
+                    [StringComparison]::Ordinal) -or
+            -not [Convert]::ToBase64String(
+                $contentAuthorityIssuerSpkiBytes).Equals(
+                    $ContentAuthorityIssuerSpkiBase64,
+                    [StringComparison]::Ordinal)) {
+            throw 'Os bytes da autoridade de conteudo possuem tamanho invalido.'
+        }
+        $expectedContentConfigurationHash = [Convert]::FromHexString(
+            $ContentAuthorityConfigurationSha256)
+        $actualContentConfigurationHash = `
+            [Security.Cryptography.SHA256]::HashData(
+                $contentAuthorityConfigurationBytes)
+        try {
+            if (-not [Security.Cryptography.CryptographicOperations]::FixedTimeEquals(
+                    $actualContentConfigurationHash,
+                    $expectedContentConfigurationHash)) {
+                throw 'O envelope de conteudo nao corresponde ao SHA-256 aprovado.'
+            }
+        }
+        finally {
+            [Security.Cryptography.CryptographicOperations]::ZeroMemory(
+                $actualContentConfigurationHash)
+            [Security.Cryptography.CryptographicOperations]::ZeroMemory(
+                $expectedContentConfigurationHash)
+        }
+        $contentIssuerHash = [Security.Cryptography.SHA256]::HashData(
+            $contentAuthorityIssuerSpkiBytes)
+        try {
+            $contentAuthorityBlock = [ordered]@{
+                configurationSha256 = $ContentAuthorityConfigurationSha256
+                issuerSpkiSha256 = [Convert]::ToHexString(
+                    $contentIssuerHash).ToLowerInvariant()
+            }
+        }
+        finally {
+            [Security.Cryptography.CryptographicOperations]::ZeroMemory(
+                $contentIssuerHash)
+        }
+    }
+    finally {
+        [Security.Cryptography.CryptographicOperations]::ZeroMemory(
+            $contentAuthorityConfigurationBytes)
+        [Security.Cryptography.CryptographicOperations]::ZeroMemory(
+            $contentAuthorityIssuerSpkiBytes)
+    }
 }
 if ($hasAuthorityInput) {
     if ([string]::IsNullOrWhiteSpace($AuthorityConfigurationBase64) -or
@@ -244,6 +327,7 @@ $manifest = [ordered]@{
     }
     authenticode = $signatureBlock
     authority = $authorityBlock
+    contentAuthority = $contentAuthorityBlock
     files = @($files)
 }
 

@@ -8,9 +8,11 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Win32.SafeHandles;
+using TurboBoxManager.Licensing;
 
 namespace TurboBoxManager.Catalog;
 
@@ -23,14 +25,8 @@ public sealed class CatalogDownloadOptions
     public IReadOnlyList<TimeSpan> RetryDelays { get; init; } =
         [TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10),
             TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(30)];
-    public IReadOnlySet<string> AllowedHosts { get; init; } = new HashSet<string>(
-        [
-            "github.com",
-            "objects.githubusercontent.com",
-            "release-assets.githubusercontent.com",
-            "raw.githubusercontent.com"
-        ],
-        StringComparer.OrdinalIgnoreCase);
+    public IReadOnlySet<string> AllowedHosts { get; init; } =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 }
 
 public sealed record CatalogDownloadResult(
@@ -143,7 +139,8 @@ public sealed class CatalogDownloadService : IDisposable
         if (_options.RetryDelays.Count == 0
             || _options.RetryDelays.Any(delay => delay < TimeSpan.Zero || delay > MaximumRetryDelay))
             throw new ArgumentOutOfRangeException(nameof(options), "Configure pelo menos um intervalo de nova tentativa.");
-        if (_options.AllowedHosts.Count == 0
+        if ((_requestProvider != FailClosedRequestProvider.Instance
+                && _options.AllowedHosts.Count == 0)
             || _options.AllowedHosts.Any(host => string.IsNullOrWhiteSpace(host)))
             throw new ArgumentOutOfRangeException(nameof(options), "Configure pelo menos um host autorizado.");
     }
@@ -765,7 +762,8 @@ public sealed class CatalogDownloadService : IDisposable
             return;
         }
 
-        using var request = await CreateAuthorizedRequestAsync(artifact, offset, active);
+        using var request = await CreateAuthorizedRequestAsync(
+            item.Id, artifact, offset, active);
         using var response = await SendWithHeaderTimeoutAsync(request, active.Cancellation.Token);
         ValidateResponseRequestIdentity(request, response);
 
@@ -851,6 +849,7 @@ public sealed class CatalogDownloadService : IDisposable
     }
 
     private async Task<HttpRequestMessage> CreateAuthorizedRequestAsync(
+        string itemId,
         CatalogArtifactDescriptor artifact,
         long offset,
         ActiveDownload active)
@@ -861,6 +860,7 @@ public sealed class CatalogDownloadService : IDisposable
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(active.Cancellation.Token);
             timeout.CancelAfter(_options.InactivityTimeout);
             request = await _requestProvider.CreateRequestAsync(
+                itemId,
                 artifact,
                 offset,
                 new CatalogDownloadValidators(active.Metadata.ETag, active.Metadata.LastModified),
@@ -885,7 +885,7 @@ public sealed class CatalogDownloadService : IDisposable
 
         try
         {
-            ValidateAuthorizedRequest(request, offset, active.Metadata);
+            ValidateAuthorizedRequest(request, artifact, offset, active.Metadata);
             return request;
         }
         catch
@@ -897,6 +897,7 @@ public sealed class CatalogDownloadService : IDisposable
 
     private void ValidateAuthorizedRequest(
         HttpRequestMessage request,
+        CatalogArtifactDescriptor artifact,
         long offset,
         DownloadResumeMetadata metadata)
     {
@@ -918,12 +919,16 @@ public sealed class CatalogDownloadService : IDisposable
 
         var authorization = request.Headers.Authorization;
         if (authorization is null
-            || string.IsNullOrWhiteSpace(authorization.Scheme)
-            || string.IsNullOrWhiteSpace(authorization.Parameter)
-            || authorization.Scheme.Length > 32
-            || authorization.Parameter.Length > 8192
-            || authorization.Parameter.Any(char.IsControl))
+            || !authorization.Scheme.Equals("Bearer", StringComparison.Ordinal)
+            || !SuiteContentProtocol.IsBearerToken(authorization.Parameter))
             throw new InvalidDataException("A requisição não contém autorização temporária válida.");
+
+        var allowedHeaders = new HashSet<string>(
+            ["Authorization", "Range", "If-Range"],
+            StringComparer.OrdinalIgnoreCase);
+        if (request.Headers.Any(header => !allowedHeaders.Contains(header.Key)))
+            throw new InvalidDataException(
+                "A requisição autorizada contém cabeçalhos não permitidos.");
 
         var ranges = request.Headers.Range?.Ranges.ToArray() ?? [];
         if (offset == 0)
@@ -941,7 +946,9 @@ public sealed class CatalogDownloadService : IDisposable
             if (request.Headers.IfRange is { } ifRange)
             {
                 var value = ifRange.ToString();
-                if (!value.Equals(metadata.ETag, StringComparison.Ordinal)
+                var signedArtifactEtag = $"\"{artifact.Sha256}\"";
+                if (!value.Equals(signedArtifactEtag, StringComparison.Ordinal)
+                    && !value.Equals(metadata.ETag, StringComparison.Ordinal)
                     && !value.Equals(metadata.LastModified, StringComparison.Ordinal))
                     throw new InvalidDataException("O validador If-Range não corresponde ao estado local.");
             }
@@ -1682,23 +1689,25 @@ public sealed class CatalogDownloadService : IDisposable
 
     private static bool IsSafeFileName(string value, string extension)
     {
-        if (!IsBoundedText(value, 1, 128)
+        if (!IsBoundedText(value, 1, 180)
+            || Encoding.UTF8.GetByteCount(value) > 180
             || value is "." or ".."
             || !Path.GetFileName(value).Equals(value, StringComparison.Ordinal)
             || value.EndsWith(' ')
-            || value.EndsWith('.'))
+            || value.EndsWith('.')
+            || value.Any(character => char.IsControl(character)
+                || char.IsSurrogate(character)
+                || character is '<' or '>' or '"' or '/' or '\\'
+                    or '|' or '?' or '*' or ':'))
             return false;
         if (!value.EndsWith(extension, StringComparison.Ordinal)) return false;
-        if (value.Any(character => !char.IsAsciiLetterOrDigit(character)
-                                   && character is not ('-' or '_' or '.')))
-            return false;
-        var baseName = value.Split('.')[0];
+        var baseName = value.Split('.', 2)[0];
         return !WindowsReservedFileNames.Contains(baseName);
     }
 
     private static bool IsSafeExtension(string value) =>
         value is not null
-        && value.Length is >= 2 and <= 10
+        && value.Length is >= 2 and <= 11
         && value[0] == '.'
         && value.Skip(1).All(character => character is >= 'a' and <= 'z' or >= '0' and <= '9');
 
@@ -2494,6 +2503,7 @@ public sealed class CatalogDownloadService : IDisposable
         public static FailClosedRequestProvider Instance { get; } = new();
 
         public ValueTask<HttpRequestMessage> CreateRequestAsync(
+            string itemId,
             CatalogArtifactDescriptor artifact,
             long offset,
             CatalogDownloadValidators validators,

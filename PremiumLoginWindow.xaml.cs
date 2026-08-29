@@ -1,9 +1,11 @@
+using System.IO;
 using System.Net.Http;
 using System.Security;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using TurboBoxManager.Licensing;
+using TurboBoxManager.Catalog;
 
 namespace TurboBoxManager;
 
@@ -60,7 +62,23 @@ public partial class PremiumLoginWindow : Window
                     cancellation.Token);
             context.ThrowIfUnauthorized();
 
-            var store = new StoreWindow(context, _licensingRuntime);
+            var publicManifestPath = Path.Combine(
+                AppContext.BaseDirectory,
+                "Assets",
+                "Catalog",
+                "catalog.json");
+            var publicCatalog = CatalogRepository.Load(publicManifestPath);
+            var authorizedCatalog = await _licensingRuntime
+                .ReadAuthorizedCatalogAsync(
+                    context,
+                    publicCatalog.Items,
+                    cancellation.Token);
+            context.ThrowIfUnauthorized();
+
+            var store = new StoreWindow(
+                context,
+                _licensingRuntime,
+                authorizedCatalog);
             store.Show();
             _runtimeTransferred = true;
             Close();

@@ -561,6 +561,7 @@ internal static class DownloadResumeVerifier
         public List<CatalogDownloadValidators> ObservedValidators { get; } = [];
 
         public ValueTask<HttpRequestMessage> CreateRequestAsync(
+            string itemId,
             CatalogArtifactDescriptor artifact,
             long offset,
             CatalogDownloadValidators validators,
@@ -569,7 +570,11 @@ internal static class DownloadResumeVerifier
             cancellationToken.ThrowIfCancellationRequested();
             _requestCount++;
             var path = $"/ephemeral-grant-{_requestCount}/{artifact.ArtifactId}{artifact.FileExtension}";
-            var token = $"test-only-grant-{_requestCount}-{Guid.NewGuid():N}";
+            var token = Convert.ToBase64String(SHA256.HashData(
+                    Encoding.UTF8.GetBytes($"test-only-grant-{_requestCount}")))
+                .TrimEnd('=')
+                .Replace('+', '-')
+                .Replace('/', '_');
             var request = new HttpRequestMessage(
                 HttpMethod.Get,
                 new Uri("https://resume.test" + path));
@@ -586,6 +591,7 @@ internal static class DownloadResumeVerifier
     private sealed class InvalidRangeProvider : ICatalogDownloadRequestProvider
     {
         public ValueTask<HttpRequestMessage> CreateRequestAsync(
+            string itemId,
             CatalogArtifactDescriptor artifact,
             long offset,
             CatalogDownloadValidators validators,
@@ -594,7 +600,8 @@ internal static class DownloadResumeVerifier
             var request = new HttpRequestMessage(
                 HttpMethod.Get,
                 new Uri("https://resume.test/invalid-range/package.bin"));
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", "test-only-invalid-range");
+            request.Headers.Authorization = new AuthenticationHeaderValue(
+                "Bearer", new string('A', 43));
             request.Headers.Range = new RangeHeaderValue(offset + 1, null);
             return ValueTask.FromResult(request);
         }

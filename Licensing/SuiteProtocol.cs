@@ -210,6 +210,10 @@ public static class SuiteOnlineLicenseProtocol
         "TURBORAMA_SUITE_SESSION_OPEN_CHALLENGE";
     public const string SessionHeartbeatChallengeAssertionKind =
         "TURBORAMA_SUITE_SESSION_HEARTBEAT_CHALLENGE";
+    public const string CatalogReadChallengeAssertionKind =
+        "TURBORAMA_SUITE_CATALOG_READ_CHALLENGE";
+    public const string DownloadAuthorizeChallengeAssertionKind =
+        "TURBORAMA_SUITE_DOWNLOAD_AUTHORIZE_CHALLENGE";
     public const string SessionOpenAssertionKind = "TURBORAMA_SUITE_SESSION_OPEN";
     public const string SessionHeartbeatAssertionKind =
         "TURBORAMA_SUITE_SESSION_HEARTBEAT";
@@ -225,6 +229,10 @@ public static class SuiteOnlineLicenseProtocol
         Encoding.ASCII.GetBytes("TurboRamaSuiteOnlineAssertion/session-open-challenge/v1\0");
     private static readonly byte[] SessionHeartbeatChallengeAssertionDomain =
         Encoding.ASCII.GetBytes("TurboRamaSuiteOnlineAssertion/session-heartbeat-challenge/v1\0");
+    private static readonly byte[] CatalogReadChallengeAssertionDomain =
+        Encoding.ASCII.GetBytes("TurboRamaSuiteOnlineAssertion/catalog-read-challenge/v1\0");
+    private static readonly byte[] DownloadAuthorizeChallengeAssertionDomain =
+        Encoding.ASCII.GetBytes("TurboRamaSuiteOnlineAssertion/download-authorize-challenge/v1\0");
     private static readonly byte[] SessionOpenAssertionDomain =
         Encoding.ASCII.GetBytes("TurboRamaSuiteOnlineAssertion/session-open/v1\0");
     private static readonly byte[] SessionHeartbeatAssertionDomain =
@@ -936,6 +944,8 @@ public static class SuiteOnlineLicenseProtocol
     {
         "session.open" => SessionOpenChallengeAssertionKind,
         "session.heartbeat" => SessionHeartbeatChallengeAssertionKind,
+        "catalog.read" => CatalogReadChallengeAssertionKind,
+        "download.authorize" => DownloadAuthorizeChallengeAssertionKind,
         _ => throw new SecurityException("A acao do desafio de sessao e invalida.")
     };
 
@@ -944,6 +954,8 @@ public static class SuiteOnlineLicenseProtocol
         {
             "session.open" => SessionOpenChallengeAssertionDomain,
             "session.heartbeat" => SessionHeartbeatChallengeAssertionDomain,
+            "catalog.read" => CatalogReadChallengeAssertionDomain,
+            "download.authorize" => DownloadAuthorizeChallengeAssertionDomain,
             _ => throw new SecurityException("A acao do desafio de sessao e invalida.")
         };
 

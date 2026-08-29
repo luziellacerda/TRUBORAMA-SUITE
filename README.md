@@ -71,6 +71,10 @@ dotnet run --project .\tests\CatalogVerifier\CatalogVerifier.csproj -c Release -
   -AuthorityConfigurationSha256 <SHA256_EXATO_DO_ENVELOPE_APROVADO_INDEPENDENTEMENTE> `
   -AuthorityIssuerSpkiPath <CHAVE_PUBLICA_SPKI_OFFLINE> `
   -AuthorityIssuerSpkiSha256 <SHA256_SPKI_OFFLINE_APROVADO_INDEPENDENTEMENTE> `
+  -ContentAuthorityConfigurationPath <ENVELOPE_ASSINADO_DA_AUTORIDADE_DE_CONTEUDO> `
+  -ContentAuthorityConfigurationSha256 <SHA256_EXATO_DO_ENVELOPE_DE_CONTEUDO> `
+  -ContentAuthorityIssuerSpkiPath <CHAVE_PUBLICA_SPKI_OFFLINE_DE_CONTEUDO> `
+  -ContentAuthorityIssuerSpkiSha256 <SHA256_SPKI_OFFLINE_DE_CONTEUDO> `
   -PowerShellSha256 <SHA256_DO_PWSH_EXE_APROVADO_INDEPENDENTEMENTE> `
   -PowerShellHomeTreeSha256 <SHA256_V1_DA_ARVORE_PSHOME_APROVADA> `
   -DotNetPath <CAMINHO_ABSOLUTO_DOTNET_EXE_OFICIAL> `

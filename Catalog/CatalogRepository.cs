@@ -4,6 +4,7 @@ using System.IO;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using TurboBoxManager.Licensing;
 
 namespace TurboBoxManager.Catalog;
 
@@ -33,9 +34,15 @@ public sealed class CatalogRepository
     private CatalogRepository(
         CatalogManifest manifest,
         string manifestPath,
-        bool usePackResources = false)
+        bool usePackResources,
+        IReadOnlyDictionary<string, CatalogArtifactDescriptor> authorizedArtifacts,
+        IReadOnlyDictionary<string, string> maintenanceItems,
+        bool requireCompleteCoverage)
     {
         Validate(manifest);
+        ValidateAuthorizedArtifacts(
+            manifest, authorizedArtifacts, maintenanceItems,
+            requireCompleteCoverage);
         _categories = Array.AsReadOnly(
             manifest.Categories.OrderBy(category => category.Order).ToArray());
 
@@ -44,7 +51,9 @@ public sealed class CatalogRepository
             manifest.DefaultImage,
             usePackResources);
         var descriptions = CatalogGameDescriptionStore.Load(manifestPath);
-        _items = Array.AsReadOnly(MaterializeItems(manifest, imageResolver, descriptions));
+        _items = Array.AsReadOnly(MaterializeItems(
+            manifest, imageResolver, descriptions, authorizedArtifacts,
+            maintenanceItems));
         _itemsById = _items.ToDictionary(item => item.Id, StringComparer.OrdinalIgnoreCase);
     }
 
@@ -55,6 +64,25 @@ public sealed class CatalogRepository
     public IReadOnlyList<CatalogItem> Items => _items;
 
     public static CatalogRepository Load(string manifestPath)
+        => Load(manifestPath,
+            new Dictionary<string, CatalogArtifactDescriptor>(StringComparer.Ordinal),
+            requireCompleteCoverage: false);
+
+    internal static CatalogRepository Load(
+        string manifestPath,
+        IReadOnlyDictionary<string, CatalogArtifactDescriptor> authorizedArtifacts,
+        bool requireCompleteCoverage = true)
+        => Load(
+            manifestPath,
+            authorizedArtifacts,
+            new Dictionary<string, string>(StringComparer.Ordinal),
+            requireCompleteCoverage);
+
+    internal static CatalogRepository Load(
+        string manifestPath,
+        IReadOnlyDictionary<string, CatalogArtifactDescriptor> authorizedArtifacts,
+        IReadOnlyDictionary<string, string> maintenanceItems,
+        bool requireCompleteCoverage = true)
     {
         if (string.IsNullOrWhiteSpace(manifestPath))
             throw new ArgumentException("Informe o manifesto do catálogo.", nameof(manifestPath));
@@ -80,15 +108,30 @@ public sealed class CatalogRepository
         if (HasReparsePointInPath(canonicalPath))
             throw new InvalidDataException(
                 "O caminho do manifesto do catálogo mudou durante a abertura.");
-        return Load(stream, canonicalPath);
+        return Load(stream, canonicalPath, usePackResources: false,
+            authorizedArtifacts, maintenanceItems, requireCompleteCoverage);
     }
 
     public static CatalogRepository Load(
         Stream manifestStream,
         string resourceBaseManifestPath,
         bool usePackResources = false)
+        => Load(manifestStream, resourceBaseManifestPath, usePackResources,
+            new Dictionary<string, CatalogArtifactDescriptor>(StringComparer.Ordinal),
+            new Dictionary<string, string>(StringComparer.Ordinal),
+            requireCompleteCoverage: false);
+
+    internal static CatalogRepository Load(
+        Stream manifestStream,
+        string resourceBaseManifestPath,
+        bool usePackResources,
+        IReadOnlyDictionary<string, CatalogArtifactDescriptor> authorizedArtifacts,
+        IReadOnlyDictionary<string, string> maintenanceItems,
+        bool requireCompleteCoverage = true)
     {
         ArgumentNullException.ThrowIfNull(manifestStream);
+        ArgumentNullException.ThrowIfNull(authorizedArtifacts);
+        ArgumentNullException.ThrowIfNull(maintenanceItems);
         var bytes = ReadBoundedManifest(manifestStream);
         CatalogManifest manifest;
         try
@@ -104,7 +147,9 @@ public sealed class CatalogRepository
             throw new InvalidDataException("O manifesto do catálogo não usa JSON estrito.", exception);
         }
 
-        return new CatalogRepository(manifest, resourceBaseManifestPath, usePackResources);
+        return new CatalogRepository(manifest, resourceBaseManifestPath,
+            usePackResources, authorizedArtifacts, maintenanceItems,
+            requireCompleteCoverage);
     }
 
     private static byte[] ReadBoundedManifest(Stream input)
@@ -200,7 +245,9 @@ public sealed class CatalogRepository
     private static CatalogItem[] MaterializeItems(
         CatalogManifest manifest,
         CatalogImageResolver imageResolver,
-        IReadOnlyDictionary<string, string> descriptions)
+        IReadOnlyDictionary<string, string> descriptions,
+        IReadOnlyDictionary<string, CatalogArtifactDescriptor> authorizedArtifacts,
+        IReadOnlyDictionary<string, string> maintenanceItems)
     {
         var definitions = manifest.Items.Count > 0
             ? manifest.Items
@@ -214,7 +261,9 @@ public sealed class CatalogRepository
             var imagePath = FirstNonEmpty(definition.ImagePath, definition.Image);
             var imageSource = imageResolver.Resolve(imagePath);
 
-            return new CatalogItem
+            var isMaintenance = maintenanceItems.TryGetValue(
+                definition.Id, out var maintenanceReasonCode);
+            var item = new CatalogItem
             {
                 Id = definition.Id,
                 CategoryId = category.Id,
@@ -238,8 +287,16 @@ public sealed class CatalogRepository
                 SystemGlyph = category.Glyph,
                 Order = definition.Order,
                 AccentBrush = category.AccentBrush,
-                Extract = definition.Extract
+                Extract = definition.Extract,
+                Artifact = authorizedArtifacts.GetValueOrDefault(definition.Id),
+                IsMaintenance = isMaintenance,
+                MaintenanceReasonCode = maintenanceReasonCode ?? string.Empty
             };
+            if (isMaintenance)
+                item.SetDownloadState(
+                    CatalogDownloadState.Idle,
+                    "Conteúdo temporariamente em manutenção");
+            return item;
         }).ToArray();
     }
 
@@ -411,6 +468,55 @@ public sealed class CatalogRepository
                     || !IsCanonicalText(template.Keywords, 512)
                     || template.Order is < 0 or > 100_000))
                 throw new InvalidDataException("Todo modelo de pacote precisa de ID e nome.");
+        }
+    }
+
+    private static void ValidateAuthorizedArtifacts(
+        CatalogManifest manifest,
+        IReadOnlyDictionary<string, CatalogArtifactDescriptor> authorizedArtifacts,
+        IReadOnlyDictionary<string, string> maintenanceItems,
+        bool requireCompleteCoverage)
+    {
+        ArgumentNullException.ThrowIfNull(authorizedArtifacts);
+        ArgumentNullException.ThrowIfNull(maintenanceItems);
+        var itemIds = manifest.Items.Count > 0
+            ? manifest.Items.Select(item => item.Id).ToHashSet(StringComparer.Ordinal)
+            : ExpandLegacyItems(manifest).Select(item => item.Id)
+                .ToHashSet(StringComparer.Ordinal);
+        if (authorizedArtifacts.Keys.Any(maintenanceItems.ContainsKey))
+            throw new InvalidDataException(
+                "Um item não pode estar READY e em manutenção.");
+        var authorizedUnionCount = checked(
+            authorizedArtifacts.Count + maintenanceItems.Count);
+        if (authorizedUnionCount > itemIds.Count)
+            throw new InvalidDataException(
+                "O catálogo autorizado excede o catálogo público.");
+        if (requireCompleteCoverage
+            && (itemIds.Count != SuiteContentProtocol.ExpectedCatalogItemCount
+                || authorizedUnionCount
+                != SuiteContentProtocol.ExpectedCatalogItemCount))
+            throw new InvalidDataException(
+                "O catálogo autorizado não cobre os 850 itens públicos.");
+        foreach (var pair in authorizedArtifacts)
+        {
+            if (!itemIds.Contains(pair.Key)
+                || !IsLowerHex(pair.Key, 32)
+                || pair.Value is null
+                || !string.Equals(pair.Value.ProductId,
+                    CatalogArtifactDescriptor.TurboramaSuiteProductId,
+                    StringComparison.Ordinal))
+                throw new InvalidDataException(
+                    "O catálogo autorizado contém um item desconhecido.");
+        }
+        foreach (var pair in maintenanceItems)
+        {
+            if (!itemIds.Contains(pair.Key)
+                || !IsLowerHex(pair.Key, 32)
+                || !string.Equals(pair.Value,
+                    SuiteContentProtocol.MaintenanceReasonCode,
+                    StringComparison.Ordinal))
+                throw new InvalidDataException(
+                    "O catálogo em manutenção contém um item inválido.");
         }
     }
 

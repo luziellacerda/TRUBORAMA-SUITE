@@ -7,6 +7,53 @@ using TurboBoxManager.Catalog;
 using TurboBoxManager.CatalogVerifier;
 using TurboBoxManager.Licensing;
 
+if (args is ["--verify-suite-protocol"])
+{
+    SuiteProtocolVerifier.Run();
+    Console.WriteLine(
+        "PASS: licensing v1, machine proof e assertions de sessao permanecem compativeis.");
+    return;
+}
+
+if (args is ["--verify-download-resume"])
+{
+    var resumeRoot = Path.Combine(
+        Path.GetTempPath(),
+        "TurboramaResumeVerifier-" + Guid.NewGuid().ToString("N"));
+    Directory.CreateDirectory(resumeRoot);
+    try
+    {
+        await DownloadResumeVerifier.RunAsync(resumeRoot);
+        Console.WriteLine(
+            "PASS: autorizacao efemera, retomada e fail-closed de downloads verificados.");
+    }
+    finally
+    {
+        if (Directory.Exists(resumeRoot))
+            Directory.Delete(resumeRoot, recursive: true);
+    }
+    return;
+}
+
+if (args is ["--verify-content"])
+{
+    SuiteContentVerifier.Run();
+    Console.WriteLine(
+        "PASS: protocolo, autoridade separada, snapshot atomico e grants de conteudo verificados.");
+    return;
+}
+
+if (args.Length == 4
+    && args[0].Equals(
+        "--verify-content-authority-base64",
+        StringComparison.Ordinal))
+{
+    SuiteContentVerifier.VerifyAuthorityBase64(args[1], args[2], args[3]);
+    Console.WriteLine(
+        "PASS: autoridade de conteudo separada, assinada, HTTPS e vigente.");
+    return;
+}
+
 if (args.Length == 4
     && args[0].Equals("--verify-authority-base64", StringComparison.Ordinal))
 {

@@ -41,6 +41,14 @@
     <AssemblyMetadata Include="TurboRama.Suite.AuthorityIssuerSpkiBase64"
                       Value="$(SuiteAuthorityIssuerSpkiBase64)" />
   </ItemGroup>
+  <ItemGroup Condition="'$(SuiteContentAuthorityConfigurationBase64)' != '' and '$(SuiteContentAuthorityConfigurationSha256)' != '' and '$(SuiteContentAuthorityIssuerSpkiBase64)' != ''">
+    <AssemblyMetadata Include="TurboRama.Suite.ContentAuthorityConfigurationBase64"
+                      Value="$(SuiteContentAuthorityConfigurationBase64)" />
+    <AssemblyMetadata Include="TurboRama.Suite.ContentAuthorityConfigurationSha256"
+                      Value="$(SuiteContentAuthorityConfigurationSha256)" />
+    <AssemblyMetadata Include="TurboRama.Suite.ContentAuthorityIssuerSpkiBase64"
+                      Value="$(SuiteContentAuthorityIssuerSpkiBase64)" />
+  </ItemGroup>
   <ItemGroup>
     <Compile Remove="tools\**\*.cs" />
     <Compile Remove="tests\**\*.cs" />

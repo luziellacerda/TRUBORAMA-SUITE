@@ -221,6 +221,81 @@ internal sealed class SuiteLicenseClient : IDisposable
         return response;
     }
 
+    internal async Task<SuiteChallengeResponse> RequestOperationChallengeAsync(
+        string licenseId,
+        string deviceId,
+        string sessionId,
+        string action,
+        string contextHash,
+        CancellationToken cancellationToken)
+    {
+        var normalizedLicenseId = RequireCanonicalLicenseId(licenseId);
+        var normalizedDeviceId = SuiteOnlineLicenseProtocol.RequireHex(
+            deviceId, "DeviceId", 64);
+        var normalizedSessionId = SuiteOnlineLicenseProtocol.RequireHex(
+            sessionId, "SessionId", 64);
+        var normalizedContextHash = SuiteOnlineLicenseProtocol.RequireHex(
+            contextHash, "ContextHash", 64);
+        var device = UseMachineIdentity(_identity.Describe);
+        if (!SuiteOnlineLicenseProtocol.FixedHexEquals(
+                normalizedDeviceId, device.DeviceId))
+            throw new SecurityException(
+                "A identidade atual nao corresponde a sessao autorizada.");
+
+        var challenge = await PostAsync(
+            SuiteOnlineLicenseProtocol.ChallengeRoute,
+            new SuiteChallengeRequest(
+                SuiteOnlineLicenseProtocol.SchemaVersion,
+                SuiteOnlineLicenseProtocol.ProductId,
+                normalizedLicenseId,
+                normalizedDeviceId,
+                normalizedSessionId,
+                action,
+                normalizedContextHash),
+            bytes => SuiteOnlineLicenseProtocol.ParseOperationChallengeAssertion(
+                bytes, _onlineAssertionSpki, _onlineAssertionKeyId,
+                normalizedLicenseId, normalizedDeviceId, normalizedSessionId,
+                action, normalizedContextHash, NowUnixSeconds()),
+            cancellationToken).ConfigureAwait(false);
+        RegisterChallenge(challenge);
+        return challenge;
+    }
+
+    internal SuiteOperationProof CreateOperationProof(
+        SuiteChallengeResponse challenge,
+        string licenseId,
+        string deviceId,
+        string sessionId,
+        string action,
+        string contextHash)
+    {
+        var normalizedLicenseId = RequireCanonicalLicenseId(licenseId);
+        var normalizedDeviceId = SuiteOnlineLicenseProtocol.RequireHex(
+            deviceId, "DeviceId", 64);
+        var normalizedSessionId = SuiteOnlineLicenseProtocol.RequireHex(
+            sessionId, "SessionId", 64);
+        var normalizedContextHash = SuiteOnlineLicenseProtocol.RequireHex(
+            contextHash, "ContextHash", 64);
+        var device = UseMachineIdentity(_identity.Describe);
+        if (!SuiteOnlineLicenseProtocol.FixedHexEquals(
+                normalizedDeviceId, device.DeviceId))
+            throw new SecurityException(
+                "A identidade atual nao corresponde a sessao autorizada.");
+
+        return new SuiteOperationProof(
+            SuiteOnlineLicenseProtocol.SchemaVersion,
+            SuiteOnlineLicenseProtocol.ProductId,
+            normalizedLicenseId,
+            normalizedDeviceId,
+            normalizedSessionId,
+            action,
+            normalizedContextHash,
+            challenge.ChallengeId,
+            UseMachineIdentity(() => _identity.Sign(challenge,
+                normalizedLicenseId, normalizedSessionId, action,
+                normalizedContextHash)));
+    }
+
     public void Dispose()
     {
         _http.Dispose();
@@ -360,7 +435,7 @@ internal sealed class SuiteLicenseClient : IDisposable
         }
     }
 
-    private long NowUnixSeconds() => _timeProvider.GetUtcNow().ToUnixTimeSeconds();
+    internal long NowUnixSeconds() => _timeProvider.GetUtcNow().ToUnixTimeSeconds();
 
     private void RegisterChallenge(SuiteChallengeResponse challenge)
     {

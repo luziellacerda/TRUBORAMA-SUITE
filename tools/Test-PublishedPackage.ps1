@@ -18,6 +18,13 @@ param(
 
     [string]$AuthorityIssuerSpkiBase64 = '',
 
+    [string]$ContentAuthorityConfigurationBase64 = '',
+
+    [ValidatePattern('\A(?:|[0-9a-f]{64})\z')]
+    [string]$ContentAuthorityConfigurationSha256 = '',
+
+    [string]$ContentAuthorityIssuerSpkiBase64 = '',
+
     [string]$AuthorityVerifierAssemblyPath = '',
 
     [string]$DotNetPath = 'dotnet',
@@ -67,7 +74,7 @@ function Test-ReleaseManifestJsonShape(
                 $expectedNames = @(
                     'schema', 'product', 'version', 'runtime', 'selfContained',
                     'unsigned', 'buildUtc', 'source', 'toolchain', 'authenticode',
-                    'authority', 'files')
+                    'authority', 'contentAuthority', 'files')
             }
             '$.source' {
                 $expectedNames = @('repository', 'commit', 'branch', 'tag', 'dirty')
@@ -88,6 +95,9 @@ function Test-ReleaseManifestJsonShape(
                     'required', 'status', 'signerThumbprint', 'timestampThumbprint')
             }
             '$.authority' {
+                $expectedNames = @('configurationSha256', 'issuerSpkiSha256')
+            }
+            '$.contentAuthority' {
                 $expectedNames = @('configurationSha256', 'issuerSpkiSha256')
             }
             '$.files[]' { $expectedNames = @('path', 'bytes', 'sha256') }
@@ -146,11 +156,20 @@ while (-not [string]::IsNullOrWhiteSpace($pathCursor)) {
 $hasAuthorityInput = -not [string]::IsNullOrWhiteSpace($AuthorityConfigurationBase64) -or
     -not [string]::IsNullOrWhiteSpace($AuthorityConfigurationSha256) -or
     -not [string]::IsNullOrWhiteSpace($AuthorityIssuerSpkiBase64)
+$hasContentAuthorityInput = `
+    -not [string]::IsNullOrWhiteSpace($ContentAuthorityConfigurationBase64) -or
+    -not [string]::IsNullOrWhiteSpace($ContentAuthorityConfigurationSha256) -or
+    -not [string]::IsNullOrWhiteSpace($ContentAuthorityIssuerSpkiBase64)
 $authorityConfigurationBytes = $null
 $authorityIssuerSpkiBytes = $null
 $authorityConfigurationHash = ''
 $authorityIssuerSpkiHash = ''
 $authorityEmbeddedValues = @()
+$contentAuthorityConfigurationBytes = $null
+$contentAuthorityIssuerSpkiBytes = $null
+$contentAuthorityConfigurationHash = ''
+$contentAuthorityIssuerSpkiHash = ''
+$contentAuthorityEmbeddedValues = @()
 $toolchainPinParameters = @(
     $PowerShellSha256,
     $PowerShellHomeTreeSha256,
@@ -163,7 +182,7 @@ $hasAnyToolchainPin = @($toolchainPinParameters | Where-Object {
     -not [string]::IsNullOrWhiteSpace($_)
 }).Count -ne 0
 
-if ($AllowUnsigned -and $hasAuthorityInput) {
+if ($AllowUnsigned -and ($hasAuthorityInput -or $hasContentAuthorityInput)) {
     Add-Failure 'Um staging unsigned nao pode receber configuracao de autoridade.'
 }
 if ($AllowUnsigned -and $hasAnyToolchainPin) {
@@ -173,9 +192,13 @@ if (-not $AllowUnsigned) {
     if ([string]::IsNullOrWhiteSpace($CertificateThumbprint) -or
         [string]::IsNullOrWhiteSpace($TimestampCertificateThumbprint) -or
         -not $hasAuthorityInput -or
+        -not $hasContentAuthorityInput -or
         [string]::IsNullOrWhiteSpace($AuthorityConfigurationBase64) -or
         [string]::IsNullOrWhiteSpace($AuthorityConfigurationSha256) -or
         [string]::IsNullOrWhiteSpace($AuthorityIssuerSpkiBase64) -or
+        [string]::IsNullOrWhiteSpace($ContentAuthorityConfigurationBase64) -or
+        [string]::IsNullOrWhiteSpace($ContentAuthorityConfigurationSha256) -or
+        [string]::IsNullOrWhiteSpace($ContentAuthorityIssuerSpkiBase64) -or
         [string]::IsNullOrWhiteSpace($AuthorityVerifierAssemblyPath)) {
         Add-Failure 'O gate assinado exige thumbprint, autoridade Base64 e o verificador compilado.'
     }
@@ -253,6 +276,82 @@ if (-not $AllowUnsigned) {
         catch {
             Add-Failure "A autoridade nao pode ser capturada exatamente: $($_.Exception.Message)"
         }
+
+        try {
+            if ($ContentAuthorityConfigurationBase64.Length -gt 10924 -or
+                $ContentAuthorityIssuerSpkiBase64.Length -gt 1368 -or
+                $ContentAuthorityConfigurationBase64 -match '\s' -or
+                $ContentAuthorityIssuerSpkiBase64 -match '\s') {
+                throw 'A representacao Base64 da autoridade de conteudo e invalida.'
+            }
+            $contentAuthorityConfigurationBytes = [Convert]::FromBase64String(
+                $ContentAuthorityConfigurationBase64)
+            $contentAuthorityIssuerSpkiBytes = [Convert]::FromBase64String(
+                $ContentAuthorityIssuerSpkiBase64)
+            if ($contentAuthorityConfigurationBytes.Length -lt 64 -or
+                $contentAuthorityConfigurationBytes.Length -gt 8KB -or
+                $contentAuthorityIssuerSpkiBytes.Length -lt 256 -or
+                $contentAuthorityIssuerSpkiBytes.Length -gt 1KB -or
+                -not [Convert]::ToBase64String(
+                    $contentAuthorityConfigurationBytes).Equals(
+                        $ContentAuthorityConfigurationBase64,
+                        [StringComparison]::Ordinal) -or
+                -not [Convert]::ToBase64String(
+                    $contentAuthorityIssuerSpkiBytes).Equals(
+                        $ContentAuthorityIssuerSpkiBase64,
+                        [StringComparison]::Ordinal)) {
+                Add-Failure 'Os bytes da autoridade de conteudo possuem tamanho invalido.'
+            }
+            else {
+                $expectedContentConfigurationHash = [Convert]::FromHexString(
+                    $ContentAuthorityConfigurationSha256)
+                $actualContentConfigurationHash = `
+                    [Security.Cryptography.SHA256]::HashData(
+                        $contentAuthorityConfigurationBytes)
+                try {
+                    if (-not [Security.Cryptography.CryptographicOperations]::FixedTimeEquals(
+                            $actualContentConfigurationHash,
+                            $expectedContentConfigurationHash)) {
+                        throw 'O envelope de conteudo nao corresponde ao SHA-256 aprovado.'
+                    }
+                    $contentAuthorityConfigurationHash = [Convert]::ToHexString(
+                        $actualContentConfigurationHash).ToLowerInvariant()
+                }
+                finally {
+                    [Security.Cryptography.CryptographicOperations]::ZeroMemory(
+                        $actualContentConfigurationHash)
+                    [Security.Cryptography.CryptographicOperations]::ZeroMemory(
+                        $expectedContentConfigurationHash)
+                }
+                $contentIssuerHash = [Security.Cryptography.SHA256]::HashData(
+                    $contentAuthorityIssuerSpkiBytes)
+                try {
+                    $contentAuthorityIssuerSpkiHash = [Convert]::ToHexString(
+                        $contentIssuerHash).ToLowerInvariant()
+                }
+                finally {
+                    [Security.Cryptography.CryptographicOperations]::ZeroMemory(
+                        $contentIssuerHash)
+                }
+                $contentAuthorityEmbeddedValues = @(
+                    [Convert]::ToBase64String($contentAuthorityConfigurationBytes),
+                    $ContentAuthorityConfigurationSha256,
+                    [Convert]::ToBase64String($contentAuthorityIssuerSpkiBytes))
+
+                $contentAuthorityVerificationOutput = @(
+                    & $DotNetPath $verifierAssembly `
+                        '--verify-content-authority-base64' `
+                        $ContentAuthorityConfigurationBase64 `
+                        $ContentAuthorityIssuerSpkiBase64 `
+                        $ContentAuthorityConfigurationSha256 2>&1)
+                if ($LASTEXITCODE -ne 0) {
+                    Add-Failure 'A assinatura ou vigencia da autoridade de conteudo e invalida.'
+                }
+            }
+        }
+        catch {
+            Add-Failure "A autoridade de conteudo nao pode ser capturada: $($_.Exception.Message)"
+        }
     }
     if (@($toolchainPinParameters | Where-Object {
             [string]::IsNullOrWhiteSpace($_)
@@ -264,7 +363,10 @@ if (-not $AllowUnsigned) {
 if (-not ('Turborama.Release.BinaryNeedleScanner' -as [type])) {
     Add-Type -TypeDefinition @'
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Turborama.Release
 {
@@ -300,6 +402,115 @@ namespace Turborama.Release
                 carry = Math.Min(maximumNeedle - 1, window.Length);
                 window.Slice(window.Length - carry, carry).CopyTo(buffer);
             }
+        }
+
+        public static string FindForbiddenDomainHash(
+            string path,
+            string[] forbiddenSha256)
+        {
+            if (forbiddenSha256 == null || forbiddenSha256.Length == 0)
+                return null;
+            var forbidden = new HashSet<string>(
+                forbiddenSha256,
+                StringComparer.OrdinalIgnoreCase);
+            var bytes = File.ReadAllBytes(path);
+            try
+            {
+                var match = FindAsciiDomainHash(bytes, forbidden);
+                if (match != null) return match;
+                match = FindUtf16DomainHash(bytes, 0, forbidden);
+                return match ?? FindUtf16DomainHash(bytes, 1, forbidden);
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(bytes);
+            }
+        }
+
+        private static string FindAsciiDomainHash(
+            byte[] bytes,
+            HashSet<string> forbidden)
+        {
+            var candidate = new StringBuilder(253);
+            foreach (var value in bytes)
+            {
+                if (IsDomainCharacter(value) && candidate.Length < 253)
+                    candidate.Append((char)value);
+                else
+                {
+                    var match = MatchCandidate(candidate, forbidden);
+                    if (match != null) return match;
+                    candidate.Clear();
+                }
+            }
+            return MatchCandidate(candidate, forbidden);
+        }
+
+        private static string FindUtf16DomainHash(
+            byte[] bytes,
+            int offset,
+            HashSet<string> forbidden)
+        {
+            var candidate = new StringBuilder(253);
+            for (var index = offset; index + 1 < bytes.Length; index += 2)
+            {
+                var value = bytes[index];
+                if (bytes[index + 1] == 0 && IsDomainCharacter(value) &&
+                    candidate.Length < 253)
+                {
+                    candidate.Append((char)value);
+                }
+                else
+                {
+                    var match = MatchCandidate(candidate, forbidden);
+                    if (match != null) return match;
+                    candidate.Clear();
+                }
+            }
+            return MatchCandidate(candidate, forbidden);
+        }
+
+        private static string MatchCandidate(
+            StringBuilder candidate,
+            HashSet<string> forbidden)
+        {
+            if (candidate.Length < 4 || candidate.Length > 253)
+                return null;
+            var value = candidate.ToString().ToLowerInvariant();
+            if (!IsValidDomain(value)) return null;
+            var hash = Convert.ToHexString(
+                SHA256.HashData(Encoding.UTF8.GetBytes(value)));
+            return forbidden.Contains(hash) ? hash : null;
+        }
+
+        private static bool IsDomainCharacter(byte value) =>
+            value == (byte)'.' || value == (byte)'-' ||
+            value >= (byte)'0' && value <= (byte)'9' ||
+            value >= (byte)'A' && value <= (byte)'Z' ||
+            value >= (byte)'a' && value <= (byte)'z';
+
+        private static bool IsValidDomain(string value)
+        {
+            if (!value.Contains('.', StringComparison.Ordinal) ||
+                value.StartsWith(".", StringComparison.Ordinal) ||
+                value.EndsWith(".", StringComparison.Ordinal) ||
+                value.Contains("..", StringComparison.Ordinal))
+                return false;
+            var labels = value.Split('.');
+            if (labels.Length < 2) return false;
+            foreach (var label in labels)
+            {
+                if (label.Length is < 1 or > 63 || label[0] == '-' ||
+                    label[label.Length - 1] == '-')
+                    return false;
+            }
+            var suffix = labels[labels.Length - 1];
+            if (suffix.Length < 2) return false;
+            foreach (var character in suffix)
+            {
+                if (character < 'a' || character > 'z') return false;
+            }
+            return true;
         }
     }
 }
@@ -446,6 +657,9 @@ if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
     if (-not $AllowUnsigned -and $null -eq $manifest.authority) {
         Add-Failure 'Pacote de producao sem hashes da configuracao de autoridade.'
     }
+    if (-not $AllowUnsigned -and $null -eq $manifest.contentAuthority) {
+        Add-Failure 'Pacote de producao sem hashes da autoridade de conteudo.'
+    }
     $expectedCommit = (& $GitPath -c 'core.fsmonitor=false' -c 'core.hooksPath=NUL' `
         -C $root rev-parse HEAD).Trim()
     if ($LASTEXITCODE -ne 0 -or $expectedCommit -notmatch '^[0-9a-f]{40}$') {
@@ -525,6 +739,24 @@ if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
         }
         else {
             Add-Failure 'Os bytes congelados da autoridade nao foram fornecidos ao gate.'
+        }
+
+        if ($null -ne $manifest.contentAuthority -and
+            -not [string]::IsNullOrWhiteSpace(
+                $contentAuthorityConfigurationHash) -and
+            -not [string]::IsNullOrWhiteSpace(
+                $contentAuthorityIssuerSpkiHash)) {
+            if (-not ([string]$manifest.contentAuthority.configurationSha256).Equals(
+                    $ContentAuthorityConfigurationSha256,
+                    [StringComparison]::Ordinal) -or
+                -not ([string]$manifest.contentAuthority.issuerSpkiSha256).Equals(
+                    $contentAuthorityIssuerSpkiHash,
+                    [StringComparison]::Ordinal)) {
+                Add-Failure 'Hashes da autoridade de conteudo nao correspondem aos bytes incorporados.'
+            }
+        }
+        else {
+            Add-Failure 'A autoridade de conteudo congelada nao foi fornecida ao gate.'
         }
     }
 
@@ -680,10 +912,7 @@ foreach ($file in Get-ChildItem -LiteralPath $package -Recurse -File -Force) {
 if (Test-Path -LiteralPath $exe -PathType Leaf) {
     $forbiddenMarkers = @(
         'PrivateCatalogSecrets',
-        'PRIVATE_CATALOG_EMBEDDED',
-        'miami.sambox.buzz',
-        'detroit.sambox.club',
-        'cucunot.sambox.club'
+        'PRIVATE_CATALOG_EMBEDDED'
     )
     $needles = [System.Collections.Generic.List[byte[]]]::new()
     $needleLabels = [System.Collections.Generic.List[string]]::new()
@@ -700,6 +929,21 @@ if (Test-Path -LiteralPath $exe -PathType Leaf) {
         Add-Failure "Marcador proibido encontrado no executavel: $($needleLabels[$matchIndex])"
     }
 
+    # Somente hashes ficam no fonte. Os nomes privados nunca entram no Git,
+    # no manifesto nem nas mensagens do gate.
+    $forbiddenOriginHostSha256 = @(
+        '122193b87a9c6128a80c0e7ba0b6ccec8162c744047dcbc12786a6f7bc901d53',
+        '04fea9ab06778f5d71fac78119ba36fe3d55408a26990b63da74c14967674ec4',
+        'f12eaaa2ea14626453e54033b30c23843e2b01a2f47b2f9764ed1a0a639e01cd'
+    )
+    $forbiddenDomainHash =
+        [Turborama.Release.BinaryNeedleScanner]::FindForbiddenDomainHash(
+            $exe,
+            $forbiddenOriginHostSha256)
+    if (-not [string]::IsNullOrEmpty($forbiddenDomainHash)) {
+        Add-Failure 'Dominio de origem privado encontrado no executavel.'
+    }
+
     if (-not $AllowUnsigned -and $authorityEmbeddedValues.Count -eq 3) {
         foreach ($embeddedValue in $authorityEmbeddedValues) {
             $embeddedNeedle = [Text.Encoding]::ASCII.GetBytes($embeddedValue)
@@ -710,6 +954,17 @@ if (Test-Path -LiteralPath $exe -PathType Leaf) {
             }
         }
     }
+    if (-not $AllowUnsigned -and
+        $contentAuthorityEmbeddedValues.Count -eq 3) {
+        foreach ($embeddedValue in $contentAuthorityEmbeddedValues) {
+            $embeddedNeedle = [Text.Encoding]::ASCII.GetBytes($embeddedValue)
+            if ([Turborama.Release.BinaryNeedleScanner]::FindFirst(
+                    $exe,
+                    [byte[][]](,$embeddedNeedle)) -ne 0) {
+                Add-Failure 'Metadado da autoridade de conteudo nao foi incorporado exatamente.'
+            }
+        }
+    }
 }
 
 if ($null -ne $authorityConfigurationBytes) {
@@ -717,6 +972,14 @@ if ($null -ne $authorityConfigurationBytes) {
 }
 if ($null -ne $authorityIssuerSpkiBytes) {
     [Security.Cryptography.CryptographicOperations]::ZeroMemory($authorityIssuerSpkiBytes)
+}
+if ($null -ne $contentAuthorityConfigurationBytes) {
+    [Security.Cryptography.CryptographicOperations]::ZeroMemory(
+        $contentAuthorityConfigurationBytes)
+}
+if ($null -ne $contentAuthorityIssuerSpkiBytes) {
+    [Security.Cryptography.CryptographicOperations]::ZeroMemory(
+        $contentAuthorityIssuerSpkiBytes)
 }
 
 if ($failures.Count -ne 0) {

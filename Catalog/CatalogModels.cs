@@ -175,6 +175,7 @@ public sealed record CatalogDownloadValidators(string ETag = "", string LastModi
 public interface ICatalogDownloadRequestProvider
 {
     ValueTask<HttpRequestMessage> CreateRequestAsync(
+        string itemId,
         CatalogArtifactDescriptor artifact,
         long offset,
         CatalogDownloadValidators validators,
@@ -213,6 +214,8 @@ public sealed class CatalogItem : INotifyPropertyChanged
     // server-authorized artifact. It must never authorize extraction by itself.
     public bool Extract { get; init; }
     public CatalogArtifactDescriptor? Artifact { get; init; }
+    public bool IsMaintenance { get; init; }
+    public string MaintenanceReasonCode { get; init; } = string.Empty;
 
     public bool HasExtractPolicyConflict => Artifact is not null
         && Extract != (Artifact.ExtractPolicy == CatalogExtractPolicy.ExtractArchive);
@@ -358,7 +361,9 @@ public sealed class CatalogItem : INotifyPropertyChanged
         && DownloadState == CatalogDownloadState.Completed
         && LocalFilePath.Length > 0;
 
-    public string DownloadActionLabel => !HasAuthorizedArtifact
+    public string DownloadActionLabel => IsMaintenance
+        ? "EM MANUTENÇÃO"
+        : !HasAuthorizedArtifact
         ? "INDISPONÍVEL"
         : DownloadState switch
         {

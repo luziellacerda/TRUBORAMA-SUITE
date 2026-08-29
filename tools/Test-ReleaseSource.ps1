@@ -129,6 +129,45 @@ catch {
 }
 
 try {
+    $buildCommand = Get-Command -Name $buildProductionPath `
+        -CommandType ExternalScript -ErrorAction Stop
+    $contentAuthorityHashParameter =
+        $buildCommand.Parameters['ContentAuthorityConfigurationSha256']
+    if ($null -eq $contentAuthorityHashParameter -or
+        $contentAuthorityHashParameter.ParameterType -ne [string]) {
+        Add-Failure $failures `
+            'Build assinado nao exige ContentAuthorityConfigurationSha256 textual.'
+    }
+    else {
+        $parameterAttributes = @(
+            $contentAuthorityHashParameter.Attributes | Where-Object {
+                $_ -is [Management.Automation.ParameterAttribute]
+            })
+        $signedBindings = @($parameterAttributes | Where-Object {
+            $_.ParameterSetName -eq 'Signed' -and $_.Mandatory
+        })
+        $unsignedBindings = @($parameterAttributes | Where-Object {
+            $_.ParameterSetName -eq 'Unsigned'
+        })
+        $hashPatterns = @(
+            $contentAuthorityHashParameter.Attributes | Where-Object {
+                $_ -is [Management.Automation.ValidatePatternAttribute]
+            })
+        if ($signedBindings.Count -ne 1 -or
+            $unsignedBindings.Count -ne 0 -or
+            $hashPatterns.Count -ne 1 -or
+            $hashPatterns[0].RegexPattern -ne '\A[0-9A-Fa-f]{64}\z') {
+            Add-Failure $failures `
+                'ContentAuthorityConfigurationSha256 deve ser obrigatorio somente em Signed e aceitar 64 hex.'
+        }
+    }
+}
+catch {
+    Add-Failure $failures `
+        "Nao foi possivel validar os parametros da autoridade de conteudo: $($_.Exception.Message)"
+}
+
+try {
     $buildCommand = Get-Command -Name $buildProductionPath -CommandType ExternalScript `
         -ErrorAction Stop
     foreach ($hashParameterName in @(
@@ -690,6 +729,10 @@ catch { [Console]::Error.WriteLine(`$_.Exception.Message); exit 73 }
                     '-AuthorityConfigurationSha256', $zero64,
                     '-AuthorityIssuerSpkiPath', $shadowWrapper,
                     '-AuthorityIssuerSpkiSha256', $zero64,
+                    '-ContentAuthorityConfigurationPath', $shadowWrapper,
+                    '-ContentAuthorityConfigurationSha256', $zero64,
+                    '-ContentAuthorityIssuerSpkiPath', $shadowWrapper,
+                    '-ContentAuthorityIssuerSpkiSha256', $zero64,
                     '-OutputRoot', (Join-Path $shadowRoot 'out'),
                     '-DotNetPath', $currentPowerShellPath,
                     '-GitPath', $currentPowerShellPath,
@@ -1159,7 +1202,17 @@ $forbiddenPatterns = [ordered]@{
     'catalogo privado com chave no cliente' = 'PrivateCatalogSecrets|PRIVATE_CATALOG_EMBEDDED|TryReadPackagedKey'
     'entrada key.txt' = '(?i)\bkey\.txt\b'
     'modo de teste remoto' = '(?i)enableTestDownloads\s*["'']?\s*[:=]\s*(true|\$true)'
-    'host legado permanente' = '(?i)(cucunot\.sambox\.club|detroit\.sambox\.club|miami\.sambox\.buzz)'
+}
+
+# Os dominios privados sao comparados somente por SHA-256. Assim o proprio
+# gate nao publica os nomes que deve impedir no cliente.
+$forbiddenOriginHostSha256 = [Collections.Generic.HashSet[string]]::new(
+    [StringComparer]::OrdinalIgnoreCase)
+foreach ($hash in @(
+        '122193b87a9c6128a80c0e7ba0b6ccec8162c744047dcbc12786a6f7bc901d53',
+        '04fea9ab06778f5d71fac78119ba36fe3d55408a26990b63da74c14967674ec4',
+        'f12eaaa2ea14626453e54033b30c23843e2b01a2f47b2f9764ed1a0a639e01cd')) {
+    [void]$forbiddenOriginHostSha256.Add($hash)
 }
 
 $allowedPatternFiles = @(
@@ -1168,8 +1221,27 @@ $allowedPatternFiles = @(
 )
 
 foreach ($path in Get-SourceTextFiles) {
-    if ($allowedPatternFiles -contains $path) { continue }
     $text = Get-Content -LiteralPath $path -Raw
+    $domainScanText = $text.Replace('\.', '.', [StringComparison]::Ordinal)
+    foreach ($domainMatch in [regex]::Matches(
+            $domainScanText,
+            '(?i)(?<![a-z0-9-])(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}(?![a-z0-9-])')) {
+        $domain = $domainMatch.Value.ToLowerInvariant()
+        $domainBytes = [Text.Encoding]::UTF8.GetBytes($domain)
+        try {
+            $domainHash = [Convert]::ToHexString(
+                [Security.Cryptography.SHA256]::HashData($domainBytes))
+        }
+        finally {
+            [Security.Cryptography.CryptographicOperations]::ZeroMemory($domainBytes)
+        }
+        if ($forbiddenOriginHostSha256.Contains($domainHash)) {
+            $relative = [IO.Path]::GetRelativePath($root, $path)
+            Add-Failure $failures "dominio de origem privado: $relative"
+            break
+        }
+    }
+    if ($allowedPatternFiles -contains $path) { continue }
     foreach ($entry in $forbiddenPatterns.GetEnumerator()) {
         if ($text -match $entry.Value) {
             $relative = [IO.Path]::GetRelativePath($root, $path)

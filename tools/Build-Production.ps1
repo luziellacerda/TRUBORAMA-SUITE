@@ -47,6 +47,20 @@ param(
     [ValidatePattern('^[0-9A-Fa-f]{64}$')]
     [string]$AuthorityIssuerSpkiSha256,
 
+    [Parameter(ParameterSetName = 'Signed', Mandatory)]
+    [string]$ContentAuthorityConfigurationPath,
+
+    [Parameter(ParameterSetName = 'Signed', Mandatory)]
+    [ValidatePattern('\A[0-9A-Fa-f]{64}\z')]
+    [string]$ContentAuthorityConfigurationSha256,
+
+    [Parameter(ParameterSetName = 'Signed', Mandatory)]
+    [string]$ContentAuthorityIssuerSpkiPath,
+
+    [Parameter(ParameterSetName = 'Signed', Mandatory)]
+    [ValidatePattern('^[0-9A-Fa-f]{64}$')]
+    [string]$ContentAuthorityIssuerSpkiSha256,
+
     [string]$OutputRoot = '',
 
     [Parameter(ParameterSetName = 'Signed', Mandatory)]
@@ -157,6 +171,10 @@ if (-not $isUnsigned) {
             '-AuthorityConfigurationSha256',
             '-AuthorityIssuerSpkiPath',
             '-AuthorityIssuerSpkiSha256',
+            '-ContentAuthorityConfigurationPath',
+            '-ContentAuthorityConfigurationSha256',
+            '-ContentAuthorityIssuerSpkiPath',
+            '-ContentAuthorityIssuerSpkiSha256',
             '-OutputRoot',
             '-DotNetPath',
             '-GitPath',
@@ -1136,6 +1154,10 @@ $authorityConfigurationFullPath = $null
 $authorityIssuerSpkiFullPath = $null
 $authorityConfigurationBase64 = $null
 $authorityIssuerSpkiBase64 = $null
+$contentAuthorityConfigurationFullPath = $null
+$contentAuthorityIssuerSpkiFullPath = $null
+$contentAuthorityConfigurationBase64 = $null
+$contentAuthorityIssuerSpkiBase64 = $null
 
 if (-not $isUnsigned) {
     if ($dirtyEntries.Count -ne 0) { throw 'Build de producao exige arvore Git limpa.' }
@@ -1383,6 +1405,44 @@ if (-not $isUnsigned) {
         if ($null -ne $authorityIssuerSpkiBytes) {
             [Security.Cryptography.CryptographicOperations]::ZeroMemory(
                 $authorityIssuerSpkiBytes)
+        }
+    }
+
+    $contentAuthorityConfigurationFullPath = [IO.Path]::GetFullPath(
+        $ContentAuthorityConfigurationPath)
+    $contentAuthorityConfigurationBytes = Read-BoundedInput `
+        $contentAuthorityConfigurationFullPath 64 8KB `
+        'O envelope assinado da autoridade de conteudo'
+    $contentAuthorityIssuerSpkiBytes = $null
+    $contentAuthorityConfigurationSha256Normalized = `
+        $ContentAuthorityConfigurationSha256.ToLowerInvariant()
+    try {
+        Assert-ApprovedSha256 `
+            $contentAuthorityConfigurationBytes `
+            $contentAuthorityConfigurationSha256Normalized `
+            'O envelope assinado da autoridade de conteudo'
+
+        $contentAuthorityIssuerSpkiFullPath = [IO.Path]::GetFullPath(
+            $ContentAuthorityIssuerSpkiPath)
+        $contentAuthorityIssuerSpkiBytes = Read-BoundedInput `
+            $contentAuthorityIssuerSpkiFullPath 256 1KB `
+            'A chave SPKI da autoridade de conteudo'
+        Assert-ApprovedSha256 `
+            $contentAuthorityIssuerSpkiBytes `
+            $ContentAuthorityIssuerSpkiSha256 `
+            'A chave SPKI offline da autoridade de conteudo'
+
+        $contentAuthorityConfigurationBase64 = [Convert]::ToBase64String(
+            $contentAuthorityConfigurationBytes)
+        $contentAuthorityIssuerSpkiBase64 = [Convert]::ToBase64String(
+            $contentAuthorityIssuerSpkiBytes)
+    }
+    finally {
+        [Security.Cryptography.CryptographicOperations]::ZeroMemory(
+            $contentAuthorityConfigurationBytes)
+        if ($null -ne $contentAuthorityIssuerSpkiBytes) {
+            [Security.Cryptography.CryptographicOperations]::ZeroMemory(
+                $contentAuthorityIssuerSpkiBytes)
         }
     }
 }
@@ -1819,6 +1879,11 @@ try {
             $authorityVerifierAssembly, '--verify-authority-base64',
             $authorityConfigurationBase64, $authorityIssuerSpkiBase64,
             $authorityConfigurationSha256Normalized))
+        Invoke-Checked $DotNetPath (@(
+            $authorityVerifierAssembly, '--verify-content-authority-base64',
+            $contentAuthorityConfigurationBase64,
+            $contentAuthorityIssuerSpkiBase64,
+            $contentAuthorityConfigurationSha256Normalized))
     }
     $publishArguments = @(
         'publish', $project, '-c', 'Release', '-r', 'win-x64', '--self-contained', 'true', '--no-restore',
@@ -1830,6 +1895,9 @@ try {
         $publishArguments += "-p:SuiteAuthorityConfigurationBase64=$authorityConfigurationBase64"
         $publishArguments += "-p:SuiteAuthorityConfigurationSha256=$authorityConfigurationSha256Normalized"
         $publishArguments += "-p:SuiteAuthorityIssuerSpkiBase64=$authorityIssuerSpkiBase64"
+        $publishArguments += "-p:SuiteContentAuthorityConfigurationBase64=$contentAuthorityConfigurationBase64"
+        $publishArguments += "-p:SuiteContentAuthorityConfigurationSha256=$contentAuthorityConfigurationSha256Normalized"
+        $publishArguments += "-p:SuiteContentAuthorityIssuerSpkiBase64=$contentAuthorityIssuerSpkiBase64"
     }
     Invoke-Checked $DotNetPath $publishArguments
     if (-not $isUnsigned) {
@@ -1898,6 +1966,9 @@ try {
         $manifestArguments.AuthorityConfigurationBase64 = $authorityConfigurationBase64
         $manifestArguments.AuthorityConfigurationSha256 = $authorityConfigurationSha256Normalized
         $manifestArguments.AuthorityIssuerSpkiBase64 = $authorityIssuerSpkiBase64
+        $manifestArguments.ContentAuthorityConfigurationBase64 = $contentAuthorityConfigurationBase64
+        $manifestArguments.ContentAuthorityConfigurationSha256 = $contentAuthorityConfigurationSha256Normalized
+        $manifestArguments.ContentAuthorityIssuerSpkiBase64 = $contentAuthorityIssuerSpkiBase64
         $manifestArguments.PowerShellSha256 = $PowerShellSha256
         $manifestArguments.PowerShellHomeTreeSha256 = $PowerShellHomeTreeSha256
         $manifestArguments.GitSha256 = $GitSha256
@@ -1922,6 +1993,9 @@ try {
         $gateArguments.AuthorityConfigurationSha256 = $authorityConfigurationSha256Normalized
         $gateArguments.AuthorityIssuerSpkiBase64 = $authorityIssuerSpkiBase64
         $gateArguments.AuthorityVerifierAssemblyPath = $authorityVerifierAssembly
+        $gateArguments.ContentAuthorityConfigurationBase64 = $contentAuthorityConfigurationBase64
+        $gateArguments.ContentAuthorityConfigurationSha256 = $contentAuthorityConfigurationSha256Normalized
+        $gateArguments.ContentAuthorityIssuerSpkiBase64 = $contentAuthorityIssuerSpkiBase64
         $gateArguments.DotNetPath = $DotNetPath
         $gateArguments.PowerShellSha256 = $PowerShellSha256
         $gateArguments.PowerShellHomeTreeSha256 = $PowerShellHomeTreeSha256
@@ -1954,6 +2028,9 @@ try {
         $copiedGateArguments.AuthorityConfigurationSha256 = $authorityConfigurationSha256Normalized
         $copiedGateArguments.AuthorityIssuerSpkiBase64 = $authorityIssuerSpkiBase64
         $copiedGateArguments.AuthorityVerifierAssemblyPath = $authorityVerifierAssembly
+        $copiedGateArguments.ContentAuthorityConfigurationBase64 = $contentAuthorityConfigurationBase64
+        $copiedGateArguments.ContentAuthorityConfigurationSha256 = $contentAuthorityConfigurationSha256Normalized
+        $copiedGateArguments.ContentAuthorityIssuerSpkiBase64 = $contentAuthorityIssuerSpkiBase64
         $copiedGateArguments.DotNetPath = $DotNetPath
         $copiedGateArguments.PowerShellSha256 = $PowerShellSha256
         $copiedGateArguments.PowerShellHomeTreeSha256 = $PowerShellHomeTreeSha256
@@ -2056,6 +2133,8 @@ finally {
     }
     $authorityConfigurationBase64 = $null
     $authorityIssuerSpkiBase64 = $null
+    $contentAuthorityConfigurationBase64 = $null
+    $contentAuthorityIssuerSpkiBase64 = $null
     if ($promotedFinalPathNeedsCleanup -and (Test-Path -LiteralPath $finalPath)) {
         $resolvedRejectedFinal = [IO.Path]::GetFullPath($finalPath)
         $outputPrefix = $outputParent.TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar

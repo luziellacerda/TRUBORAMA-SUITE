@@ -5,6 +5,7 @@ using System.Runtime.ExceptionServices;
 using System.Security;
 using System.Security.Cryptography;
 using System.Diagnostics.CodeAnalysis;
+using TurboBoxManager.Catalog;
 
 [assembly: InternalsVisibleTo("CatalogVerifier")]
 
@@ -132,6 +133,7 @@ public sealed class SuiteLicensingRuntime : IAsyncDisposable
         TimeSpan.FromDays(30);
 
     private readonly SuiteLicenseClient? _client;
+    private readonly SuiteContentClient? _contentClient;
     private readonly TimeProvider _timeProvider;
     private readonly SemaphoreSlim _operationGate = new(1, 1);
     private readonly CancellationTokenSource _lifetimeCancellation = new();
@@ -157,12 +159,51 @@ public sealed class SuiteLicensingRuntime : IAsyncDisposable
 
     internal SuiteLicensingRuntime(SuiteLicenseClient client,
         SuiteAuthorityConfiguration authority, TimeProvider timeProvider)
+        : this(client, authority, contentAuthority: null, timeProvider,
+            initialize: true)
     {
+    }
+
+    internal SuiteLicensingRuntime(SuiteLicenseClient client,
+        SuiteAuthorityConfiguration authority,
+        SuiteContentAuthorityConfiguration contentAuthority,
+        TimeProvider timeProvider)
+        : this(client, authority,
+            contentAuthority
+            ?? throw new ArgumentNullException(nameof(contentAuthority)),
+            timeProvider,
+            initialize: true)
+    {
+    }
+
+    private SuiteLicensingRuntime(SuiteLicenseClient client,
+        SuiteAuthorityConfiguration authority,
+        SuiteContentAuthorityConfiguration? contentAuthority,
+        TimeProvider timeProvider,
+        bool initialize)
+    {
+        _ = initialize;
         _client = client ?? throw new ArgumentNullException(nameof(client));
         ArgumentNullException.ThrowIfNull(authority);
         _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+        if (contentAuthority is not null)
+        {
+            if (SuiteOnlineLicenseProtocol.FixedHexEquals(
+                    contentAuthority.ContentAssertionKeyId,
+                    authority.OnlineAssertionKeyId)
+                || SuiteOnlineLicenseProtocol.FixedHexEquals(
+                    contentAuthority.ContentAssertionKeyId,
+                    authority.KeyId))
+                throw new SecurityException(
+                    "A chave de conteudo nao esta isolada das chaves de licenciamento.");
+            _contentClient = new SuiteContentClient(client, contentAuthority);
+        }
+        var effectiveExpiry = contentAuthority is not null
+            && contentAuthority.ExpiresAt < authority.ExpiresAt
+                ? contentAuthority.ExpiresAt
+                : authority.ExpiresAt;
         _authorityDeadline = new SuiteMonotonicDeadline(
-            _timeProvider, authority.ExpiresAt - _timeProvider.GetUtcNow());
+            _timeProvider, effectiveExpiry - _timeProvider.GetUtcNow());
         if (_authorityDeadline.IsElapsed)
         {
             _authorityExpired = 1;
@@ -201,6 +242,64 @@ public sealed class SuiteLicensingRuntime : IAsyncDisposable
     }
 
     public AuthorizedStoreContext? CurrentContext => Volatile.Read(ref _currentContext);
+
+    internal async Task<SuiteAuthorizedCatalog> ReadAuthorizedCatalogAsync(
+        AuthorizedStoreContext context,
+        IReadOnlyList<CatalogItem> publicItems,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(publicItems);
+        EnsureCurrentContentContext(context);
+        if (_contentClient is null)
+            throw new SuiteLicensingUnavailableException(
+                "CONTENT_AUTHORITY_CONFIGURATION_MISSING");
+        var expectedItems = new Dictionary<string, bool>(StringComparer.Ordinal);
+        foreach (var item in publicItems)
+        {
+            if (item is null || !expectedItems.TryAdd(item.Id, item.Extract))
+                throw new SecurityException(
+                    "O catalogo publico possui identidade duplicada.");
+        }
+
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken,
+            _lifetimeCancellation.Token,
+            _authorityCancellation.Token,
+            context.AuthorizationCancellationToken);
+        var result = await _contentClient!.ReadAuthorizedCatalogAsync(
+            context, expectedItems, linked.Token).ConfigureAwait(false);
+        EnsureCurrentContentContext(context);
+        return result;
+    }
+
+    internal CatalogDownloadService CreateCatalogDownloadService(
+        AuthorizedStoreContext context,
+        SuiteAuthorizedCatalog catalog,
+        CatalogDownloadOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(catalog);
+        ArgumentNullException.ThrowIfNull(options);
+        EnsureCurrentContentContext(context);
+        if (_contentClient is null)
+            return new CatalogDownloadService(options);
+        var provider = _contentClient!.CreateRequestProvider(
+            context, catalog, () => EnsureCurrentContentContext(context));
+        return new CatalogDownloadService(
+            _contentClient.DownloadHttpClient,
+            provider,
+            new CatalogDownloadOptions
+            {
+                MaximumFileSizeBytes = options.MaximumFileSizeBytes,
+                MaximumRedirects = 0,
+                InactivityTimeout = options.InactivityTimeout,
+                RetryDelays = options.RetryDelays,
+                AllowedHosts = new HashSet<string>(
+                    [_contentClient.AuthorityHost],
+                    StringComparer.OrdinalIgnoreCase)
+            });
+    }
 
     public event EventHandler<SuiteAuthorizationRevokedEventArgs>? AuthorizationRevoked
     {
@@ -346,6 +445,7 @@ public sealed class SuiteLicensingRuntime : IAsyncDisposable
         try
         {
             await RetireCurrentSessionAsync("RUNTIME_DISPOSED").ConfigureAwait(false);
+            _contentClient?.Dispose();
             _client?.Dispose();
         }
         finally
@@ -642,6 +742,39 @@ public sealed class SuiteLicensingRuntime : IAsyncDisposable
                 "AUTHORITY_CONFIGURATION_EXPIRED");
     }
 
+    private void EnsureCurrentContentContext(AuthorizedStoreContext context)
+    {
+        EnsureAvailable();
+        var authorityExpired = false;
+        var sessionExpired = false;
+        lock (_authorizationGate)
+        {
+            ObjectDisposedException.ThrowIf(
+                Volatile.Read(ref _disposed) != 0, this);
+            authorityExpired = Volatile.Read(ref _authorityExpired) != 0
+                || (_authorityDeadline?.IsElapsed ?? false);
+            if (!authorityExpired)
+            {
+                if (!ReferenceEquals(_currentContext, context))
+                    throw new SuiteAuthorizationException(
+                        "CONTEXT_NOT_CURRENT");
+                sessionExpired = !context.StateForRuntime.IsAuthorized;
+                if (!sessionExpired) return;
+            }
+        }
+
+        if (authorityExpired)
+        {
+            ExpireAuthority();
+            throw new SuiteLicensingUnavailableException(
+                "AUTHORITY_CONFIGURATION_EXPIRED");
+        }
+
+        Revoke(context.StateForRuntime, "SESSION_EXPIRED");
+        throw new SuiteAuthorizationException(
+            context.RevocationCode ?? "SESSION_EXPIRED");
+    }
+
     private static void CancelNoThrow(CancellationTokenSource? cancellation)
     {
         if (cancellation is null) return;
@@ -660,13 +793,21 @@ public static class SuiteLicensingFactory
         var loaded = SuiteEmbeddedAuthorityLoader.Load(assembly, time);
         if (loaded.Configuration is null)
             return new SuiteLicensingRuntime(loaded.FailureCode, time);
+        var contentLoaded = SuiteEmbeddedContentAuthorityLoader.Load(
+            assembly, time);
+        if (contentLoaded.Configuration is null)
+            return new SuiteLicensingRuntime(contentLoaded.FailureCode, time);
 
         try
         {
             var identity = new SuiteCngMachineIdentity(
                 loaded.Configuration.IdentityPolicy);
             var client = new SuiteLicenseClient(loaded.Configuration, identity);
-            return new SuiteLicensingRuntime(client, loaded.Configuration, time);
+            return new SuiteLicensingRuntime(
+                client,
+                loaded.Configuration,
+                contentLoaded.Configuration,
+                time);
         }
         catch (Exception ex) when (ex is PlatformNotSupportedException
             or CryptographicException or SecurityException
