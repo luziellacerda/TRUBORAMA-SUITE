@@ -754,9 +754,18 @@ public sealed class CatalogDownloadService : IDisposable
             BufferSize,
             FileOptions.Asynchronous | FileOptions.SequentialScan);
         var offset = output.Length;
-        if (offset > artifact.ContentLength)
+        if (artifact.ContentLength == 0 && active.Metadata.ContentLength > 0)
+        {
+            artifact = artifact with
+            {
+                ContentLength = active.Metadata.ContentLength,
+                Sha256 = active.Metadata.Sha256
+            };
+            item.ResolveDirectArtifactMetadata(artifact.ContentLength, artifact.Sha256);
+        }
+        if (artifact.ContentLength > 0 && offset > artifact.ContentLength)
             throw new InvalidDataException("O parcial excede o tamanho autorizado.");
-        if (offset == artifact.ContentLength)
+        if (artifact.ContentLength > 0 && offset == artifact.ContentLength)
         {
             await output.DisposeAsync();
             await VerifyAndPublishAsync(item, artifact, active);
@@ -794,7 +803,14 @@ public sealed class CatalogDownloadService : IDisposable
         if (offset > 0 && response.StatusCode != HttpStatusCode.PartialContent)
             throw new InvalidDataException($"Resposta de retomada inválida (HTTP {(int)response.StatusCode}).");
 
-        ValidateResponseEnvelope(response, artifact, offset);
+        var responseTotalLength = ValidateResponseEnvelope(response, artifact, offset,
+            _options.MaximumFileSizeBytes);
+        if (artifact.ContentLength == 0)
+        {
+            artifact = artifact with { ContentLength = responseTotalLength };
+            active.Metadata.ContentLength = responseTotalLength;
+            item.ResolveDirectArtifactMetadata(responseTotalLength, artifact.Sha256);
+        }
         ValidateResumeValidator(active.Metadata, response);
         CaptureResumeValidators(active.Metadata, response);
         active.Metadata.ArchiveReady = false;
@@ -1011,7 +1027,8 @@ public sealed class CatalogDownloadService : IDisposable
 
         using var directRequest = new HttpRequestMessage(HttpMethod.Get, destination);
         directRequest.Headers.Range = authorizedRequest.Headers.Range;
-        // Never forward the API bearer or If-Range to the external host.
+        directRequest.Headers.IfRange = authorizedRequest.Headers.IfRange;
+        // The Suite API bearer is never forwarded to the external host.
         var response = await SendWithHeaderTimeoutAsync(
             _directHttpClient, directRequest, cancellationToken);
         ValidateResponseRequestIdentity(directRequest, response);
@@ -1032,14 +1049,22 @@ public sealed class CatalogDownloadService : IDisposable
             throw new InvalidDataException("A pilha HTTP seguiu um redirecionamento não autorizado.");
     }
 
-    private static void ValidateResponseEnvelope(
+    private static long ValidateResponseEnvelope(
         HttpResponseMessage response,
         CatalogArtifactDescriptor artifact,
-        long offset)
+        long offset,
+        long maximumFileSizeBytes)
     {
         if (response.Content.Headers.ContentEncoding.Count != 0)
             throw new InvalidDataException("Respostas codificadas ou comprimidas não são aceitas.");
-        var expectedRemaining = artifact.ContentLength - offset;
+        var responseLength = response.Content.Headers.ContentLength
+            ?? throw new InvalidDataException("A origem não informou Content-Length.");
+        var totalLength = artifact.ContentLength == 0
+            ? checked(offset + responseLength)
+            : artifact.ContentLength;
+        if (totalLength <= 0 || totalLength > maximumFileSizeBytes)
+            throw new InvalidDataException("O tamanho informado pela origem excede o limite local.");
+        var expectedRemaining = totalLength - offset;
         if (response.Content.Headers.ContentLength != expectedRemaining)
             throw new InvalidDataException("Content-Length não corresponde ao manifesto autorizado.");
 
@@ -1048,15 +1073,16 @@ public sealed class CatalogDownloadService : IDisposable
         {
             if (range is not null)
                 throw new InvalidDataException("A resposta inicial contém Content-Range inesperado.");
-            return;
+            return totalLength;
         }
 
         if (range is null
             || !range.Unit.Equals("bytes", StringComparison.OrdinalIgnoreCase)
             || range.From != offset
-            || range.To != artifact.ContentLength - 1
-            || range.Length != artifact.ContentLength)
+            || range.To != totalLength - 1
+            || range.Length != totalLength)
             throw new InvalidDataException("Content-Range não corresponde ao manifesto autorizado.");
+        return totalLength;
     }
 
     private static async Task VerifyAndPublishAsync(
@@ -1558,8 +1584,8 @@ public sealed class CatalogDownloadService : IDisposable
             throw new InvalidDataException("O identificador do artefato é inválido.");
         if (artifact.ArtifactVersion <= 0)
             throw new InvalidDataException("A versão do artefato é inválida.");
-        if (artifact.ContentLength <= 0 || artifact.ContentLength > _options.MaximumFileSizeBytes)
-            throw new InvalidDataException("O tamanho exato do artefato é ausente ou excede o limite.");
+        if (artifact.ContentLength < 0 || artifact.ContentLength > _options.MaximumFileSizeBytes)
+            throw new InvalidDataException("O tamanho do artefato excede o limite.");
         if (!IsCanonicalSha256(artifact.Sha256))
             throw new InvalidDataException("O SHA-256 obrigatório do artefato é inválido.");
         if (!IsSafeExtension(artifact.FileExtension))
@@ -1578,8 +1604,9 @@ public sealed class CatalogDownloadService : IDisposable
         metadata.ProductId.Equals(artifact.ProductId, StringComparison.Ordinal)
         && metadata.ArtifactId.Equals(artifact.ArtifactId, StringComparison.Ordinal)
         && metadata.ArtifactVersion == artifact.ArtifactVersion
-        && metadata.Sha256.Equals(artifact.Sha256, StringComparison.Ordinal)
-        && metadata.ContentLength == artifact.ContentLength
+        && (artifact.ContentLength == 0 || metadata.ContentLength == artifact.ContentLength)
+        && (IsDeferredSha256(artifact.Sha256) ||
+            metadata.Sha256.Equals(artifact.Sha256, StringComparison.Ordinal))
         && metadata.ManifestIdentity.Equals(artifact.ManifestIdentity, StringComparison.Ordinal)
         && metadata.ExtractPolicy == artifact.ExtractPolicy
         && metadata.SafeFileName.Equals(artifact.SafeFileName, StringComparison.Ordinal)

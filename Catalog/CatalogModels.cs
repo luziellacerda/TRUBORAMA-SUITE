@@ -228,6 +228,13 @@ public sealed class CatalogItem : INotifyPropertyChanged
         _artifact = _artifact with { Sha256 = sha256 };
     }
 
+    internal void ResolveDirectArtifactMetadata(long contentLength, string sha256)
+    {
+        if (_artifact is null || _artifact.ContentLength != 0 ||
+            !_artifact.Sha256.All(character => character == '0')) return;
+        _artifact = _artifact with { ContentLength = contentLength, Sha256 = sha256 };
+    }
+
     public string ImageSource
     {
         get => _imageSource;

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -308,15 +309,15 @@ internal sealed class SuiteContentClient : IDisposable
                 "Bearer", grant.BearerToken);
             if (offset > 0)
             {
-                var expectedEtag = $"\"{artifact.Sha256}\"";
-                if (validators.ETag.Length != 0
-                    && !string.Equals(validators.ETag, expectedEtag,
-                        StringComparison.Ordinal))
-                    throw new SecurityException(
-                        "O validador local nao corresponde ao artefato assinado.");
                 request.Headers.Range = new RangeHeaderValue(offset, null);
-                request.Headers.IfRange = new RangeConditionHeaderValue(
-                    new EntityTagHeaderValue(expectedEtag));
+                if (validators.ETag.Length != 0)
+                    request.Headers.IfRange = new RangeConditionHeaderValue(
+                        new EntityTagHeaderValue(validators.ETag));
+                else if (validators.LastModified.Length != 0 &&
+                         DateTimeOffset.TryParse(validators.LastModified,
+                             CultureInfo.InvariantCulture,
+                             DateTimeStyles.AssumeUniversal, out var lastModified))
+                    request.Headers.IfRange = new RangeConditionHeaderValue(lastModified);
             }
             return request;
         }
@@ -333,12 +334,13 @@ internal sealed class SuiteContentClient : IDisposable
         string itemId,
         CatalogArtifactDescriptor descriptor,
         long offset,
+        CatalogDownloadValidators validators,
         CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(
             Volatile.Read(ref _disposed) != 0, this);
         authorization.ThrowIfUnauthorized();
-        if (offset < 0 || offset >= descriptor.ContentLength)
+        if (offset < 0)
             throw new SecurityException("O offset solicitado nao e autorizado.");
         var wireDescriptor = SuiteContentProtocol.ToWireDescriptor(descriptor);
         var context = new SuiteDownloadGrantContext(
@@ -354,7 +356,9 @@ internal sealed class SuiteContentClient : IDisposable
             descriptor.ArtifactVersion,
             descriptor.ManifestIdentity,
             SuiteContentProtocol.DescriptorHash(itemId, wireDescriptor),
-            offset);
+            offset,
+            validators.ETag,
+            validators.LastModified);
         var contextHash = SuiteContentProtocol.DownloadGrantContextHash(context);
         var grant = await ExecuteAsync(
             context,
@@ -618,7 +622,12 @@ internal sealed class SuiteContentClient : IDisposable
             validateCurrentContext();
             authorization.ThrowIfUnauthorized();
             if (!catalog.Descriptors.TryGetValue(itemId, out var expected)
-                || !Equals(expected, artifact))
+                || expected.ArtifactId != artifact.ArtifactId
+                || expected.ArtifactVersion != artifact.ArtifactVersion
+                || expected.SafeFileName != artifact.SafeFileName
+                || expected.FileExtension != artifact.FileExtension
+                || expected.ExtractPolicy != artifact.ExtractPolicy
+                || expected.ManifestIdentity != artifact.ManifestIdentity)
                 throw new SecurityException(
                     "O item nao corresponde ao snapshot autorizado.");
 
@@ -631,6 +640,7 @@ internal sealed class SuiteContentClient : IDisposable
                 itemId,
                 artifact,
                 offset,
+                validators,
                 linked.Token).ConfigureAwait(false);
             validateCurrentContext();
             authorization.ThrowIfUnauthorized();

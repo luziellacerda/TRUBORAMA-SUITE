@@ -33,7 +33,9 @@ public sealed record SuiteDownloadGrantContext(
     int ArtifactVersion,
     string ManifestIdentity,
     string DescriptorHash,
-    long Offset);
+    long Offset,
+    string SourceETag,
+    string SourceLastModified);
 
 public sealed record SuiteContentProof<TContext>(
     SuiteOperationProof Proof,
@@ -42,8 +44,6 @@ public sealed record SuiteContentProof<TContext>(
 public sealed record SuiteWireArtifactDescriptor(
     string ArtifactId,
     int ArtifactVersion,
-    long ContentLength,
-    string Sha256,
     string SafeFileName,
     string FileExtension,
     string ExtractPolicy,
@@ -189,6 +189,8 @@ public static class SuiteContentProtocol
             writer.WriteString("manifestIdentity", context.ManifestIdentity);
             writer.WriteString("descriptorHash", context.DescriptorHash);
             writer.WriteNumber("offset", context.Offset);
+            writer.WriteString("sourceETag", context.SourceETag);
+            writer.WriteString("sourceLastModified", context.SourceLastModified);
             writer.WriteEndObject();
         });
     }
@@ -219,8 +221,6 @@ public static class SuiteContentProtocol
             writer.WriteString("itemId", itemId);
             writer.WriteString("artifactId", descriptor.ArtifactId);
             writer.WriteNumber("artifactVersion", descriptor.ArtifactVersion);
-            writer.WriteNumber("contentLength", descriptor.ContentLength);
-            writer.WriteString("sha256", descriptor.Sha256);
             writer.WriteString("safeFileName", descriptor.SafeFileName);
             writer.WriteString("fileExtension", descriptor.FileExtension);
             writer.WriteString("extractPolicy", descriptor.ExtractPolicy);
@@ -388,8 +388,8 @@ public static class SuiteContentProtocol
         {
             ArtifactId = descriptor.ArtifactId,
             ArtifactVersion = descriptor.ArtifactVersion,
-            ContentLength = descriptor.ContentLength,
-            Sha256 = descriptor.Sha256,
+            ContentLength = 0,
+            Sha256 = new string('0', 64),
             SafeFileName = descriptor.SafeFileName,
             FileExtension = descriptor.FileExtension,
             ExtractPolicy = descriptor.ExtractPolicy switch
@@ -410,8 +410,6 @@ public static class SuiteContentProtocol
         var wire = new SuiteWireArtifactDescriptor(
             descriptor.ArtifactId,
             descriptor.ArtifactVersion,
-            descriptor.ContentLength,
-            descriptor.Sha256,
             descriptor.SafeFileName,
             descriptor.FileExtension,
             descriptor.ExtractPolicy switch
@@ -580,9 +578,8 @@ public static class SuiteContentProtocol
     {
         ArgumentNullException.ThrowIfNull(descriptor);
         RequireCanonicalHex(descriptor.ArtifactId, "ArtifactId", 32);
-        RequireCanonicalHex(descriptor.Sha256, "Sha256", 64);
         RequireCanonicalHex(descriptor.ManifestIdentity, "ManifestIdentity", 64);
-        if (descriptor.ArtifactVersion <= 0 || descriptor.ContentLength <= 0
+        if (descriptor.ArtifactVersion <= 0
             || descriptor.ExtractPolicy is not ("NONE" or "EXTRACT_ARCHIVE")
             || !IsSafeExtension(descriptor.FileExtension)
             || !IsSafeFileName(descriptor.SafeFileName,
@@ -597,8 +594,6 @@ public static class SuiteContentProtocol
         writer.WriteStartObject();
         writer.WriteString("artifactId", descriptor.ArtifactId);
         writer.WriteNumber("artifactVersion", descriptor.ArtifactVersion);
-        writer.WriteNumber("contentLength", descriptor.ContentLength);
-        writer.WriteString("sha256", descriptor.Sha256);
         writer.WriteString("safeFileName", descriptor.SafeFileName);
         writer.WriteString("fileExtension", descriptor.FileExtension);
         writer.WriteString("extractPolicy", descriptor.ExtractPolicy);

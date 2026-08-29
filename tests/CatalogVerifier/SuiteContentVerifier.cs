@@ -77,7 +77,7 @@ internal static class SuiteContentVerifier
 
         var descriptor = CreateWireDescriptor();
         Check(SuiteContentProtocol.DescriptorHash(ItemId, descriptor)
-                == "2d10dac39f109fb95093e8a31feb2ae17f48e0a62fb1fae79b5e9ee455dbbc89",
+                == "33e08cbcfe869f2fbe87e12760a4eb963045146105916c68e35678dc73e66d72",
             "O golden hash escopado do descritor mudou.");
         Check(SuiteContentProtocol.DescriptorHash(new string('5', 32), descriptor)
                 != SuiteContentProtocol.DescriptorHash(ItemId, descriptor),
@@ -258,7 +258,9 @@ internal static class SuiteContentVerifier
                 descriptor.ArtifactVersion,
                 descriptor.ManifestIdentity,
                 descriptorHash,
-                4096);
+                4096,
+                "\"etag\"",
+                "");
             var grantHash = SuiteContentProtocol.DownloadGrantContextHash(
                 grantContext);
             var grant = CreateGrant(grantHash, descriptorHash, descriptor);
@@ -560,8 +562,6 @@ internal static class SuiteContentVerifier
         string? manifestIdentity = null) => new(
         new string('2', 32),
         7,
-        123456,
-        new string('3', 64),
         "game.zip",
         ".zip",
         "EXTRACT_ARCHIVE",
