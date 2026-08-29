@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "generatedFrom": "../Assets/Catalog/catalog.json",
   "systemCount": 22,
-  "coverCount": 850,
+  "coverCount": 902,
   "systems": [
     {
       "id": "system-tools",
@@ -50,14 +50,14 @@
       "id": "playstation-2",
       "displayName": "PlayStation 2",
       "shortCode": "PS2",
-      "coverCount": 57,
+      "coverCount": 70,
       "manifest": "playstation-2/index.json"
     },
     {
       "id": "playstation-2-br",
       "displayName": "PlayStation 2 • BR",
       "shortCode": "P2BR",
-      "coverCount": 50,
+      "coverCount": 51,
       "manifest": "playstation-2-br/index.json"
     },
     {
@@ -71,14 +71,14 @@
       "id": "playstation-4",
       "displayName": "PlayStation 4",
       "shortCode": "PS4",
-      "coverCount": 24,
+      "coverCount": 26,
       "manifest": "playstation-4/index.json"
     },
     {
       "id": "playstation-5",
       "displayName": "PlayStation 5",
       "shortCode": "PS5",
-      "coverCount": 55,
+      "coverCount": 58,
       "manifest": "playstation-5/index.json"
     },
     {
@@ -99,14 +99,14 @@
       "id": "sega-saturn",
       "displayName": "Sega Saturn",
       "shortCode": "SAT",
-      "coverCount": 31,
+      "coverCount": 32,
       "manifest": "sega-saturn/index.json"
     },
     {
       "id": "nintendo-switch",
       "displayName": "Nintendo Switch",
       "shortCode": "NSW",
-      "coverCount": 83,
+      "coverCount": 110,
       "manifest": "nintendo-switch/index.json"
     },
     {
@@ -127,7 +127,7 @@
       "id": "windows",
       "displayName": "Windows",
       "shortCode": "WIN",
-      "coverCount": 98,
+      "coverCount": 100,
       "manifest": "windows/index.json"
     },
     {
@@ -148,14 +148,14 @@
       "id": "xbox-one",
       "displayName": "Xbox One",
       "shortCode": "XB1",
-      "coverCount": 18,
+      "coverCount": 19,
       "manifest": "xbox-one/index.json"
     },
     {
       "id": "xbox-series",
       "displayName": "Xbox Series",
       "shortCode": "XS",
-      "coverCount": 27,
+      "coverCount": 29,
       "manifest": "xbox-series/index.json"
     }
   ]

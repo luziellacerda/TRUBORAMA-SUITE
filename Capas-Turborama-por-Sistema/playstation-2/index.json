@@ -3,7 +3,7 @@
   "systemId": "playstation-2",
   "displayName": "PlayStation 2",
   "shortCode": "PS2",
-  "coverCount": 57,
+  "coverCount": 70,
   "items": [
     {
       "id": "acf4c116950c9382a0dcbc4dd3489c40",
@@ -574,6 +574,136 @@
       "sourceImage": null,
       "bytes": 630772,
       "sha256": "cd4c40b80a634bb93234bf40e1d76ddcb0695f062259f86adb239df0c557ff60"
+    },
+    {
+      "id": "dcb11f0d59425a863628e4a0f5303ce1",
+      "title": "Bomba-Patch-2026",
+      "fileName": "dcb11f0d59425a863628e4a0f5303ce1.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/dcb11f0d59425a863628e4a0f5303ce1.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 277074,
+      "sha256": "4ef3179dce5f479c1d5d5e5d05d947b6c202f0e4e75381ea9678fd6a62b66737"
+    },
+    {
+      "id": "2fc8f7e8d06b9381d380ca36d90250b5",
+      "title": "Chaos Legion",
+      "fileName": "2fc8f7e8d06b9381d380ca36d90250b5.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/2fc8f7e8d06b9381d380ca36d90250b5.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 271773,
+      "sha256": "883b4b7c7bc3bc48f811e6551bbd4a005a427ec6f02cbd91deb13f2bb28c564e"
+    },
+    {
+      "id": "b00ecff50161f2487ee5a247fa446973",
+      "title": "GTA-Tropa-de-Elite",
+      "fileName": "b00ecff50161f2487ee5a247fa446973.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/b00ecff50161f2487ee5a247fa446973.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 274957,
+      "sha256": "26d58a28310f33470306d078461b377669d89c368d2f61f79b61e16bf9c0b58e"
+    },
+    {
+      "id": "040078a771608e61943930b73edb527d",
+      "title": "Guitar Hero",
+      "fileName": "040078a771608e61943930b73edb527d.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/040078a771608e61943930b73edb527d.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 269147,
+      "sha256": "8f6338632f455a65f60abadea4c405aed705ea9347fcf3542cad9c7c44360b36"
+    },
+    {
+      "id": "aad59221cd2f6861096577c3db9c351a",
+      "title": "Guitar Hero II",
+      "fileName": "aad59221cd2f6861096577c3db9c351a.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/aad59221cd2f6861096577c3db9c351a.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 270432,
+      "sha256": "dbd5862193880eee89987bbf76fa28c3dfa49e33c619807d812850f85111930c"
+    },
+    {
+      "id": "4c2903510c4e39244851274df9042b53",
+      "title": "Guitar Hero III - Legends of Rock",
+      "fileName": "4c2903510c4e39244851274df9042b53.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/4c2903510c4e39244851274df9042b53.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 284854,
+      "sha256": "65a6403900aeb73ab821c60fb71dc9f16c38af9b99238adbbcd10e1cfb73dfd3"
+    },
+    {
+      "id": "576bf57344c9a11647a79ff53cca2714",
+      "title": "Guitar Hero 5",
+      "fileName": "576bf57344c9a11647a79ff53cca2714.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/576bf57344c9a11647a79ff53cca2714.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 270882,
+      "sha256": "7b0d847d5c205c1428e76c5537dbe713358faec7836e484adf2bdda017c55ffa"
+    },
+    {
+      "id": "b0e67414c7358a66ca26ec6a554a44c5",
+      "title": "Guitar Hero - Aerosmith",
+      "fileName": "b0e67414c7358a66ca26ec6a554a44c5.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/b0e67414c7358a66ca26ec6a554a44c5.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 278372,
+      "sha256": "49f7f39813b382865073c5e2670726e20582f157ebf0e607ed836eca3dbb536a"
+    },
+    {
+      "id": "730de49efa21bea457c6dc6b7a163268",
+      "title": "Guitar Hero - Metallica",
+      "fileName": "730de49efa21bea457c6dc6b7a163268.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/730de49efa21bea457c6dc6b7a163268.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 277718,
+      "sha256": "aed2f8f1899156e3946593ff2a6432822a56824f10a17275102c5afe7f4a58eb"
+    },
+    {
+      "id": "b9e5316f0d4bfeee3b5694dac3f76e6f",
+      "title": "Guitar Hero Encore - Rocks the 80s",
+      "fileName": "b9e5316f0d4bfeee3b5694dac3f76e6f.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/b9e5316f0d4bfeee3b5694dac3f76e6f.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 286334,
+      "sha256": "870bbe7c7a41187515dbf337760de0f0452d5f39545e19e0e01d6841e511c979"
+    },
+    {
+      "id": "b32be59fb8486254fb697333b07f587f",
+      "title": "Guitar Hero World Tour",
+      "fileName": "b32be59fb8486254fb697333b07f587f.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/b32be59fb8486254fb697333b07f587f.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 278210,
+      "sha256": "420ca80a1e8098d11c3e042be5b33c70cae4ca197520151d72bb2e5d51b68525"
+    },
+    {
+      "id": "4f43bc3988ccb52d1c61e83059f085b2",
+      "title": "guitar-hero-ii-sex-drugs-rock-n-roll",
+      "fileName": "4f43bc3988ccb52d1c61e83059f085b2.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/4f43bc3988ccb52d1c61e83059f085b2.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 287304,
+      "sha256": "1fc7100bffe77ef67fdcf9052aa4149891933fc3298011ab5a93e0159e684a0e"
+    },
+    {
+      "id": "2d4c9feb4a4d9eb70f8ed3fbaf14c1e2",
+      "title": "Jet Li - Rise to Honor",
+      "fileName": "2d4c9feb4a4d9eb70f8ed3fbaf14c1e2.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/2d4c9feb4a4d9eb70f8ed3fbaf14c1e2.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 274848,
+      "sha256": "311bc402cf15affeb9d7af4d957065d27872207e760e6d53e26665659989491d"
     }
   ]
 }

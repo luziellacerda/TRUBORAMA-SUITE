@@ -3,7 +3,7 @@
   "systemId": "playstation-2-br",
   "displayName": "PlayStation 2 • BR",
   "shortCode": "P2BR",
-  "coverCount": 50,
+  "coverCount": 51,
   "items": [
     {
       "id": "d5329f2c0e554f33e99a4430ca3be39d",
@@ -504,6 +504,16 @@
       "sourceImage": null,
       "bytes": 504437,
       "sha256": "e4c031586aaa844dfa4439b621eed03018e5125343ed6a0f8ce94afff9a19dc6"
+    },
+    {
+      "id": "f7b8862ae24e2fb53058aee92b6be722",
+      "title": "Dragon Ball Z Budokai Tenkaichi 3",
+      "fileName": "f7b8862ae24e2fb53058aee92b6be722.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/f7b8862ae24e2fb53058aee92b6be722.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 288746,
+      "sha256": "16b88cb5b495e4bcdfa2085133734f11f87b30e41628661577dcc839b53de261"
     }
   ]
 }

@@ -124,7 +124,7 @@ if (args.Length != 1)
 var manifestPath = Path.GetFullPath(args[0]);
 var repository = CatalogRepository.Load(manifestPath);
 Assert(repository.Categories.Count == 22, "O catálogo deve ter 22 categorias.");
-Assert(repository.ItemCount == 850, "O catálogo deve materializar 850 itens explícitos.");
+Assert(repository.ItemCount == 902, "O catálogo deve materializar 902 itens explícitos.");
 AssertReadOnlyList(repository.Categories, "As categorias não podem expor um array mutável.");
 AssertReadOnlyList(repository.Items, "Os itens não podem expor um array mutável.");
 ExpectInvalidCatalog(
@@ -228,7 +228,7 @@ foreach (var category in repository.Categories)
         Assert(item.Description.Length >= 120, $"Texto próprio ausente ou curto em {item.Id}.");
     }
 }
-Assert(seenIds.Count == 850, "Nem todos os IDs foram percorridos.");
+Assert(seenIds.Count == 902, "Nem todos os IDs foram percorridos.");
 
 var descriptionDirectory = Path.Combine(Path.GetDirectoryName(manifestPath)!, "GameDescriptions");
 var descriptionFiles = Directory.EnumerateFiles(descriptionDirectory, "*.xml").ToArray();
@@ -246,7 +246,7 @@ foreach (var descriptionFile in descriptionFiles)
         Assert(text.Length >= 120, $"Texto muito curto para o jogo: {id}.");
     }
 }
-Assert(descriptionIds.SetEquals(seenIds), "Os XML precisam cobrir individualmente os 850 jogos.");
+Assert(descriptionIds.SetEquals(seenIds), "Os XML precisam cobrir individualmente os 902 jogos.");
 
 var retroItemIds = new HashSet<string>(StringComparer.Ordinal);
 using (var manifestDocument = JsonDocument.Parse(await File.ReadAllTextAsync(manifestPath)))
@@ -307,7 +307,7 @@ using (var manifestDocument = JsonDocument.Parse(await File.ReadAllTextAsync(man
             retroSystemIconCount++;
         }
     }
-    Assert(verticalPosterCount == 850, "As 850 capas precisam usar o padrão vertical 1024x1536.");
+    Assert(verticalPosterCount == 902, "As 902 capas precisam usar o padrão vertical 1024x1536.");
     Assert(retroPosterCount == 45, "A coleção retrô precisa ter 45 pôsteres verticais validados.");
     Assert(retroSystemIconCount == 45, "O carrossel retro precisa ter 45 icones de sistema validados.");
 }
@@ -527,7 +527,7 @@ SuiteProtocolVerifier.Run();
 Assert(suiteConfigExistedBeforeTests || !File.Exists(TurboBoxManager.LocalDataPaths.ConfigFile),
     "Os verificadores não podem criar suite-config.json como efeito colateral.");
 
-Console.WriteLine("PASS: catálogo, carrossel universal, templates WPF reais e responsivos, Biblioteca 22/850, 850 capas, 850 textos XML, 45 descrições retrô, 38 vídeos de sistema e 15 vídeos de fundo íntegros, 45 pôsteres, 45 ícones retrô, 22 ícones de menu, pasta TruboRoms\\roms, protocolo de licença fail-closed, retomada, pausa, descarte e extração segura verificados.");
+Console.WriteLine("PASS: catálogo, carrossel universal, templates WPF reais e responsivos, Biblioteca 22/902, 902 capas, 902 textos XML, 45 descrições retrô, 38 vídeos de sistema e 15 vídeos de fundo íntegros, 45 pôsteres, 45 ícones retrô, 22 ícones de menu, pasta TruboRoms\\roms, protocolo de licença fail-closed, retomada, pausa, descarte e extração segura verificados.");
 
 static (int Width, int Height) ReadImageDimensions(Stream stream)
 {

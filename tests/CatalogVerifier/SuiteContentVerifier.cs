@@ -263,6 +263,14 @@ internal static class SuiteContentVerifier
                 "");
             var grantHash = SuiteContentProtocol.DownloadGrantContextHash(
                 grantContext);
+            ExpectSecurity(
+                () => SuiteContentProtocol.DownloadGrantContextHash(
+                    grantContext with { SourceETag = "", SourceLastModified = "" }),
+                "Retomada sem ETag ou Last-Modified precisa falhar antes da rede.");
+            ExpectSecurity(
+                () => SuiteContentProtocol.DownloadGrantContextHash(
+                    grantContext with { Offset = 0 }),
+                "A primeira transferencia nao pode enviar validadores de retomada.");
             var grant = CreateGrant(grantHash, descriptorHash, descriptor);
             var grantEnvelope = SignAssertion(
                 contentSigner,
@@ -396,7 +404,7 @@ internal static class SuiteContentVerifier
         var publicCatalog = CatalogRepository.Load(manifestPath);
         Check(publicCatalog.ItemCount
               == SuiteContentProtocol.ExpectedCatalogItemCount,
-            "O catalogo publico de producao precisa conter exatamente 850 IDs.");
+            "O catalogo publico de producao precisa conter exatamente 902 IDs.");
 
         var descriptor = SuiteContentProtocol.ToCatalogDescriptor(
             CreateWireDescriptor(CatalogIdentity));
@@ -406,7 +414,7 @@ internal static class SuiteContentVerifier
             StringComparer.Ordinal);
         Check(CatalogRepository.Load(manifestPath, complete).ItemCount
               == SuiteContentProtocol.ExpectedCatalogItemCount,
-            "Os 850 descritores assinados nao foram materializados.");
+            "Os 902 descritores assinados nao foram materializados.");
         complete.Remove(publicCatalog.Items[^1].Id);
         ExpectInvalidData(() => CatalogRepository.Load(manifestPath, complete),
             "Um unico ID ausente precisa reprovar o catalogo inteiro.");
@@ -441,24 +449,14 @@ internal static class SuiteContentVerifier
             grant,
             descriptor,
             4096,
-            new CatalogDownloadValidators());
+            new CatalogDownloadValidators("\"etag\""));
         Check(resumed.RequestUri?.Host == authority.Host
               && resumed.RequestUri.Query.Length == 0
               && resumed.Headers.Authorization?.Scheme == "Bearer"
               && resumed.Headers.Authorization.Parameter?.Length == 43
               && resumed.Headers.Range?.Ranges.Single().From == 4096
-              && resumed.Headers.IfRange?.ToString() == $"\"{descriptor.Sha256}\"",
-            "A retomada precisa usar mesmo host, Bearer, Range e ETag assinado.");
-
-        ExpectSecurity(() =>
-        {
-            using var _ = SuiteContentClient.BuildDownloadRequest(
-                authority,
-                grant,
-                descriptor,
-                4096,
-                new CatalogDownloadValidators("\"wrong\""));
-        }, "ETag local divergente precisa falhar antes da rede.");
+              && resumed.Headers.IfRange?.ToString() == "\"etag\"",
+            "A retomada direta precisa usar mesmo host, Bearer, Range e ETag observado.");
 
         ExpectSecurity(() =>
         {

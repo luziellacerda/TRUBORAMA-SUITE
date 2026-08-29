@@ -8,6 +8,7 @@ namespace TurboBoxManager.CatalogVerifier;
 internal static class CrossVolumeMoveVerifier
 {
     private const string TemporaryRootPrefix = "Turborama-CrossVolumeVerifier-";
+    private const long MinimumFreeSpaceBytes = 8L * 1024 * 1024;
 
     internal static async Task RunAsync()
     {
@@ -84,7 +85,8 @@ internal static class CrossVolumeMoveVerifier
             {
                 if (!drive.IsReady
                     || drive.DriveType != DriveType.Fixed
-                    || !drive.DriveFormat.Equals("NTFS", StringComparison.OrdinalIgnoreCase))
+                    || !drive.DriveFormat.Equals("NTFS", StringComparison.OrdinalIgnoreCase)
+                    || drive.AvailableFreeSpace < MinimumFreeSpaceBytes)
                     continue;
 
                 var volumeRoot = Path.GetFullPath(drive.RootDirectory.FullName);

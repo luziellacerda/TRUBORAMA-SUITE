@@ -1094,8 +1094,8 @@ Test-VideoSet $failures `
 
 $coverDirectory = Join-Path $root 'Assets\Catalog\Images'
 $coverCount = @(Get-ChildItem -LiteralPath $coverDirectory -File -Force -ErrorAction SilentlyContinue).Count
-if ($coverCount -ne 851) {
-    Add-Failure $failures "Conjunto de capas incompleto: $coverCount (esperado 851)."
+if ($coverCount -ne 903) {
+    Add-Failure $failures "Conjunto de capas incompleto: $coverCount (esperado 903)."
 }
 
 $organizedCoverRoot = Join-Path $root 'Capas-Turborama-por-Sistema'
@@ -1121,8 +1121,8 @@ foreach ($coverSystem in $coverSystems) {
             Add-Failure $failures "Cabecalho do indice de capas invalido: $($coverSystem.Name)."
             continue
         }
-        if ($coverSystem.Name -ceq 'windows' -and $coverItems.Count -ne 98) {
-            Add-Failure $failures "O indice Windows precisa conter exatamente 98 capas; encontrou $($coverItems.Count)."
+        if ($coverSystem.Name -ceq 'windows' -and $coverItems.Count -ne 100) {
+            Add-Failure $failures "O indice Windows precisa conter exatamente 100 capas; encontrou $($coverItems.Count)."
         }
         $organizedItemCount = @($coverItems | Where-Object {
             -not [string]::IsNullOrWhiteSpace([string]$_.organizedImage)
@@ -1174,8 +1174,8 @@ foreach ($coverSystem in $coverSystems) {
         Add-Failure $failures "Indice de capas ilegivel ($($coverSystem.Name)): $($_.Exception.Message)"
     }
 }
-if ($indexedCoverNames.Count -ne 850) {
-    Add-Failure $failures "Indices por sistema cobrem $($indexedCoverNames.Count) capas unicas (esperado 850)."
+if ($indexedCoverNames.Count -ne 902) {
+    Add-Failure $failures "Indices por sistema cobrem $($indexedCoverNames.Count) capas unicas (esperado 902)."
 }
 
 if (-not (Test-Path -LiteralPath $catalogPath -PathType Leaf)) {

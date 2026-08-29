@@ -43,12 +43,12 @@ Reutilizar a sessão PIX como autorização da Suite misturaria produtos e não 
 - extração ZIP/RAR/7z com política recebida somente do descriptor autorizado, limites, cancelamento, staging e validação do mesmo arquivo; a assinatura de catálogo/manifests ainda é bloqueio;
 - publicação autocontida com gate de origem, testes offline, SBOM SPDX 2.3, inventário SHA-256 e gate exato de conteúdo;
 - Authenticode e timestamp RFC 3161 obrigatórios no modo de candidato assinado;
-- 851 capas (incluindo 98 Windows conferidas nas duas cópias), 38 vídeos de sistemas e 15 vídeos de fundo inventariados.
+- 903 capas (incluindo 100 Windows), 38 vídeos de sistemas e 15 vídeos de fundo inventariados.
 
 ## Bloqueios internos antes de uma Release
 
 1. Implementar e revisar o cliente de catálogo assinado, incluindo sequência, validade, `keyId`, rotação e rollback.
-2. Associar os 850 itens a manifests reais e imutáveis de artefato sem permitir que o catálogo visual altere a política autorizada.
+2. Associar os 902 itens a manifests reais e imutáveis de artefato sem permitir que o catálogo visual altere a política autorizada.
 3. Implementar o provedor real de grants e os testes de contrato contra o ambiente Suite.
 4. Adotar um contêiner/distribuidor assinado para cobrir também catálogo, capas, XML, ícones e vídeos externos ao PE, e verificar essa assinatura antes da instalação/execução.
 5. Executar testes end-to-end de instalação, upgrade, rollback, perda de sessão, falhas de disco e recuperação.

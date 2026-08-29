@@ -3,7 +3,7 @@
   "systemId": "xbox-series",
   "displayName": "Xbox Series",
   "shortCode": "XS",
-  "coverCount": 27,
+  "coverCount": 29,
   "items": [
     {
       "id": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c601",
@@ -274,6 +274,26 @@
       "sourceImage": null,
       "bytes": 823499,
       "sha256": "84f37630f9b0a5190d92cc6f334d91253c157b07cf6d2a9ec380d1b166cfe64c"
+    },
+    {
+      "id": "5c1705130efdd878a55ab4dbd1a43cb0",
+      "title": "Aliens Fireteam 2",
+      "fileName": "5c1705130efdd878a55ab4dbd1a43cb0.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/5c1705130efdd878a55ab4dbd1a43cb0.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 273142,
+      "sha256": "065e5afb65ac09186f0529d2cfe655861d1f77a0339185292f95893184d985cf"
+    },
+    {
+      "id": "cbccc6a98a299991f1e413d9614aac29",
+      "title": "Star-Wars-Zero-Company",
+      "fileName": "cbccc6a98a299991f1e413d9614aac29.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/cbccc6a98a299991f1e413d9614aac29.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 280666,
+      "sha256": "5d65d8eadf6b953522485450a940904d15913db85b56724005675441fd9f37c9"
     }
   ]
 }

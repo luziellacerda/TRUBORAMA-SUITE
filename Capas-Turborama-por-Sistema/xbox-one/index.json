@@ -3,7 +3,7 @@
   "systemId": "xbox-one",
   "displayName": "Xbox One",
   "shortCode": "XB1",
-  "coverCount": 18,
+  "coverCount": 19,
   "items": [
     {
       "id": "92d774eae11dc642cafe1065d52694b6",
@@ -184,6 +184,16 @@
       "sourceImage": null,
       "bytes": 909275,
       "sha256": "7606c89fe9e02442eb778364f08d7178f26b4072c9e6f50971f0cf084dfaa997"
+    },
+    {
+      "id": "184c571b640d0d2e4f0ea54eb32e941a",
+      "title": "Mortal Kombat XL",
+      "fileName": "184c571b640d0d2e4f0ea54eb32e941a.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/184c571b640d0d2e4f0ea54eb32e941a.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 274066,
+      "sha256": "29e10276fac5d87da01f99f89e279170c17ff858205046c1fc0f57ec38a88ee7"
     }
   ]
 }

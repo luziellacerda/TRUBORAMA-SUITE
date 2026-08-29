@@ -496,7 +496,7 @@ public sealed class CatalogRepository
                 || authorizedUnionCount
                 != SuiteContentProtocol.ExpectedCatalogItemCount))
             throw new InvalidDataException(
-                "O catálogo autorizado não cobre os 850 itens públicos.");
+                "O catálogo autorizado não cobre os 902 itens públicos.");
         foreach (var pair in authorizedArtifacts)
         {
             if (!itemIds.Contains(pair.Key)

@@ -3,7 +3,7 @@
   "systemId": "sega-saturn",
   "displayName": "Sega Saturn",
   "shortCode": "SAT",
-  "coverCount": 31,
+  "coverCount": 32,
   "items": [
     {
       "id": "9b45ee8285f1936e8d2577db91e615fa",
@@ -314,6 +314,16 @@
       "sourceImage": "031 - WipEout USA - 8d11bd58.png",
       "bytes": 506200,
       "sha256": "41002e6f23567051642f86ff62e5ee09beda69df31ad0f90c183c8f66e3bf76f"
+    },
+    {
+      "id": "0921221a2f2efdda4338c9037761b874",
+      "title": "Bomberman",
+      "fileName": "0921221a2f2efdda4338c9037761b874.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/0921221a2f2efdda4338c9037761b874.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 271446,
+      "sha256": "e08d0b299f2ba0bb9d9341d6dd3f58f6d85450d8819d41bef7f9e9d71cfb04a9"
     }
   ]
 }

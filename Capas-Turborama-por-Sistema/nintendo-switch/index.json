@@ -3,7 +3,7 @@
   "systemId": "nintendo-switch",
   "displayName": "Nintendo Switch",
   "shortCode": "NSW",
-  "coverCount": 83,
+  "coverCount": 110,
   "items": [
     {
       "id": "cebb320600ef85d68e81bcbf00d80ae4",
@@ -834,6 +834,276 @@
       "sourceImage": null,
       "bytes": 958071,
       "sha256": "ab1a5af5e2c2d6d1b91e7e6d79b2ebc9dabfefd90961ad0bea3bfb6937a1f0d8"
+    },
+    {
+      "id": "f01a19fcd6c7ce2f5800ea33c3bcdca7",
+      "title": "ACA NEOGEO SELECTION Vol 1",
+      "fileName": "f01a19fcd6c7ce2f5800ea33c3bcdca7.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/f01a19fcd6c7ce2f5800ea33c3bcdca7.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 285217,
+      "sha256": "965aa377ec0380cce7cb23c89efe453e0a803650ebc143bdf54094bde56eb644"
+    },
+    {
+      "id": "e73b793e1d109bfa57f5fbb41ef9f150",
+      "title": "Burnout Paradise Remasterd",
+      "fileName": "e73b793e1d109bfa57f5fbb41ef9f150.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/e73b793e1d109bfa57f5fbb41ef9f150.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 284709,
+      "sha256": "2dda5b4e50a9d2a431c2ce6d49492a2d30b809bc8d9b5b4cd7993d95563437d1"
+    },
+    {
+      "id": "90f66c23c18260549e8c323c278a5493",
+      "title": "Dark Souls Remastered",
+      "fileName": "90f66c23c18260549e8c323c278a5493.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/90f66c23c18260549e8c323c278a5493.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 281718,
+      "sha256": "b30064f36528ea7d03184d62b7cefd649b9d709ae2f2f7e818ef7ec00c9b656f"
+    },
+    {
+      "id": "36a07f5bfde5d316d29bc36b4d916987",
+      "title": "Darksiders III",
+      "fileName": "36a07f5bfde5d316d29bc36b4d916987.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/36a07f5bfde5d316d29bc36b4d916987.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 271924,
+      "sha256": "146661df104b1b3fed483c99d9c88e932da571195d8d57746ec8bcb576d2eb5b"
+    },
+    {
+      "id": "7dfbe0c636ff60e89b334b167a1ad6c3",
+      "title": "Devil May Cry.nsp",
+      "fileName": "7dfbe0c636ff60e89b334b167a1ad6c3.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/7dfbe0c636ff60e89b334b167a1ad6c3.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 275943,
+      "sha256": "7e3333b3eaa136c101168b5b6e74506486da2bdfa932469284870e41872e73e3"
+    },
+    {
+      "id": "71ca0ccd55ccdaa80390c17d42abdf71",
+      "title": "Devil May Cry 2.nsp",
+      "fileName": "71ca0ccd55ccdaa80390c17d42abdf71.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/71ca0ccd55ccdaa80390c17d42abdf71.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 277422,
+      "sha256": "e3dfc8e12c3752205c1dc67db827c13c2575a50c4bb2f07d05e9d6d70f81122c"
+    },
+    {
+      "id": "f250ee149005895e3276d897ac62f8fd",
+      "title": "Devil May Cry 3 Special Edition.nsp",
+      "fileName": "f250ee149005895e3276d897ac62f8fd.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/f250ee149005895e3276d897ac62f8fd.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 289764,
+      "sha256": "5beaf1dffbec344a91ff4cdbcb3bae81c0324ef7cffd220900f6eeabc6ce0c56"
+    },
+    {
+      "id": "75cec9ebbf1f374fa95ee61907d0aa1b",
+      "title": "DRAGON BALL FIGHTER Z",
+      "fileName": "75cec9ebbf1f374fa95ee61907d0aa1b.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/75cec9ebbf1f374fa95ee61907d0aa1b.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 281839,
+      "sha256": "8b956a1929e95d0ce87dab9fddf6e7ba90d363d908de3422b3f253b039ffeeab"
+    },
+    {
+      "id": "c3f372db74f3ebe8b9442c3a4b4a1dac",
+      "title": "Dragon Quest iii Hd 2D Remake",
+      "fileName": "c3f372db74f3ebe8b9442c3a4b4a1dac.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/c3f372db74f3ebe8b9442c3a4b4a1dac.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 287478,
+      "sha256": "cb8505685df4058c38af87c4177cd87a93cfea5f771167aee1eb8d1dc4be8142"
+    },
+    {
+      "id": "1c5eb0b1c6991d835860198d7d19e2c3",
+      "title": "GRID Autosport",
+      "fileName": "1c5eb0b1c6991d835860198d7d19e2c3.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/1c5eb0b1c6991d835860198d7d19e2c3.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 275045,
+      "sha256": "b231e7e964c5ea36dd2d62f88c4e621af09dbf99c862e1ba41706a1af6f284b6"
+    },
+    {
+      "id": "aea10e5b16487a1e961274c61cbb5c70",
+      "title": "Kirbys Return to Dream Land Deluxe",
+      "fileName": "aea10e5b16487a1e961274c61cbb5c70.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/aea10e5b16487a1e961274c61cbb5c70.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 289372,
+      "sha256": "14eb0a7329dda8face3e674d0fcf2b70416f97d79e1ba74932ec4d0a5123585e"
+    },
+    {
+      "id": "ecc3f6e3a85bf3ed48a599910cac76f2",
+      "title": "Mega Man 11",
+      "fileName": "ecc3f6e3a85bf3ed48a599910cac76f2.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/ecc3f6e3a85bf3ed48a599910cac76f2.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 271999,
+      "sha256": "398b9604e0e4a15ee7864f1cb2bffb9ab9b5b90997125179ffdd4166ea3a25c6"
+    },
+    {
+      "id": "053fd1870a31ea8ff52419b6e9018129",
+      "title": "Metroid Prime Remastered",
+      "fileName": "053fd1870a31ea8ff52419b6e9018129.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/053fd1870a31ea8ff52419b6e9018129.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 283255,
+      "sha256": "3118a6d597dadd59f51e40993389b9236ae2ecc7b294beba5c941faa9d192a27"
+    },
+    {
+      "id": "e0fd639d3dc0ca8b7225915e7ae342dc",
+      "title": "Mortal Kombat Legacy Kollection",
+      "fileName": "e0fd639d3dc0ca8b7225915e7ae342dc.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/e0fd639d3dc0ca8b7225915e7ae342dc.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 288708,
+      "sha256": "a2b1a4d8a3da33b8d16125ac021bacbaacb8ab2a2d4554b750c5da85c4bcd933"
+    },
+    {
+      "id": "3524d527568d990178eb070550b8776f",
+      "title": "NieRAutomata The End of YoRHa Edition",
+      "fileName": "3524d527568d990178eb070550b8776f.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/3524d527568d990178eb070550b8776f.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 293778,
+      "sha256": "166a9e9a47b7c56c9f696dde00c02773b42c7ff0061d4dcd02188b74fe0abf02"
+    },
+    {
+      "id": "c0929c070b77c7bee14e5f61ea4c6107",
+      "title": "Nine Sols",
+      "fileName": "c0929c070b77c7bee14e5f61ea4c6107.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/c0929c070b77c7bee14e5f61ea4c6107.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 269332,
+      "sha256": "f1a1299294210654df3a0473c121499879907ad09aaff6778ac34761d9efe3ff"
+    },
+    {
+      "id": "3027d5735dcdd12c359eef9bce78517e",
+      "title": "Ninja Gaiden Sigma",
+      "fileName": "3027d5735dcdd12c359eef9bce78517e.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/3027d5735dcdd12c359eef9bce78517e.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 278796,
+      "sha256": "e5b99896a2d3997dc107473abd1260db12a4695185ac46517086f28df4d0fa66"
+    },
+    {
+      "id": "c3faeb6318e3f48efb574370a754ee2e",
+      "title": "Ninja Gaiden Sigma 2",
+      "fileName": "c3faeb6318e3f48efb574370a754ee2e.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/c3faeb6318e3f48efb574370a754ee2e.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 280037,
+      "sha256": "0b21d16549c96cf200250795cceb1367b8fc969b8febf63e2ab76607dd7db518"
+    },
+    {
+      "id": "365f0c7c866d8c8c83eb20c74673ae04",
+      "title": "Ninja Gaiden 3",
+      "fileName": "365f0c7c866d8c8c83eb20c74673ae04.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/365f0c7c866d8c8c83eb20c74673ae04.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 273668,
+      "sha256": "757896e77222aac12f9f2648504bc96b57217c0d830d74de3c2c874b486058e9"
+    },
+    {
+      "id": "b1396a380923f27f91fd301de8f0b0e1",
+      "title": "Ori and the Will of the Wisps",
+      "fileName": "b1396a380923f27f91fd301de8f0b0e1.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/b1396a380923f27f91fd301de8f0b0e1.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 284649,
+      "sha256": "28d954eae56392ec4383e9c228d5a917247876af2ee28e6a1943f578e2548a64"
+    },
+    {
+      "id": "bd1af64027fb290f0504fb7530c01468",
+      "title": "Overcooked All You Can Eat",
+      "fileName": "bd1af64027fb290f0504fb7530c01468.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/bd1af64027fb290f0504fb7530c01468.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 283308,
+      "sha256": "c8d945ad9aa9409d5620be7e7d9e187400d774a577ab2f5c47a75af1dce0671c"
+    },
+    {
+      "id": "92c9fdb4afd5bcf7114a1cb9618e884e",
+      "title": "Overcooked Special Edition",
+      "fileName": "92c9fdb4afd5bcf7114a1cb9618e884e.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/92c9fdb4afd5bcf7114a1cb9618e884e.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 284520,
+      "sha256": "9c3f18c3b19cbb67dd89a9c3910d850de0cd5f555b726d715c4b67d8ca1e04a3"
+    },
+    {
+      "id": "d2889f9e5de62d5592ad71396d331d65",
+      "title": "Overcooked! 2",
+      "fileName": "d2889f9e5de62d5592ad71396d331d65.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/d2889f9e5de62d5592ad71396d331d65.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 273671,
+      "sha256": "906ef3b0d7855a52fae3b23da39fa00c58739f94de340cd9dafdd7106c82c6fb"
+    },
+    {
+      "id": "23d9dabcdabba7192805f6fbdd250ce2",
+      "title": "Spyro Reignited Trilogy",
+      "fileName": "23d9dabcdabba7192805f6fbdd250ce2.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/23d9dabcdabba7192805f6fbdd250ce2.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 281791,
+      "sha256": "4e45f018c7ffab65c72d523966e513f6f3a0bad35f81c8e42d9cb8cd16d1f2ae"
+    },
+    {
+      "id": "63a8b8453c0d83642c822d82688fef81",
+      "title": "Street Fighter 30th Anniversary Collection",
+      "fileName": "63a8b8453c0d83642c822d82688fef81.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/63a8b8453c0d83642c822d82688fef81.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 296019,
+      "sha256": "eac921b2b4f022729bd2d2eb4140ca3f081305bd5617df26d74a32756484a6c3"
+    },
+    {
+      "id": "073d426a72e974cc11c9602169fb29d7",
+      "title": "Teenage Mutant Ninja Turtles Splintered Fate",
+      "fileName": "073d426a72e974cc11c9602169fb29d7.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/073d426a72e974cc11c9602169fb29d7.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 296978,
+      "sha256": "15ea055f806c7876f1b75853c0360fe919361a3b2d6243b07fe908778af3770f"
+    },
+    {
+      "id": "2795394d5a040d624ccfc2c3d0f71c06",
+      "title": "Xenoblade Chronicles Definitive Edition",
+      "fileName": "2795394d5a040d624ccfc2c3d0f71c06.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/2795394d5a040d624ccfc2c3d0f71c06.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 294306,
+      "sha256": "bb940b99e252039dedf597fe462979e9930fef4ad8066d4a330f8499f32d642f"
     }
   ]
 }

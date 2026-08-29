@@ -114,7 +114,7 @@ public static class SuiteContentProtocol
     public const string DownloadGrantAssertionKind =
         "TURBORAMA_SUITE_DOWNLOAD_GRANT";
     public const int MaximumPageSize = 64;
-    public const int ExpectedCatalogItemCount = 850;
+    public const int ExpectedCatalogItemCount = 902;
     public const string ReadyAvailability = "READY";
     public const string MaintenanceAvailability = "MAINTENANCE";
     public const string MaintenanceReasonCode =
@@ -458,6 +458,22 @@ public static class SuiteContentProtocol
         RequireCanonicalHex(context.DescriptorHash, "DescriptorHash", 64);
         if (context.ArtifactVersion <= 0 || context.Offset < 0)
             throw new SecurityException("O contexto do download e invalido.");
+        ValidateSourceValidator(context.SourceETag, 512);
+        ValidateSourceValidator(context.SourceLastModified, 128);
+        if ((context.Offset == 0
+             && (context.SourceETag.Length != 0
+                 || context.SourceLastModified.Length != 0))
+            || (context.Offset > 0
+                && context.SourceETag.Length == 0
+                && context.SourceLastModified.Length == 0))
+            throw new SecurityException("Os validadores da retomada nao sao canonicos.");
+    }
+
+    private static void ValidateSourceValidator(string value, int maximumLength)
+    {
+        if (value is null || value.Length > maximumLength
+            || value.Any(char.IsControl))
+            throw new SecurityException("O validador da origem nao e canonico.");
     }
 
     private static void ValidateCommonContext(int schemaVersion,

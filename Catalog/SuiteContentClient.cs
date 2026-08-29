@@ -207,7 +207,7 @@ internal sealed class SuiteContentClient : IDisposable
         authorization.ThrowIfUnauthorized();
         if (expectedItems.Count != SuiteContentProtocol.ExpectedCatalogItemCount)
             throw new SecurityException(
-                "O catalogo publico nao possui os 850 itens aprovados.");
+                "O catalogo publico nao possui os 902 itens aprovados.");
 
         var accumulator = new SuiteCatalogSnapshotAccumulator(expectedItems);
         var cursors = new HashSet<string>(StringComparer.Ordinal) { string.Empty };

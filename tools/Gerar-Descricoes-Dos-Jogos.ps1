@@ -122,7 +122,7 @@ function Get-GameDescription([string]$Title, [string]$Category) {
 
 $catalogData = Get-Content -LiteralPath $Catalog -Raw | ConvertFrom-Json
 $items = @($catalogData.items)
-if ($items.Count -ne 850) { throw "Catálogo inesperado: $($items.Count) itens; esperado=850." }
+if ($items.Count -ne 902) { throw "Catálogo inesperado: $($items.Count) itens; esperado=902." }
 
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 Get-ChildItem -LiteralPath $OutputDirectory -Filter '*.xml' -File -ErrorAction SilentlyContinue |
@@ -170,5 +170,5 @@ foreach ($category in @($catalogData.categories | Sort-Object order)) {
     finally { $writer.Dispose() }
 }
 
-if ($written -ne 850) { throw "Descrições incompletas: $written; esperado=850." }
+if ($written -ne 902) { throw "Descrições incompletas: $written; esperado=902." }
 Write-Host "Descrições criadas: $written jogos em $(@($catalogData.categories).Count) arquivos XML."

@@ -107,8 +107,8 @@ internal static class WpfTemplateVerifier
                                   ?? throw new MissingMethodException(
                                       nameof(StoreWindow),
                                   "OpenCatalog");
-                if (window.LibrarySystems.Count != 22 || window.LibraryTotalItemCount != 850)
-                    throw new InvalidDataException("A Biblioteca precisa contabilizar 22 sistemas e 850 jogos.");
+                if (window.LibrarySystems.Count != 22 || window.LibraryTotalItemCount != 902)
+                    throw new InvalidDataException("A Biblioteca precisa contabilizar 22 sistemas e 902 jogos.");
 
                 var ps3 = window.CatalogCategories.Single(item =>
                     item.Id.Equals("playstation-3", StringComparison.OrdinalIgnoreCase));

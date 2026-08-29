@@ -811,7 +811,7 @@ else {
 }
 
 $imageCount = @(Get-ChildItem -LiteralPath (Join-Path $package 'Assets\Catalog\Images') -File -Force -ErrorAction SilentlyContinue).Count
-if ($imageCount -ne 851) { Add-Failure "Quantidade inesperada de capas: $imageCount (esperado 851)." }
+if ($imageCount -ne 903) { Add-Failure "Quantidade inesperada de capas: $imageCount (esperado 903)." }
 $iconCount = @(Get-ChildItem -LiteralPath (Join-Path $package 'Assets\Catalog\SystemIcons') -File -Filter '*.png' -Force -ErrorAction SilentlyContinue).Count
 if ($iconCount -ne 45) { Add-Failure "Quantidade inesperada de icones: $iconCount (esperado 45)." }
 $menuIconCount = @(Get-ChildItem -LiteralPath (Join-Path $package 'Assets\Catalog\MenuIcons') -File -Filter '*.png' -Force -ErrorAction SilentlyContinue).Count

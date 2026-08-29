@@ -12,14 +12,14 @@ O cliente opera de forma fail-closed:
 - sem configuração de autoridade Suite assinada, vigente e vinculada ao SHA-256 exato aprovado para a Release, com chave on-line dedicada e pin TLS SPKI, o login permanece indisponível;
 - respostas positivas de ativação, sessão e heartbeat são aceitas somente em envelopes RSA-PSS-SHA256 canônicos, assinados pela chave on-line autorizada e vinculados ao contexto e challenge atuais;
 - sem sessão Suite válida e capacidade autorizada, a loja fecha e as operações são canceladas;
-- os 850 itens do catálogo público não são baixáveis até receberem descriptors imutáveis e grants autenticados;
+- os 902 itens do catálogo público não são baixáveis até receberem descriptors imutáveis e grants autenticados;
 - tamanho e SHA-256 são obrigatórios antes de um artefato poder ser aceito;
 - a política de extração vem exclusivamente do descriptor autorizado.
 
 ## Conteúdo visual incluído
 
-- 22 categorias e 850 itens de catálogo;
-- 851 imagens de capa, incluindo fallback e as 98 capas Windows verificadas por tamanho e SHA-256 nas duas cópias;
+- 22 categorias e 902 itens de catálogo;
+- 903 imagens de capa, incluindo fallback e as 100 capas Windows verificadas por tamanho e SHA-256;
 - 45 ícones de sistema e 22 ícones de menu;
 - 38 vídeos de sistemas e 15 vídeos de fundo, todos inventariados por tamanho e SHA-256;
 - vídeos de fundo recortados com preenchimento proporcional para acompanhar o quadrado disponível em qualquer tamanho de janela, sem depender da resolução original.

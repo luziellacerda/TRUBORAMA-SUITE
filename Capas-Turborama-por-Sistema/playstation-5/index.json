@@ -3,7 +3,7 @@
   "systemId": "playstation-5",
   "displayName": "PlayStation 5",
   "shortCode": "PS5",
-  "coverCount": 55,
+  "coverCount": 58,
   "items": [
     {
       "id": "f79e2a1b3c4d5e6f7a8b9c0d1e2f3a4b",
@@ -554,6 +554,36 @@
       "sourceImage": null,
       "bytes": 680286,
       "sha256": "7b3fc69febf1998ea21720f6394bda6b402deed5ff67eba7f17b3b8de7ab01df"
+    },
+    {
+      "id": "e1e2da44a0d1d33c767ad288b80ecdfe",
+      "title": "Dragon-Sword-Awakening",
+      "fileName": "e1e2da44a0d1d33c767ad288b80ecdfe.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/e1e2da44a0d1d33c767ad288b80ecdfe.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 283138,
+      "sha256": "141ee7b89f3337bda90a1d985a149dbd359149a82bb83d1c94d616805a996524"
+    },
+    {
+      "id": "94f9af8fa7062be14aeac49232b7c967",
+      "title": "Resonance a plague tale",
+      "fileName": "94f9af8fa7062be14aeac49232b7c967.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/94f9af8fa7062be14aeac49232b7c967.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 281580,
+      "sha256": "1ac9735ad9053fefd1d262e2168249a9a81167184d9a2e5c96f47aa7a98f7b3b"
+    },
+    {
+      "id": "33cfc1643998190c12adda0d10d31a0f",
+      "title": "The Sinking City 2",
+      "fileName": "33cfc1643998190c12adda0d10d31a0f.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/33cfc1643998190c12adda0d10d31a0f.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 276287,
+      "sha256": "cde391329ceddcf5698f845f8c53bd843742d6cda4853a2c660d8bd435d3e275"
     }
   ]
 }

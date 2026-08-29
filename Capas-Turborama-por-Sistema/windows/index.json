@@ -3,7 +3,7 @@
   "systemId": "windows",
   "displayName": "Windows",
   "shortCode": "WIN",
-  "coverCount": 98,
+  "coverCount": 100,
   "items": [
     {
       "id": "6dd6191b286604bd3bd99fbc13f68d44",
@@ -984,6 +984,26 @@
       "sourceImage": null,
       "bytes": 629407,
       "sha256": "54600323a11f09e34e4beb2e766bc056eddc1ae4ee5d8cbab780987201a9b58c"
+    },
+    {
+      "id": "007725e1cc5bb894e203749e469159e9",
+      "title": "Castlevania Lords of Shadow Ultimate Edition",
+      "fileName": "007725e1cc5bb894e203749e469159e9.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/007725e1cc5bb894e203749e469159e9.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 296792,
+      "sha256": "7ce8137f32cae99b72928d3ff45136dc04fa5cc33f713070d738ace4939abae7"
+    },
+    {
+      "id": "4a9d2289ad155a52bd958d1cb9661ccc",
+      "title": "Castlevania.Lords.of.Shadow.2",
+      "fileName": "4a9d2289ad155a52bd958d1cb9661ccc.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/4a9d2289ad155a52bd958d1cb9661ccc.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 281522,
+      "sha256": "b82f4c252c6a1ad55433f5d302d169626a1e1fb9f6106f25aa07834b66c207d5"
     }
   ]
 }
