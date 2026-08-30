@@ -1408,14 +1408,21 @@ internal static class WpfTemplateVerifier
                            BindingFlags.Instance | BindingFlags.Public)
                        ?.GetValue(lease) as string
                        ?? throw new MissingMemberException(lease.GetType().FullName, "Path");
-            var player = new MediaElement
-            {
-                LoadedBehavior = MediaState.Manual,
-                UnloadedBehavior = MediaState.Manual,
-                IsMuted = true,
-                Volume = 0,
-                Stretch = Stretch.UniformToFill
-            };
+            var playerFactory = typeof(StoreWindow).GetMethod(
+                                    "CreateResponsiveBackgroundVideoPlayer",
+                                    BindingFlags.Static | BindingFlags.NonPublic)
+                                ?? throw new MissingMethodException(
+                                    nameof(StoreWindow),
+                                    "CreateResponsiveBackgroundVideoPlayer");
+            var releasePlayer = typeof(StoreWindow).GetMethod(
+                                    "ReleaseResponsiveBackgroundVideoPlayer",
+                                    BindingFlags.Static | BindingFlags.NonPublic)
+                                ?? throw new MissingMethodException(
+                                    nameof(StoreWindow),
+                                    "ReleaseResponsiveBackgroundVideoPlayer");
+            var player = playerFactory.Invoke(null, [host]) as MediaElement
+                         ?? throw new InvalidDataException(
+                             "O teste não conseguiu criar o player responsivo.");
             var frame = new DispatcherFrame();
             var opened = false;
             var timedOut = false;
@@ -1473,6 +1480,14 @@ internal static class WpfTemplateVerifier
                     throw new TimeoutException(
                         "MediaElement não sinalizou MediaOpened nem MediaFailed em 10 segundos.");
                 }
+                if (player.NaturalVideoWidth <= 0
+                    || player.NaturalVideoHeight <= 0
+                    || player.RenderTransform is not ScaleTransform coverTransform
+                    || !double.IsFinite(coverTransform.ScaleX)
+                    || coverTransform.ScaleX < 1
+                    || Math.Abs(coverTransform.ScaleX - coverTransform.ScaleY) > 0.000001)
+                    throw new InvalidDataException(
+                        "O vídeo real não recebeu um recorte central proporcional após MediaOpened.");
             }
             finally
             {
@@ -1480,6 +1495,7 @@ internal static class WpfTemplateVerifier
                 timeout.Tick -= HandleTimeout;
                 player.MediaOpened -= HandleOpened;
                 player.MediaFailed -= HandleFailed;
+                releasePlayer.Invoke(null, [player]);
                 try { player.Stop(); } catch (InvalidOperationException) { }
                 var playerClosed = false;
                 try { player.Close(); playerClosed = true; }
@@ -1602,6 +1618,14 @@ internal static class WpfTemplateVerifier
                           "CreateResponsiveBackgroundVideoPlayer");
         var player = factory.Invoke(null, [host]) as MediaElement
                      ?? throw new InvalidDataException("O player responsivo não pôde ser criado.");
+        if (player.Stretch != Stretch.Uniform
+            || player.HorizontalAlignment != HorizontalAlignment.Center
+            || player.VerticalAlignment != VerticalAlignment.Center
+            || player.RenderTransformOrigin != new Point(0.5, 0.5)
+            || player.RenderTransform is not ScaleTransform)
+            throw new InvalidDataException(
+                "O player precisa preservar a proporção e centralizar o recorte do vídeo.");
+        VerifyBackgroundVideoCoverScale();
         host.Children.Add(player);
         var originalCarouselVisibility = carouselHost.Visibility;
         carouselHost.Visibility = Visibility.Visible;
@@ -1619,8 +1643,7 @@ internal static class WpfTemplateVerifier
                 window.Height = height;
                 window.UpdateLayout();
 
-                if (player.Stretch != Stretch.UniformToFill
-                    || Math.Abs(player.Width - host.ActualWidth) > 0.5
+                if (Math.Abs(player.Width - host.ActualWidth) > 0.5
                     || Math.Abs(player.Height - host.ActualHeight) > 0.5
                     || Math.Abs(host.ActualWidth - background.ActualWidth) > 0.5
                     || Math.Abs(host.ActualHeight - background.ActualHeight) > 0.5
@@ -1703,6 +1726,47 @@ internal static class WpfTemplateVerifier
         {
             carouselHost.Visibility = originalCarouselVisibility;
             host.Children.Remove(player);
+        }
+    }
+
+    private static void VerifyBackgroundVideoCoverScale()
+    {
+        var calculator = typeof(StoreWindow).GetMethod(
+                             "CalculateBackgroundVideoCoverScale",
+                             BindingFlags.Static | BindingFlags.NonPublic)
+                         ?? throw new MissingMethodException(
+                             nameof(StoreWindow),
+                             "CalculateBackgroundVideoCoverScale");
+
+        foreach (var (viewportWidth, viewportHeight, videoWidth, videoHeight) in new[]
+                 {
+                     (1600d, 900d, 1920d, 1080d),
+                     (1600d, 900d, 1728d, 1080d),
+                     (1600d, 900d, 468d, 360d),
+                     (900d, 1600d, 1920d, 1080d),
+                     (1920d, 500d, 1080d, 1920d)
+                 })
+        {
+            var value = calculator.Invoke(
+                null,
+                [viewportWidth, viewportHeight, videoWidth, videoHeight]);
+            if (value is not double renderScale
+                || !double.IsFinite(renderScale)
+                || renderScale < 1)
+                throw new InvalidDataException(
+                    "O cálculo de cover retornou uma escala inválida.");
+
+            var containedScale = Math.Min(
+                viewportWidth / videoWidth,
+                viewportHeight / videoHeight);
+            var displayedWidth = videoWidth * containedScale * renderScale;
+            var displayedHeight = videoHeight * containedScale * renderScale;
+            if (displayedWidth + 0.001 < viewportWidth
+                || displayedHeight + 0.001 < viewportHeight
+                || Math.Abs(displayedWidth / displayedHeight - videoWidth / videoHeight) > 0.000001)
+                throw new InvalidDataException(
+                    $"O vídeo {videoWidth:0}×{videoHeight:0} não cobriu " +
+                    $"{viewportWidth:0}×{viewportHeight:0} sem distorção.");
         }
     }
 

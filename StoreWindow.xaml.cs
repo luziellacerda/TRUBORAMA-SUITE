@@ -60,6 +60,8 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     private static readonly object FailedVideoCloseQuarantineGate = new();
     private static readonly List<(MediaElement Player, TrustedVideoLease Lease)>
         FailedVideoCloseQuarantine = [];
+    private static readonly ConditionalWeakTable<MediaElement, ResponsiveBackgroundVideoLayout>
+        ResponsiveBackgroundVideoLayouts = new();
     private static int _videoPlaybackDisabled;
     private static readonly IReadOnlyDictionary<string, string> BuiltInRetroPlatformDescriptions =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -1258,6 +1260,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         {
             player.MediaEnded -= RetroUniversalVideo_MediaEnded;
             player.MediaFailed -= RetroUniversalVideo_MediaFailed;
+            ReleaseResponsiveBackgroundVideoPlayer(player);
             try { player.Stop(); }
             catch (InvalidOperationException) { }
             try
@@ -1468,18 +1471,19 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             UnloadedBehavior = MediaState.Manual,
             IsMuted = true,
             Volume = 0,
-            Stretch = Stretch.UniformToFill,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Stretch,
+            Stretch = Stretch.Uniform,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
             Focusable = false,
             IsHitTestVisible = false,
             SnapsToDevicePixels = true,
-            UseLayoutRounding = true
+            UseLayoutRounding = true,
+            RenderTransformOrigin = new Point(0.5, 0.5),
+            RenderTransform = new ScaleTransform()
         };
 
-        // MediaElement may otherwise keep its native video dimensions during a
-        // resize. Following the viewport explicitly keeps every aspect ratio
-        // framed as a full-bleed background without stretching the image.
+        // Keep the layout box tied to the viewport. The render transform below
+        // performs the cover crop without changing measure or stretching video.
         player.SetBinding(
             WidthProperty,
             new Binding(nameof(ActualWidth))
@@ -1494,7 +1498,94 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                 Source = host,
                 Mode = BindingMode.OneWay
             });
+        ResponsiveBackgroundVideoLayouts.Add(
+            player,
+            new ResponsiveBackgroundVideoLayout(host, player));
         return player;
+    }
+
+    private static double CalculateBackgroundVideoCoverScale(
+        double viewportWidth,
+        double viewportHeight,
+        double naturalVideoWidth,
+        double naturalVideoHeight)
+    {
+        if (!double.IsFinite(viewportWidth)
+            || !double.IsFinite(viewportHeight)
+            || !double.IsFinite(naturalVideoWidth)
+            || !double.IsFinite(naturalVideoHeight)
+            || viewportWidth <= 0
+            || viewportHeight <= 0
+            || naturalVideoWidth <= 0
+            || naturalVideoHeight <= 0)
+            return 1;
+
+        var containedScale = Math.Min(
+            viewportWidth / naturalVideoWidth,
+            viewportHeight / naturalVideoHeight);
+        var coverScale = Math.Max(
+            viewportWidth / naturalVideoWidth,
+            viewportHeight / naturalVideoHeight);
+        return coverScale / containedScale;
+    }
+
+    private static void ReleaseResponsiveBackgroundVideoPlayer(MediaElement player)
+    {
+        if (!ResponsiveBackgroundVideoLayouts.TryGetValue(player, out var layout))
+            return;
+
+        ResponsiveBackgroundVideoLayouts.Remove(player);
+        layout.Dispose();
+    }
+
+    private sealed class ResponsiveBackgroundVideoLayout : IDisposable
+    {
+        private readonly FrameworkElement _host;
+        private readonly MediaElement _player;
+        private bool _disposed;
+
+        internal ResponsiveBackgroundVideoLayout(
+            FrameworkElement host,
+            MediaElement player)
+        {
+            _host = host;
+            _player = player;
+            _host.SizeChanged += Host_SizeChanged;
+            _player.MediaOpened += Player_MediaOpened;
+            _player.Unloaded += Player_Unloaded;
+            UpdateCoverScale();
+        }
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            _host.SizeChanged -= Host_SizeChanged;
+            _player.MediaOpened -= Player_MediaOpened;
+            _player.Unloaded -= Player_Unloaded;
+        }
+
+        private void Host_SizeChanged(object sender, SizeChangedEventArgs e) =>
+            UpdateCoverScale();
+
+        private void Player_MediaOpened(object sender, RoutedEventArgs e) =>
+            UpdateCoverScale();
+
+        private void Player_Unloaded(object sender, RoutedEventArgs e) => Dispose();
+
+        private void UpdateCoverScale()
+        {
+            if (_disposed || _player.RenderTransform is not ScaleTransform transform)
+                return;
+
+            var scale = CalculateBackgroundVideoCoverScale(
+                _host.ActualWidth,
+                _host.ActualHeight,
+                _player.NaturalVideoWidth,
+                _player.NaturalVideoHeight);
+            transform.ScaleX = scale;
+            transform.ScaleY = scale;
+        }
     }
 
     private void RetroSystemVideo_MediaOpened(object? sender, RoutedEventArgs e)
@@ -1708,6 +1799,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             player.MediaOpened -= RetroSystemVideo_MediaOpened;
             player.MediaEnded -= RetroSystemVideo_MediaEnded;
             player.MediaFailed -= RetroSystemVideo_MediaFailed;
+            ReleaseResponsiveBackgroundVideoPlayer(player);
             player.BeginAnimation(OpacityProperty, null);
             player.Opacity = 0;
             player.Tag = null;

@@ -12,8 +12,8 @@
       "catalogImage": "../../Assets/Catalog/Images/6dd6191b286604bd3bd99fbc13f68d44.jpg",
       "organizedImage": "6dd6191b286604bd3bd99fbc13f68d44.jpg",
       "sourceImage": null,
-      "bytes": 467733,
-      "sha256": "288e41e6db124bf1ff34ff948c7724b97d7aa7c024343270ba3971ed36224eb5"
+      "bytes": 908928,
+      "sha256": "1c58d786b0263964305823a436621c289000ca3045f04e9dabe1f8729f6e8fdc"
     },
     {
       "id": "5230157d200eb4cc54c5c9433e63cfd5",
@@ -22,8 +22,8 @@
       "catalogImage": "../../Assets/Catalog/Images/5230157d200eb4cc54c5c9433e63cfd5.jpg",
       "organizedImage": "5230157d200eb4cc54c5c9433e63cfd5.jpg",
       "sourceImage": null,
-      "bytes": 533392,
-      "sha256": "1efca384db173259621728c0cc72abf13f367591d6a7e88e366d4a0d6179c056"
+      "bytes": 863061,
+      "sha256": "fa07439b0a9bcd2357cd378fe59f72cd7cc2c824225e476cd6c5c6ac27709c14"
     },
     {
       "id": "3a08fe0ac729f24e35c590a8f0c006e5",
@@ -32,8 +32,8 @@
       "catalogImage": "../../Assets/Catalog/Images/3a08fe0ac729f24e35c590a8f0c006e5.jpg",
       "organizedImage": "3a08fe0ac729f24e35c590a8f0c006e5.jpg",
       "sourceImage": null,
-      "bytes": 519038,
-      "sha256": "c48483efd28dea6b9906b7bae0a362e4552cbbe24f4cec6bdc8a2b5c2cf8b145"
+      "bytes": 897033,
+      "sha256": "afe1b078a3c15961a40dfc189df7bb3fe71096a1f0724e43ecf3aa5d975d0ab6"
     },
     {
       "id": "8cb77282b301461f9aef76ad666fed41",
@@ -42,8 +42,8 @@
       "catalogImage": "../../Assets/Catalog/Images/8cb77282b301461f9aef76ad666fed41.jpg",
       "organizedImage": "8cb77282b301461f9aef76ad666fed41.jpg",
       "sourceImage": null,
-      "bytes": 628822,
-      "sha256": "a260ddff33e8b6ca1c71837d6449bcd72a19a6d3cf91fe1233b4369dee51f2d9"
+      "bytes": 966074,
+      "sha256": "ee39bf2fe2374c4055d7a1e7da451383ce881e7aca1929a5cb214ae2416bf3f9"
     },
     {
       "id": "c5ddd43df8747f9c5e56e06bf87cf6eb",
@@ -52,8 +52,8 @@
       "catalogImage": "../../Assets/Catalog/Images/c5ddd43df8747f9c5e56e06bf87cf6eb.jpg",
       "organizedImage": "c5ddd43df8747f9c5e56e06bf87cf6eb.jpg",
       "sourceImage": null,
-      "bytes": 354097,
-      "sha256": "134bdbf25f3d9b9bed1de3f33411c48fb6b34e17880047793a3ea99d4780f596"
+      "bytes": 886681,
+      "sha256": "4e115df92225eda140b5a4800426da7016302825a21e279ffc65a96591ca3dab"
     },
     {
       "id": "24a080c5d6fccb3d310526d41ccbb299",
@@ -62,8 +62,8 @@
       "catalogImage": "../../Assets/Catalog/Images/24a080c5d6fccb3d310526d41ccbb299.jpg",
       "organizedImage": "24a080c5d6fccb3d310526d41ccbb299.jpg",
       "sourceImage": null,
-      "bytes": 582495,
-      "sha256": "823fc76e00c598f72c1d634456378ccbc8001564c9e1308faa2fb4397c5b5565"
+      "bytes": 953879,
+      "sha256": "28e0577871bc1e9d1ff6207fc449144894de8b3792439015986c975f30e28962"
     },
     {
       "id": "4bed986220f797749264460c38668a30",
@@ -72,8 +72,8 @@
       "catalogImage": "../../Assets/Catalog/Images/4bed986220f797749264460c38668a30.jpg",
       "organizedImage": "4bed986220f797749264460c38668a30.jpg",
       "sourceImage": null,
-      "bytes": 601664,
-      "sha256": "aa1444ac4dffc88cfe17209e5ceb4fc54e84f93c309cf48bd5929e3767343c10"
+      "bytes": 781221,
+      "sha256": "66a1255fb6bce8326a1855ce1741cd992a16c1b94143e5ca723e1c6e91d3111b"
     },
     {
       "id": "c1a2140060e1f59fe31cc30890e54fef",
@@ -92,8 +92,8 @@
       "catalogImage": "../../Assets/Catalog/Images/5701aa19629ef6bdf8e5e2b2e0b21052.jpg",
       "organizedImage": "5701aa19629ef6bdf8e5e2b2e0b21052.jpg",
       "sourceImage": null,
-      "bytes": 532145,
-      "sha256": "52be9073d9b7307ccfdb9dd35bae56cae299c714668c525df389c29e5bd28ba9"
+      "bytes": 873638,
+      "sha256": "f67e4ac6aa1960e65c204793adf62ec7908f438e22c0ee5f5f30a221f018f048"
     },
     {
       "id": "c9c8a8b66d5180352c7cefa8331167ee",
@@ -102,8 +102,8 @@
       "catalogImage": "../../Assets/Catalog/Images/c9c8a8b66d5180352c7cefa8331167ee.jpg",
       "organizedImage": "c9c8a8b66d5180352c7cefa8331167ee.jpg",
       "sourceImage": null,
-      "bytes": 579922,
-      "sha256": "9f725fe717ea876afbd32b5f022bec182ed3cbb46a757979141ecfcece788523"
+      "bytes": 923417,
+      "sha256": "31e6ee31ff509fa4d87e1d0c604968c41c6afbaed8dceb2db3165d7dede4719a"
     },
     {
       "id": "618ffb4024cde0b411cf20c0dbba48f7",
@@ -184,6 +184,26 @@
       "sourceImage": null,
       "bytes": 470207,
       "sha256": "8d4b7adf9516f97157a1ad5ec62c72f9caf03d5dc34a3e6512f4a8d16efb4569"
+    },
+    {
+      "id": "007725e1cc5bb894e203749e469159e9",
+      "title": "Castlevania Lords of Shadow Ultimate Edition",
+      "fileName": "007725e1cc5bb894e203749e469159e9.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/007725e1cc5bb894e203749e469159e9.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 296792,
+      "sha256": "7ce8137f32cae99b72928d3ff45136dc04fa5cc33f713070d738ace4939abae7"
+    },
+    {
+      "id": "4a9d2289ad155a52bd958d1cb9661ccc",
+      "title": "Castlevania.Lords.of.Shadow.2",
+      "fileName": "4a9d2289ad155a52bd958d1cb9661ccc.jpg",
+      "catalogImage": "../../Assets/Catalog/Images/4a9d2289ad155a52bd958d1cb9661ccc.jpg",
+      "organizedImage": null,
+      "sourceImage": null,
+      "bytes": 281522,
+      "sha256": "b82f4c252c6a1ad55433f5d302d169626a1e1fb9f6106f25aa07834b66c207d5"
     },
     {
       "id": "08f0fd464b53c404d2c557effcba1087",
@@ -984,26 +1004,6 @@
       "sourceImage": null,
       "bytes": 629407,
       "sha256": "54600323a11f09e34e4beb2e766bc056eddc1ae4ee5d8cbab780987201a9b58c"
-    },
-    {
-      "id": "007725e1cc5bb894e203749e469159e9",
-      "title": "Castlevania Lords of Shadow Ultimate Edition",
-      "fileName": "007725e1cc5bb894e203749e469159e9.jpg",
-      "catalogImage": "../../Assets/Catalog/Images/007725e1cc5bb894e203749e469159e9.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 296792,
-      "sha256": "7ce8137f32cae99b72928d3ff45136dc04fa5cc33f713070d738ace4939abae7"
-    },
-    {
-      "id": "4a9d2289ad155a52bd958d1cb9661ccc",
-      "title": "Castlevania.Lords.of.Shadow.2",
-      "fileName": "4a9d2289ad155a52bd958d1cb9661ccc.jpg",
-      "catalogImage": "../../Assets/Catalog/Images/4a9d2289ad155a52bd958d1cb9661ccc.jpg",
-      "organizedImage": null,
-      "sourceImage": null,
-      "bytes": 281522,
-      "sha256": "b82f4c252c6a1ad55433f5d302d169626a1e1fb9f6106f25aa07834b66c207d5"
     }
   ]
 }
