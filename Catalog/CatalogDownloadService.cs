@@ -223,9 +223,10 @@ public sealed class CatalogDownloadService : IDisposable
             if (savedStates.Length == 0)
             {
                 var destinationPath = canonicalDestinationPath;
-                if (!File.Exists(destinationPath)
-                    && !File.Exists(destinationPath + ".part")
-                    && !File.Exists(destinationPath + ".part" + ResumeSuffix))
+                if (!FileSystemEntryExists(destinationPath)
+                    && !FileSystemEntryExists(destinationPath + ".part")
+                    && !FileSystemEntryExists(destinationPath + ".part" + ResumeSuffix)
+                    && !FileSystemEntryExists(destinationPath + ".part" + LocalAttestationSuffix))
                 {
                     item.DiscardDownload();
                     return true;
@@ -3186,7 +3187,7 @@ public sealed class CatalogDownloadService : IDisposable
         failure = string.Empty;
         try
         {
-            if (!File.Exists(path)) return true;
+            if (!FileSystemEntryExists(path)) return true;
             _ = PathIdentity.DeleteFileExact(path, installationRoot);
             return true;
         }
@@ -3195,6 +3196,23 @@ public sealed class CatalogDownloadService : IDisposable
                                            or InvalidDataException)
         {
             failure = "O arquivo está em uso ou não pôde ser removido.";
+            return false;
+        }
+    }
+
+    private static bool FileSystemEntryExists(string path)
+    {
+        try
+        {
+            _ = File.GetAttributes(path);
+            return true;
+        }
+        catch (FileNotFoundException)
+        {
+            return false;
+        }
+        catch (DirectoryNotFoundException)
+        {
             return false;
         }
     }

@@ -83,5 +83,21 @@
                       LogicalName="Turborama.SystemVideoIntegrity.json" />
     <EmbeddedResource Include="Assets\BackgroundVideos\background-video-integrity.json"
                       LogicalName="Turborama.BackgroundVideoIntegrity.json" />
+    <EmbeddedResource Include="Assets\Music\Turborama - Faixa 01.mp3"
+                      LogicalName="Turborama.Music.Track01.mp3" />
+    <EmbeddedResource Include="Assets\Music\Turborama - Faixa 02.mp3"
+                      LogicalName="Turborama.Music.Track02.mp3" />
+    <EmbeddedResource Include="Assets\Music\Turborama - Faixa 03.mp3"
+                      LogicalName="Turborama.Music.Track03.mp3" />
+    <EmbeddedResource Include="Assets\Music\Turborama - Faixa 04.mp3"
+                      LogicalName="Turborama.Music.Track04.mp3" />
+    <EmbeddedResource Include="Assets\Music\Turborama - Faixa 05.mp3"
+                      LogicalName="Turborama.Music.Track05.mp3" />
+    <EmbeddedResource Include="Assets\Music\Turborama - Faixa 06.mp3"
+                      LogicalName="Turborama.Music.Track06.mp3" />
+    <EmbeddedResource Include="Assets\Music\Turborama - Faixa 07.mp3"
+                      LogicalName="Turborama.Music.Track07.mp3" />
+    <EmbeddedResource Include="Assets\Music\Turborama - Faixa 08.mp3"
+                      LogicalName="Turborama.Music.Track08.mp3" />
   </ItemGroup>
 </Project>

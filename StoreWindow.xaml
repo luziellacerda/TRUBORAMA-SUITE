@@ -11,9 +11,9 @@
       <SolidColorBrush x:Key="MutedBrush" Color="#8E988C" />
       <SolidColorBrush x:Key="PanelSurface" Color="#0E120E" />
       <SolidColorBrush x:Key="LineBrush" Color="#293027" />
-      <Color x:Key="CurrentSystemAccentColor">#2389FF</Color>
-      <SolidColorBrush x:Key="CurrentSystemAccentBrush" Color="#2389FF" />
-      <SolidColorBrush x:Key="CurrentSystemBrightBrush" Color="#63ADFF" />
+      <Color x:Key="CurrentSystemAccentColor">#5FA5F5</Color>
+      <SolidColorBrush x:Key="CurrentSystemAccentBrush" Color="#5FA5F5" />
+      <SolidColorBrush x:Key="CurrentSystemBrightBrush" Color="#82B9F7" />
       <SolidColorBrush x:Key="CurrentSystemContrastBrush" Color="#FFFFFF" />
       <SolidColorBrush x:Key="CurrentSystemBrightContrastBrush" Color="#071007" />
       <SolidColorBrush x:Key="CurrentSystemSurfaceBrush" Color="#161B5C96" />
@@ -21,16 +21,18 @@
       <SolidColorBrush x:Key="CurrentSystemLineBrush" Color="#A02389FF" />
       <SolidColorBrush x:Key="CurrentSystemHeaderBrush" Color="#F20D172B" />
       <LinearGradientBrush x:Key="CurrentSystemSidebarBrush" StartPoint="0,.5" EndPoint="1,.5">
-        <GradientStop Color="#FF2389FF" Offset="0" />
-        <GradientStop Color="#4A16243A" Offset=".16" />
-        <GradientStop Color="#FF080A08" Offset=".62" />
+        <GradientStop Color="#FF5FA5F5" Offset="0" />
+        <GradientStop Color="#FF5FA5F5" Offset=".05" />
+        <GradientStop Color="#402D506C" Offset=".16" />
+        <GradientStop Color="#FF080A08" Offset=".32" />
         <GradientStop Color="#FF050705" Offset="1" />
       </LinearGradientBrush>
       <LinearGradientBrush x:Key="CurrentSystemSidebarSelectionBrush" StartPoint="0,.5" EndPoint="1,.5">
-        <GradientStop Color="#FF2389FF" Offset="0" />
-        <GradientStop Color="#B02389FF" Offset=".12" />
-        <GradientStop Color="#3E2389FF" Offset=".48" />
-        <GradientStop Color="#00000000" Offset="1" />
+        <GradientStop Color="#FF5FA5F5" Offset="0" />
+        <GradientStop Color="#FF5FA5F5" Offset=".05" />
+        <GradientStop Color="#6E5FA5F5" Offset=".14" />
+        <GradientStop Color="#1C5FA5F5" Offset=".28" />
+        <GradientStop Color="#00000000" Offset=".42" />
       </LinearGradientBrush>
       <LinearGradientBrush x:Key="CurrentSystemVideoOverlayBrush" StartPoint="0,.5" EndPoint="1,.5">
         <GradientStop Color="#FF000000" Offset="0" />
@@ -1629,8 +1631,8 @@
                       <Button Content="▶" AutomationProperties.Name="Próxima música" Style="{StaticResource SecondaryButtonStyle}" Width="34" MinHeight="32" Height="32" Padding="0" Click="MusicNext_Click" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
-                      <TextBlock Name="MusicTrackTitle" Text="Escolha uma pasta de músicas" FontSize="11" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                      <TextBlock Name="MusicPlaybackStatus" Text="PAUSADO" Foreground="#687363" FontSize="8" FontWeight="Bold" Margin="0,2,0,0" />
+                      <TextBlock Name="MusicTrackTitle" Text="Preparando músicas internas..." FontSize="11" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Name="MusicPlaybackStatus" Text="AUTOMÁTICO" Foreground="#687363" FontSize="8" FontWeight="Bold" Margin="0,2,0,0" />
                     </StackPanel>
                     <Button Grid.Column="2" Content="PASTA DE MÚSICAS" AutomationProperties.Name="Escolher pasta de músicas" Style="{StaticResource SecondaryButtonStyle}" MinHeight="32" Height="32" Padding="10,0" Click="ChooseMusicFolder_Click" />
                     <Grid Grid.Row="1" Grid.ColumnSpan="3" Margin="0,8,0,0">
@@ -1654,10 +1656,7 @@
                       <TextBlock Name="ManagedGameSystemTitle" Text="Jogos locais" FontSize="15" FontWeight="Bold" />
                       <TextBlock Text="  •  " Foreground="#596254" />
                       <TextBlock Name="ManagedGameDownloadedCount" Text="0" Foreground="{StaticResource LimeBrush}" FontSize="13" FontWeight="Bold" />
-                      <TextBlock Text=" baixados" Foreground="#AAB3A7" FontSize="10" VerticalAlignment="Center" />
-                      <TextBlock Text="  •  " Foreground="#596254" />
-                      <TextBlock Name="ManagedGameMissingCount" Text="0" Foreground="#AAB3A7" FontSize="13" FontWeight="Bold" />
-                      <TextBlock Text=" não baixados" Foreground="#7E887B" FontSize="10" VerticalAlignment="Center" />
+                      <TextBlock Text=" instalados" Foreground="#AAB3A7" FontSize="10" VerticalAlignment="Center" />
                     </StackPanel>
                     <Button Grid.Column="1" Content="ATUALIZAR" AutomationProperties.Name="Atualizar análise dos jogos locais" Style="{StaticResource SecondaryButtonStyle}" MinHeight="30" Height="30" Padding="11,0" Click="RefreshManagedGames_Click" />
                   </Grid>
@@ -1675,8 +1674,8 @@
                 <Grid Grid.Row="3">
                   <Border Name="ManagedGamesEmptyPanel" Style="{StaticResource PanelBorderStyle}">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                      <TextBlock Text="Nenhum jogo nesta seleção" FontSize="17" FontWeight="Bold" />
-                      <TextBlock Text="Altere o sistema ou limpe a busca." Foreground="{StaticResource MutedBrush}" FontSize="10" Margin="0,5,0,0" />
+                      <TextBlock Text="Nenhum jogo instalado neste sistema" FontSize="17" FontWeight="Bold" />
+                      <TextBlock Text="Instale um jogo, atualize a análise ou selecione outro sistema." Foreground="{StaticResource MutedBrush}" FontSize="10" Margin="0,5,0,0" />
                     </StackPanel>
                   </Border>
                   <ListBox Name="ManagedGamesList"

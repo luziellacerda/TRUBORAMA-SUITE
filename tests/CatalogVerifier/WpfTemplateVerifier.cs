@@ -91,6 +91,8 @@ internal static class WpfTemplateVerifier
                 VerifyPathIdentityLeaseAdversaries();
                 VerifyArtifactPolicyDivergenceFailsClosed();
                 VerifyBackgroundVideoManifestAndRouting();
+                VerifyEmbeddedMusicResources();
+                VerifyLocalGamesOnlyShowsPhysicalContent();
                 application = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
                 window = CreateAuthorizedWindowForRendering();
                 window.ShowActivated = false;
@@ -130,21 +132,27 @@ internal static class WpfTemplateVerifier
                     item.Id.Equals("playstation-3", StringComparison.OrdinalIgnoreCase));
                 openCatalog.Invoke(window, [ps3]);
                 if (window.Resources["CurrentSystemSidebarBrush"] is not LinearGradientBrush ps3Sidebar
-                    || ps3Sidebar.GradientStops.Count < 4
-                    || ps3Sidebar.GradientStops[0].Color != Color.FromRgb(15, 164, 222)
+                    || ps3Sidebar.GradientStops.Count != 5
+                    || ps3Sidebar.GradientStops[0].Color != Color.FromRgb(81, 184, 223)
                     || ps3Sidebar.GradientStops[0].Offset != 0
+                    || ps3Sidebar.GradientStops[1].Color != Color.FromRgb(81, 184, 223)
+                    || ps3Sidebar.GradientStops[1].Offset != .05
+                    || ps3Sidebar.GradientStops[3].Offset != .32
                     || ps3Sidebar.GradientStops[^1].Color.R > 8
                     || ps3Sidebar.GradientStops[^1].Color.G > 8
                     || ps3Sidebar.GradientStops[^1].Color.B > 8
                     || ps3Sidebar.GradientStops[^1].Offset != 1)
                     throw new InvalidDataException(
-                        "O menu lateral precisa começar na cor ativa e terminar em preto.");
+                        "O menu lateral precisa manter 5% de cor suave e chegar cedo ao preto.");
                 if (window.Resources["CurrentSystemSidebarSelectionBrush"] is not LinearGradientBrush selection
-                    || selection.GradientStops.Count < 4
-                    || selection.GradientStops[0].Color != Color.FromRgb(15, 164, 222)
-                    || selection.GradientStops[^1].Color.A != 0)
+                    || selection.GradientStops.Count != 5
+                    || selection.GradientStops[0].Color != Color.FromRgb(81, 184, 223)
+                    || selection.GradientStops[1].Color != Color.FromRgb(81, 184, 223)
+                    || selection.GradientStops[1].Offset != .05
+                    || selection.GradientStops[^1].Color.A != 0
+                    || selection.GradientStops[^1].Offset != .42)
                     throw new InvalidDataException(
-                        "A seleção lateral precisa usar o degradê tecnológico da cor ativa.");
+                        "A seleção lateral precisa manter 5% de cor e um degradê tecnológico curto.");
                 if (window.Resources["TechScrollThumbStyle"] is not Style scrollThumbStyle
                     || scrollThumbStyle.TargetType != typeof(Thumb))
                     throw new InvalidDataException(
@@ -157,10 +165,10 @@ internal static class WpfTemplateVerifier
 
                 var requestedThemeColors = new Dictionary<string, Color>(StringComparer.OrdinalIgnoreCase)
                 {
-                    ["playstation-1"] = Color.FromRgb(229, 231, 235),
-                    ["playstation-2"] = Color.FromRgb(59, 130, 246),
-                    ["playstation-2-br"] = Color.FromRgb(59, 130, 246),
-                    ["sega-saturn"] = Color.FromRgb(37, 99, 235)
+                    ["playstation-1"] = Color.FromRgb(227, 229, 231),
+                    ["playstation-2"] = Color.FromRgb(111, 161, 239),
+                    ["playstation-2-br"] = Color.FromRgb(111, 161, 239),
+                    ["sega-saturn"] = Color.FromRgb(96, 140, 231)
                 };
                 foreach (var requestedTheme in requestedThemeColors)
                 {
@@ -178,6 +186,7 @@ internal static class WpfTemplateVerifier
                 window.Dispatcher.Invoke(
                     () => window.UpdateLayout(),
                     DispatcherPriority.ApplicationIdle);
+                VerifyBuiltInMusicAutoplay(window);
                 VerifyAsyncThumbnailBinding(window);
                 VerifyResponsiveBackgroundVideo(window);
                 VerifyVideoLeaseLifecycle(window);
@@ -1527,11 +1536,11 @@ internal static class WpfTemplateVerifier
                 }
                 if (player.NaturalVideoWidth <= 0
                     || player.NaturalVideoHeight <= 0
-                    || player.Stretch != Stretch.Uniform
+                    || player.Stretch != Stretch.UniformToFill
                     || player.StretchDirection != StretchDirection.Both
                     || player.RenderTransform is not null and not MatrixTransform { Matrix.IsIdentity: true })
                     throw new InvalidDataException(
-                        "O vídeo real não permaneceu inteiro e proporcional após MediaOpened.");
+                        "O vídeo real não permaneceu proporcional e preenchendo a área após MediaOpened.");
             }
             finally
             {
@@ -1661,7 +1670,7 @@ internal static class WpfTemplateVerifier
                           "CreateResponsiveBackgroundVideoPlayer");
         var player = factory.Invoke(null, [host]) as MediaElement
                      ?? throw new InvalidDataException("O player responsivo não pôde ser criado.");
-        if (player.Stretch != Stretch.Uniform
+        if (player.Stretch != Stretch.UniformToFill
             || player.StretchDirection != StretchDirection.Both
             || player.HorizontalAlignment != HorizontalAlignment.Stretch
             || player.VerticalAlignment != VerticalAlignment.Stretch
@@ -1669,7 +1678,7 @@ internal static class WpfTemplateVerifier
             || Math.Abs(player.Volume) > double.Epsilon
             || player.RenderTransform is not null and not MatrixTransform { Matrix.IsIdentity: true })
             throw new InvalidDataException(
-                "O player precisa mostrar o quadro inteiro, proporcional, centralizado e sem áudio.");
+                "O player precisa preencher toda a área, proporcional, centralizado e sem áudio.");
         host.Children.Add(player);
         var originalCarouselVisibility = carouselHost.Visibility;
         carouselHost.Visibility = Visibility.Visible;
@@ -1781,6 +1790,166 @@ internal static class WpfTemplateVerifier
             != "Cliente ••••1234")
             throw new InvalidDataException(
                 "O mascaramento da licença não protegeu os limites esperados.");
+    }
+
+    private static void VerifyEmbeddedMusicResources()
+    {
+        var tracks = EmbeddedMusicLibrary.Tracks;
+        if (tracks.Count != 8)
+            throw new InvalidDataException(
+                "A playlist interna precisa conter as oito músicas únicas aprovadas.");
+        var resourceNames = new HashSet<string>(StringComparer.Ordinal);
+        var fileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var hashes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var track in tracks)
+        {
+            if (!resourceNames.Add(track.ResourceName)
+                || !fileNames.Add(track.FileName)
+                || !hashes.Add(track.Sha256))
+                throw new InvalidDataException(
+                    "A playlist interna contém recurso, arquivo ou música duplicada.");
+            using var stream = typeof(EmbeddedMusicLibrary).Assembly.GetManifestResourceStream(
+                                   track.ResourceName)
+                               ?? throw new InvalidDataException(
+                                   $"A música interna '{track.DisplayName}' não foi incorporada.");
+            if (stream.Length != track.Length)
+                throw new InvalidDataException(
+                    $"A música interna '{track.DisplayName}' possui tamanho incorreto.");
+            var actualHash = Convert.ToHexString(SHA256.HashData(stream));
+            if (!actualHash.Equals(track.Sha256, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException(
+                    $"A música interna '{track.DisplayName}' possui SHA-256 incorreto.");
+        }
+
+        var paths = EmbeddedMusicLibrary.PreparePlaylist(CancellationToken.None);
+        if (paths.Count != tracks.Count)
+            throw new InvalidDataException("O cache validado não materializou a playlist interna.");
+        using var lease = EmbeddedMusicLibrary.OpenVerifiedTrackLease(
+            paths[0],
+            CancellationToken.None);
+        lease.Revalidate();
+        try
+        {
+            using var unexpectedWriter = new FileStream(
+                paths[0],
+                FileMode.Open,
+                FileAccess.Write,
+                FileShare.ReadWrite | FileShare.Delete);
+            throw new InvalidDataException(
+                "A música validada permaneceu gravável enquanto o decoder poderia usá-la.");
+        }
+        catch (IOException)
+        {
+        }
+        lease.Revalidate();
+    }
+
+    private static void VerifyBuiltInMusicAutoplay(StoreWindow window)
+    {
+        var tracksField = typeof(StoreWindow).GetField(
+                              "_musicTracks",
+                              BindingFlags.Instance | BindingFlags.NonPublic)
+                          ?? throw new MissingFieldException(nameof(StoreWindow), "_musicTracks");
+        var playingField = typeof(StoreWindow).GetField(
+                               "_isMusicPlaying",
+                               BindingFlags.Instance | BindingFlags.NonPublic)
+                           ?? throw new MissingFieldException(nameof(StoreWindow), "_isMusicPlaying");
+        var leaseField = typeof(StoreWindow).GetField(
+                             "_activeEmbeddedMusicTrackLease",
+                             BindingFlags.Instance | BindingFlags.NonPublic)
+                         ?? throw new MissingFieldException(
+                             nameof(StoreWindow),
+                             "_activeEmbeddedMusicTrackLease");
+        var playerField = typeof(StoreWindow).GetField(
+                              "_musicPlayer",
+                              BindingFlags.Instance | BindingFlags.NonPublic)
+                          ?? throw new MissingFieldException(nameof(StoreWindow), "_musicPlayer");
+        var frame = new DispatcherFrame();
+        var succeeded = false;
+        var poll = new DispatcherTimer(
+            DispatcherPriority.ApplicationIdle,
+            window.Dispatcher)
+        {
+            Interval = TimeSpan.FromMilliseconds(50)
+        };
+        var timeout = new DispatcherTimer(
+            DispatcherPriority.Send,
+            window.Dispatcher)
+        {
+            Interval = TimeSpan.FromSeconds(15)
+        };
+        void Complete()
+        {
+            if (frame.Continue) frame.Continue = false;
+        }
+        poll.Tick += (_, _) =>
+        {
+            var tracks = tracksField.GetValue(window) as List<string>;
+            var isPlaying = playingField.GetValue(window) as bool? == true;
+            var activeLease = leaseField.GetValue(window) as EmbeddedMusicTrackLease;
+            var player = playerField.GetValue(window) as MediaPlayer;
+            if (tracks?.Count != EmbeddedMusicLibrary.Tracks.Count
+                || !isPlaying
+                || activeLease is null
+                || player is null
+                || !player.NaturalDuration.HasTimeSpan
+                || player.NaturalDuration.TimeSpan <= TimeSpan.Zero)
+                return;
+            var expectedNames = EmbeddedMusicLibrary.Tracks.Select(track => track.FileName);
+            if (!tracks.Select(Path.GetFileName).SequenceEqual(
+                    expectedNames,
+                    StringComparer.OrdinalIgnoreCase))
+                return;
+            activeLease.Revalidate();
+            succeeded = true;
+            Complete();
+        };
+        timeout.Tick += (_, _) => Complete();
+        try
+        {
+            poll.Start();
+            timeout.Start();
+            Dispatcher.PushFrame(frame);
+        }
+        finally
+        {
+            poll.Stop();
+            timeout.Stop();
+        }
+        if (!succeeded)
+            throw new InvalidDataException(
+                "As músicas internas não iniciaram automaticamente na ordem incorporada.");
+    }
+
+    private static void VerifyLocalGamesOnlyShowsPhysicalContent()
+    {
+        var physicalPath = Path.GetTempFileName();
+        try
+        {
+            CatalogLocalGameInspection Inspection(CatalogLocalGameStatus status, string path) =>
+                new(status, path, "teste");
+            var missingPath = physicalPath + ".ausente";
+            if (!StoreWindow.IsVisibleLocalGame(
+                    Inspection(CatalogLocalGameStatus.Downloaded, physicalPath))
+                || !StoreWindow.IsVisibleLocalGame(
+                    Inspection(CatalogLocalGameStatus.Incomplete, physicalPath))
+                || !StoreWindow.IsVisibleLocalGame(
+                    Inspection(CatalogLocalGameStatus.Unsafe, physicalPath))
+                || StoreWindow.IsVisibleLocalGame(
+                    Inspection(CatalogLocalGameStatus.Downloaded, missingPath))
+                || StoreWindow.IsVisibleLocalGame(
+                    Inspection(CatalogLocalGameStatus.Scanning, physicalPath))
+                || StoreWindow.IsVisibleLocalGame(
+                    Inspection(CatalogLocalGameStatus.NotDownloaded, physicalPath))
+                || StoreWindow.IsVisibleLocalGame(
+                    Inspection(CatalogLocalGameStatus.Unavailable, physicalPath)))
+                throw new InvalidDataException(
+                    "Jogos locais deve esconder o catálogo ausente e mostrar somente conteúdo físico.");
+        }
+        finally
+        {
+            File.Delete(physicalPath);
+        }
     }
 
     private static void AssertElementWithinAncestor(

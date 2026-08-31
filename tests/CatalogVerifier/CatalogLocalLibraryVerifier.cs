@@ -17,6 +17,7 @@ internal static class CatalogLocalLibraryVerifier
 
         await VerifyDirectFileStatesAsync(service, libraryRoot);
         await VerifyDirectMigrationAndAuthorizationWithdrawalAsync(service, libraryRoot);
+        await VerifyOrphanAttestationDiscardAsync(downloadService, service, libraryRoot);
         await VerifyDirectRelocationSurvivesRestartAsync(
             downloadService,
             scenarioRoot);
@@ -50,6 +51,41 @@ internal static class CatalogLocalLibraryVerifier
         var deleted = await service.DeleteAsync(libraryRoot, item, CancellationToken.None);
         Assert(deleted && !File.Exists(expectedPath),
             "A exclusão validada não removeu o arquivo local esperado.");
+    }
+
+    private static async Task VerifyOrphanAttestationDiscardAsync(
+        CatalogDownloadService downloadService,
+        CatalogLocalLibraryService localLibraryService,
+        string libraryRoot)
+    {
+        var payload = "orphan-attestation-cleanup"u8.ToArray();
+        var item = CreateItem(
+            "orphan-attestation-cleanup",
+            payload,
+            CatalogExtractPolicy.None,
+            ".rom",
+            category: "Windows");
+        var expectedPath = localLibraryService.BuildExpectedPath(libraryRoot, item);
+        Directory.CreateDirectory(Path.GetDirectoryName(expectedPath)!);
+        await File.WriteAllBytesAsync(expectedPath, payload);
+        var inspection = (await localLibraryService.InspectAsync(
+            libraryRoot,
+            [item],
+            CancellationToken.None))[0];
+        var statePath = expectedPath + ".part.resume.json";
+        var attestationPath = expectedPath + ".part.local-attestation.dpapi";
+        Assert(inspection.Status == CatalogLocalGameStatus.Downloaded
+               && File.Exists(statePath)
+               && File.Exists(attestationPath),
+            "O cenário de atestação órfã não foi preparado.");
+
+        File.Delete(expectedPath);
+        File.Delete(statePath);
+        Assert(File.Exists(attestationPath),
+            "A atestação isolada deveria existir antes do descarte.");
+        Assert(downloadService.Discard(item, libraryRoot)
+               && !File.Exists(attestationPath),
+            "O descarte não removeu a atestação local órfã no caminho canônico.");
     }
 
     private static async Task VerifyDirectMigrationAndAuthorizationWithdrawalAsync(
