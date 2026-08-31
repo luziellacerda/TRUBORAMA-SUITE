@@ -121,35 +121,23 @@ internal static class WpfTemplateVerifier
                     throw new InvalidDataException(
                         "Jogos locais precisa ser uma página separada, por sistema e com player de música.");
                 if (window.FindName("SidebarHost") is not Border sidebarHost
-                    || window.FindName("SidebarCoverFrame") is not Grid sidebarFrame
-                    || sidebarFrame.IsHitTestVisible
-                    || sidebarFrame.Focusable
-                    || FindVisualDescendants<Control>(sidebarFrame).Any()
-                    || window.FindName("SidebarMetalTopRail") is not System.Windows.Shapes.Path topRail
-                    || window.FindName("SidebarMetalBottomRail") is not System.Windows.Shapes.Path bottomRail
-                    || window.FindName("SidebarMetalLeftRail") is not System.Windows.Shapes.Rectangle leftRail
-                    || window.FindName("SidebarMetalRightRail") is not System.Windows.Shapes.Rectangle rightRail
-                    || topRail.Opacity != 1
-                    || bottomRail.Opacity != 1
-                    || leftRail.Opacity != 1
-                    || rightRail.Opacity != 1
-                    || window.FindName("SidebarTopLedBar") is not System.Windows.Shapes.Rectangle topLed
-                    || topLed.Fill is null
-                    || topLed.Effect is not System.Windows.Media.Effects.DropShadowEffect
-                    || window.FindName("SidebarFrameTopLeftGlow") is not System.Windows.Shapes.Path topGlow
-                    || topGlow.Stroke is null
-                    || topGlow.Effect is not System.Windows.Media.Effects.DropShadowEffect
-                    || window.FindName("SidebarFrameBottomRightGlow") is not System.Windows.Shapes.Path bottomGlow
-                    || bottomGlow.Stroke is null
-                    || bottomGlow.Effect is not System.Windows.Media.Effects.DropShadowEffect
-                    || window.FindName("SidebarFrameLeftEnergySegments") is not StackPanel leftSegments
-                    || leftSegments.Children.Count != 5
-                    || leftSegments.Children.Cast<UIElement>().Any(item => item is not System.Windows.Shapes.Rectangle)
-                    || window.FindName("SidebarFrameRightEnergySegments") is not StackPanel rightSegments
-                    || rightSegments.Children.Count != 5
-                    || rightSegments.Children.Cast<UIElement>().Any(item => item is not System.Windows.Shapes.Rectangle))
+                    || window.FindName("SidebarLedLayer") is not Grid sidebarLedLayer
+                    || sidebarLedLayer.IsHitTestVisible
+                    || sidebarLedLayer.Focusable
+                    || sidebarLedLayer.Children.Count != 1
+                    || FindVisualDescendants<Control>(sidebarLedLayer).Any()
+                    || window.FindName("SidebarLedBar") is not System.Windows.Shapes.Rectangle sidebarLed
+                    || Math.Abs(sidebarLed.Width - 2) > double.Epsilon
+                    || sidebarLed.HorizontalAlignment != HorizontalAlignment.Left
+                    || sidebarLed.VerticalAlignment != VerticalAlignment.Stretch
+                    || sidebarLed.Fill is null
+                    || sidebarLed.Effect is not System.Windows.Media.Effects.DropShadowEffect
+                    || window.FindName("SidebarCoverFrame") is not null
+                    || window.FindName("SidebarMetalTopRail") is not null
+                    || window.FindName("SidebarTopLedBar") is not null
+                    || window.FindName("SidebarFrameLeftEnergySegments") is not null)
                     throw new InvalidDataException(
-                        "A moldura lateral precisa manter cantos metálicos e trilhos de energia sem capturar cliques.");
+                        "O menu lateral original precisa manter apenas um LED lateral fino, sem a moldura tecnológica.");
                 if (window.FindName("LicenseConsumerText") is not TextBlock licenseConsumer
                     || licenseConsumer.Text != "Cliente ••••FIER"
                     || licenseConsumer.Text.Contains("TR-WPF-VERIFIER", StringComparison.Ordinal)
@@ -161,29 +149,13 @@ internal static class WpfTemplateVerifier
                 var ps3 = window.CatalogCategories.Single(item =>
                     item.Id.Equals("playstation-3", StringComparison.OrdinalIgnoreCase));
                 openCatalog.Invoke(window, [ps3]);
-                if (window.Resources["CurrentSystemSidebarBrush"] is not LinearGradientBrush ps3Sidebar
-                    || ps3Sidebar.GradientStops.Count != 5
-                    || ps3Sidebar.GradientStops[0].Color != Color.FromRgb(81, 184, 223)
-                    || ps3Sidebar.GradientStops[0].Offset != 0
-                    || ps3Sidebar.GradientStops[1].Color != Color.FromRgb(81, 184, 223)
-                    || ps3Sidebar.GradientStops[1].Offset != .02
-                    || ps3Sidebar.GradientStops[2].Color != Color.FromRgb(21, 44, 54)
-                    || ps3Sidebar.GradientStops[2].Offset != .08
-                    || ps3Sidebar.GradientStops[3].Color != Color.FromRgb(8, 10, 8)
-                    || ps3Sidebar.GradientStops[3].Offset != .18
-                    || ps3Sidebar.GradientStops[^1].Color.R > 8
-                    || ps3Sidebar.GradientStops[^1].Color.G > 8
-                    || ps3Sidebar.GradientStops[^1].Color.B > 8
-                    || ps3Sidebar.GradientStops[^1].Offset != 1
-                    || ps3Sidebar.GradientStops.Any(stop => stop.Color.A != 255))
+                if (window.Resources["CurrentSystemSidebarBrush"] is not SolidColorBrush ps3Sidebar
+                    || ps3Sidebar.Color != Color.FromRgb(5, 7, 5)
+                    || ps3Sidebar.Color.A != 255
+                    || sidebarHost.Background is not SolidColorBrush renderedSidebar
+                    || renderedSidebar.Color != Color.FromRgb(5, 7, 5))
                     throw new InvalidDataException(
-                        "O menu lateral precisa ser opaco, manter 2% de cor suave e chegar cedo ao preto.");
-                if (window.Resources["SidebarMetalCapBrush"] is not LinearGradientBrush metalCap
-                    || window.Resources["SidebarMetalSideBrush"] is not LinearGradientBrush metalSide
-                    || metalCap.GradientStops.Any(stop => stop.Color.A != 255)
-                    || metalSide.GradientStops.Any(stop => stop.Color.A != 255))
-                    throw new InvalidDataException(
-                        "A moldura metálica lateral precisa permanecer completamente opaca.");
+                        "O menu lateral original precisa permanecer sólido, opaco e praticamente preto.");
                 if (window.Resources["CurrentSystemSidebarSelectionBrush"] is not LinearGradientBrush selection
                     || selection.GradientStops.Count != 5
                     || selection.GradientStops[0].Color != Color.FromRgb(81, 184, 223)
@@ -233,10 +205,10 @@ internal static class WpfTemplateVerifier
                 if (Math.Abs(sidebarHost.ActualWidth - 252) > .5
                     || sidebarHost.ActualHeight <= 0
                     || window.Resources["CurrentSystemAccentBrush"] is not SolidColorBrush activeAccent
-                    || topGlow.Stroke is not SolidColorBrush frameAccent
-                    || activeAccent.Color != frameAccent.Color)
+                    || sidebarLed.Fill is not SolidColorBrush ledAccent
+                    || activeAccent.Color != ledAccent.Color)
                     throw new InvalidDataException(
-                        "A moldura tecnológica precisa preservar 252 px e acompanhar a cor do sistema ativo.");
+                        "O menu lateral original precisa preservar 252 px e o LED deve acompanhar a cor do sistema ativo.");
                 VerifyBuiltInMusicAutoplay(window);
                 VerifyAsyncThumbnailBinding(window);
                 VerifyResponsiveBackgroundVideo(window);
@@ -1587,11 +1559,11 @@ internal static class WpfTemplateVerifier
                 }
                 if (player.NaturalVideoWidth <= 0
                     || player.NaturalVideoHeight <= 0
-                    || player.Stretch != Stretch.Uniform
+                    || player.Stretch != Stretch.UniformToFill
                     || player.StretchDirection != StretchDirection.Both
                     || player.RenderTransform is not null and not MatrixTransform { Matrix.IsIdentity: true })
                     throw new InvalidDataException(
-                        "O vídeo real não permaneceu inteiro, proporcional e centralizado após MediaOpened.");
+                        "O vídeo real não preencheu toda a área de forma proporcional e centralizada após MediaOpened.");
             }
             finally
             {
@@ -1730,7 +1702,7 @@ internal static class WpfTemplateVerifier
         var systemPlayer = systemFactory.Invoke(null, [systemHost]) as MediaElement
                            ?? throw new InvalidDataException(
                                "O player proporcional do sistema não pôde ser criado.");
-        if (player.Stretch != Stretch.Uniform
+        if (player.Stretch != Stretch.UniformToFill
             || player.StretchDirection != StretchDirection.Both
             || player.HorizontalAlignment != HorizontalAlignment.Stretch
             || player.VerticalAlignment != VerticalAlignment.Stretch
@@ -1740,8 +1712,8 @@ internal static class WpfTemplateVerifier
             || Math.Abs(player.Volume) > double.Epsilon
             || player.RenderTransform is not null and not MatrixTransform { Matrix.IsIdentity: true })
             throw new InvalidDataException(
-                "O player universal precisa permanecer inteiro, proporcional, centralizado e sem áudio.");
-        if (systemPlayer.Stretch != Stretch.Uniform
+                "O player universal precisa preencher toda a área, proporcionalmente, centralizado e sem áudio.");
+        if (systemPlayer.Stretch != Stretch.UniformToFill
             || systemPlayer.StretchDirection != StretchDirection.Both
             || systemPlayer.HorizontalAlignment != HorizontalAlignment.Stretch
             || systemPlayer.VerticalAlignment != VerticalAlignment.Stretch
@@ -1751,7 +1723,7 @@ internal static class WpfTemplateVerifier
             || Math.Abs(systemPlayer.Volume) > double.Epsilon
             || systemPlayer.RenderTransform is not null and not MatrixTransform { Matrix.IsIdentity: true })
             throw new InvalidDataException(
-                "O vídeo específico do sistema precisa permanecer inteiro, proporcional e centralizado.");
+                "O vídeo específico do sistema precisa preencher toda a área, proporcionalmente e centralizado.");
         host.Children.Add(player);
         systemHost.Children.Add(systemPlayer);
         var originalCarouselVisibility = carouselHost.Visibility;

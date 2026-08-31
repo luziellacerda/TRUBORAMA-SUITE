@@ -20,13 +20,7 @@
       <SolidColorBrush x:Key="CurrentSystemPanelBrush" Color="#2B2389FF" />
       <SolidColorBrush x:Key="CurrentSystemLineBrush" Color="#A02389FF" />
       <SolidColorBrush x:Key="CurrentSystemHeaderBrush" Color="#F20D172B" />
-      <LinearGradientBrush x:Key="CurrentSystemSidebarBrush" StartPoint="0,.5" EndPoint="1,.5">
-        <GradientStop Color="#FF5FA5F5" Offset="0" />
-        <GradientStop Color="#FF5FA5F5" Offset=".02" />
-        <GradientStop Color="#FF18283B" Offset=".08" />
-        <GradientStop Color="#FF080A08" Offset=".18" />
-        <GradientStop Color="#FF050705" Offset="1" />
-      </LinearGradientBrush>
+      <SolidColorBrush x:Key="CurrentSystemSidebarBrush" Color="#FF050705" />
       <LinearGradientBrush x:Key="CurrentSystemSidebarSelectionBrush" StartPoint="0,.5" EndPoint="1,.5">
         <GradientStop Color="#FF5FA5F5" Offset="0" />
         <GradientStop Color="#FF5FA5F5" Offset=".02" />
@@ -39,16 +33,6 @@
         <GradientStop Color="#D2000000" Offset=".30" />
         <GradientStop Color="#5C000000" Offset=".62" />
         <GradientStop Color="#00000000" Offset="1" />
-      </LinearGradientBrush>
-      <LinearGradientBrush x:Key="SidebarMetalCapBrush" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="#FF020302" Offset="0" />
-        <GradientStop Color="#FF303630" Offset=".48" />
-        <GradientStop Color="#FF050705" Offset="1" />
-      </LinearGradientBrush>
-      <LinearGradientBrush x:Key="SidebarMetalSideBrush" StartPoint="0,0" EndPoint="1,0">
-        <GradientStop Color="#FF020302" Offset="0" />
-        <GradientStop Color="#FF353C35" Offset=".48" />
-        <GradientStop Color="#FF050705" Offset="1" />
       </LinearGradientBrush>
       <BitmapImage x:Key="CatalogFallbackArtwork" UriSource="Assets/f15-turborama-user-original-v13.png" DecodePixelWidth="512" CacheOption="OnLoad" CreateOptions="DelayCreation" />
       <Style x:Key="TechScrollThumbStyle" TargetType="{x:Type Thumb}">
@@ -1287,265 +1271,40 @@
           <ColumnDefinition Width="252" />
           <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
-        <Border x:Name="SidebarHost" Grid.Column="0" Background="{DynamicResource CurrentSystemSidebarBrush}" BorderBrush="{DynamicResource CurrentSystemLineBrush}" BorderThickness="0,0,1,0">
+        <Border x:Name="SidebarHost" Grid.Column="0" Background="{DynamicResource CurrentSystemSidebarBrush}" BorderBrush="#FF202620" BorderThickness="0,0,1,0">
           <Grid ClipToBounds="True">
-            <Grid x:Name="SidebarCoverFrame"
+            <Grid x:Name="SidebarLedLayer"
                   IsHitTestVisible="False"
                   Focusable="False"
                   SnapsToDevicePixels="True"
-                  AutomationProperties.Name="Moldura tecnológica do menu lateral">
+                  AutomationProperties.Name="LED lateral do sistema">
               <Grid.Triggers>
                 <EventTrigger RoutedEvent="FrameworkElement.Loaded">
                   <BeginStoryboard>
                     <Storyboard RepeatBehavior="Forever" AutoReverse="True">
-                      <DoubleAnimation Storyboard.TargetName="SidebarTopLedBar"
+                      <DoubleAnimation Storyboard.TargetName="SidebarLedBar"
                                        Storyboard.TargetProperty="Opacity"
-                                       From=".72" To="1" Duration="0:0:1.4" />
-                      <DoubleAnimation Storyboard.TargetName="SidebarFrameLeftEnergySegments"
-                                       Storyboard.TargetProperty="Opacity"
-                                       From=".42" To=".78" Duration="0:0:1.8" />
-                      <DoubleAnimation Storyboard.TargetName="SidebarFrameRightEnergySegments"
-                                       Storyboard.TargetProperty="Opacity"
-                                       From=".30" To=".66" Duration="0:0:2.2" />
+                                       From=".72" To="1" Duration="0:0:1.6" />
                     </Storyboard>
                   </BeginStoryboard>
                 </EventTrigger>
               </Grid.Triggers>
-
-              <Path x:Name="SidebarMetalTopRail"
-                    Height="25"
-                    Margin="6,5,6,0"
-                    HorizontalAlignment="Stretch"
-                    VerticalAlignment="Top"
-                    Stretch="Fill"
-                    Fill="{StaticResource SidebarMetalCapBrush}"
-                    Stroke="#80596359"
-                    StrokeThickness="1"
-                    Data="M 0,25 L 0,12 L 12,0 L 68,0 L 78,6 L 162,6 L 172,0 L 228,0 L 240,12 L 240,25 Z" />
-              <Path x:Name="SidebarMetalBottomRail"
-                    Height="25"
-                    Margin="6,0,6,5"
-                    HorizontalAlignment="Stretch"
-                    VerticalAlignment="Bottom"
-                    Stretch="Fill"
-                    Fill="{StaticResource SidebarMetalCapBrush}"
-                    Stroke="#80596359"
-                    StrokeThickness="1"
-                    Data="M 0,0 L 0,13 L 12,25 L 68,25 L 78,19 L 162,19 L 172,25 L 228,25 L 240,13 L 240,0 Z" />
-              <Rectangle x:Name="SidebarMetalLeftRail"
-                         Width="5"
-                         Margin="6,25,0,25"
+              <Rectangle x:Name="SidebarLedBar"
+                         Width="2"
+                         Margin="5,16,0,16"
                          HorizontalAlignment="Left"
-                         Fill="{StaticResource SidebarMetalSideBrush}" />
-              <Rectangle x:Name="SidebarMetalRightRail"
-                         Width="5"
-                         Margin="0,25,6,25"
-                         HorizontalAlignment="Right"
-                         Fill="{StaticResource SidebarMetalSideBrush}" />
-
-              <Rectangle x:Name="SidebarTopLedBar"
-                         Height="3"
-                         Margin="22,7,22,0"
-                         HorizontalAlignment="Stretch"
-                         VerticalAlignment="Top"
-                         RadiusX="1.5"
-                         RadiusY="1.5"
+                         VerticalAlignment="Stretch"
+                         RadiusX="1"
+                         RadiusY="1"
                          Fill="{DynamicResource CurrentSystemAccentBrush}"
                          Opacity=".88">
                 <Rectangle.Effect>
                   <DropShadowEffect Color="{DynamicResource CurrentSystemAccentColor}"
-                                    BlurRadius="12"
+                                    BlurRadius="7"
                                     ShadowDepth="0"
-                                    Opacity=".90" />
+                                    Opacity=".72" />
                 </Rectangle.Effect>
               </Rectangle>
-
-              <Border Margin="5"
-                      BorderBrush="#4A414A43"
-                      BorderThickness="1"
-                      CornerRadius="14"
-                      Opacity=".62" />
-
-              <Rectangle Width="2" HorizontalAlignment="Right" Fill="{DynamicResource CurrentSystemAccentBrush}" Opacity=".22">
-                <Rectangle.OpacityMask>
-                  <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                    <GradientStop Color="#00FFFFFF" Offset="0" />
-                    <GradientStop Color="#FFFFFFFF" Offset=".18" />
-                    <GradientStop Color="#FFFFFFFF" Offset=".82" />
-                    <GradientStop Color="#00FFFFFF" Offset="1" />
-                  </LinearGradientBrush>
-                </Rectangle.OpacityMask>
-              </Rectangle>
-              <Rectangle Height="1" Margin="24,108,24,0" VerticalAlignment="Top" Fill="{DynamicResource CurrentSystemAccentBrush}" Opacity=".18" />
-
-              <Path Width="92"
-                    Height="29"
-                    Margin="7,6,0,0"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Top"
-                    Stretch="Fill"
-                    Stroke="#6A566159"
-                    StrokeThickness="1"
-                    Data="M 0,29 L 0,12 L 12,0 L 68,0 L 92,24" />
-              <Path x:Name="SidebarFrameTopLeftGlow"
-                    Width="67"
-                    Height="22"
-                    Margin="11,9,0,0"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Top"
-                    Stretch="Fill"
-                    Stroke="{DynamicResource CurrentSystemAccentBrush}"
-                    StrokeThickness="2.4"
-                    StrokeStartLineCap="Round"
-                    StrokeEndLineCap="Round"
-                    StrokeLineJoin="Round"
-                    Opacity=".84"
-                    Data="M 0,22 L 0,10 L 10,0 L 67,0">
-                <Path.Effect>
-                  <DropShadowEffect Color="{DynamicResource CurrentSystemAccentColor}" BlurRadius="9" ShadowDepth="0" Opacity=".72" />
-                </Path.Effect>
-              </Path>
-
-              <Path Width="92"
-                    Height="29"
-                    Margin="0,6,7,0"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Top"
-                    RenderTransformOrigin=".5,.5"
-                    Stretch="Fill"
-                    Stroke="#6A566159"
-                    StrokeThickness="1"
-                    Data="M 0,29 L 0,12 L 12,0 L 68,0 L 92,24">
-                <Path.RenderTransform>
-                  <ScaleTransform ScaleX="-1" />
-                </Path.RenderTransform>
-              </Path>
-              <Path Width="67"
-                    Height="22"
-                    Margin="0,9,11,0"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Top"
-                    RenderTransformOrigin=".5,.5"
-                    Stretch="Fill"
-                    Stroke="{DynamicResource CurrentSystemAccentBrush}"
-                    StrokeThickness="2.4"
-                    StrokeStartLineCap="Round"
-                    StrokeEndLineCap="Round"
-                    StrokeLineJoin="Round"
-                    Opacity=".68"
-                    Data="M 0,22 L 0,10 L 10,0 L 67,0">
-                <Path.RenderTransform>
-                  <ScaleTransform ScaleX="-1" />
-                </Path.RenderTransform>
-                <Path.Effect>
-                  <DropShadowEffect Color="{DynamicResource CurrentSystemAccentColor}" BlurRadius="8" ShadowDepth="0" Opacity=".64" />
-                </Path.Effect>
-              </Path>
-
-              <Path Width="92"
-                    Height="29"
-                    Margin="7,0,0,6"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Bottom"
-                    RenderTransformOrigin=".5,.5"
-                    Stretch="Fill"
-                    Stroke="#6A566159"
-                    StrokeThickness="1"
-                    Data="M 0,29 L 0,12 L 12,0 L 68,0 L 92,24">
-                <Path.RenderTransform>
-                  <ScaleTransform ScaleY="-1" />
-                </Path.RenderTransform>
-              </Path>
-              <Path Width="67"
-                    Height="22"
-                    Margin="11,0,0,9"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Bottom"
-                    RenderTransformOrigin=".5,.5"
-                    Stretch="Fill"
-                    Stroke="{DynamicResource CurrentSystemAccentBrush}"
-                    StrokeThickness="2.4"
-                    StrokeStartLineCap="Round"
-                    StrokeEndLineCap="Round"
-                    StrokeLineJoin="Round"
-                    Opacity=".68"
-                    Data="M 0,22 L 0,10 L 10,0 L 67,0">
-                <Path.RenderTransform>
-                  <ScaleTransform ScaleY="-1" />
-                </Path.RenderTransform>
-                <Path.Effect>
-                  <DropShadowEffect Color="{DynamicResource CurrentSystemAccentColor}" BlurRadius="8" ShadowDepth="0" Opacity=".64" />
-                </Path.Effect>
-              </Path>
-
-              <Path Width="92"
-                    Height="29"
-                    Margin="0,0,7,6"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Bottom"
-                    RenderTransformOrigin=".5,.5"
-                    Stretch="Fill"
-                    Stroke="#6A566159"
-                    StrokeThickness="1"
-                    Data="M 0,29 L 0,12 L 12,0 L 68,0 L 92,24">
-                <Path.RenderTransform>
-                  <ScaleTransform ScaleX="-1" ScaleY="-1" />
-                </Path.RenderTransform>
-              </Path>
-              <Path x:Name="SidebarFrameBottomRightGlow"
-                    Width="67"
-                    Height="22"
-                    Margin="0,0,11,9"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Bottom"
-                    RenderTransformOrigin=".5,.5"
-                    Stretch="Fill"
-                    Stroke="{DynamicResource CurrentSystemAccentBrush}"
-                    StrokeThickness="2.4"
-                    StrokeStartLineCap="Round"
-                    StrokeEndLineCap="Round"
-                    StrokeLineJoin="Round"
-                    Opacity=".84"
-                    Data="M 0,22 L 0,10 L 10,0 L 67,0">
-                <Path.RenderTransform>
-                  <ScaleTransform ScaleX="-1" ScaleY="-1" />
-                </Path.RenderTransform>
-                <Path.Effect>
-                  <DropShadowEffect Color="{DynamicResource CurrentSystemAccentColor}" BlurRadius="9" ShadowDepth="0" Opacity=".72" />
-                </Path.Effect>
-              </Path>
-
-              <StackPanel x:Name="SidebarFrameLeftEnergySegments"
-                          Width="5"
-                          Margin="5,128,0,128"
-                          HorizontalAlignment="Left"
-                          VerticalAlignment="Center"
-                          Opacity=".62">
-                <StackPanel.Effect>
-                  <DropShadowEffect Color="{DynamicResource CurrentSystemAccentColor}" BlurRadius="8" ShadowDepth="0" Opacity=".72" />
-                </StackPanel.Effect>
-                <Rectangle Height="38" RadiusX="2" RadiusY="2" Fill="{DynamicResource CurrentSystemAccentBrush}" />
-                <Rectangle Height="12" Margin="0,8" RadiusX="2" RadiusY="2" Fill="{DynamicResource CurrentSystemAccentBrush}" />
-                <Rectangle Height="58" RadiusX="2" RadiusY="2" Fill="{DynamicResource CurrentSystemAccentBrush}" />
-                <Rectangle Height="12" Margin="0,8" RadiusX="2" RadiusY="2" Fill="{DynamicResource CurrentSystemAccentBrush}" />
-                <Rectangle Height="38" RadiusX="2" RadiusY="2" Fill="{DynamicResource CurrentSystemAccentBrush}" />
-              </StackPanel>
-
-              <StackPanel x:Name="SidebarFrameRightEnergySegments"
-                          Width="3"
-                          Margin="0,156,5,156"
-                          HorizontalAlignment="Right"
-                          VerticalAlignment="Center"
-                          Opacity=".48">
-                <StackPanel.Effect>
-                  <DropShadowEffect Color="{DynamicResource CurrentSystemAccentColor}" BlurRadius="7" ShadowDepth="0" Opacity=".62" />
-                </StackPanel.Effect>
-                <Rectangle Height="28" RadiusX="2" RadiusY="2" Fill="{DynamicResource CurrentSystemAccentBrush}" />
-                <Rectangle Height="9" Margin="0,7" RadiusX="2" RadiusY="2" Fill="{DynamicResource CurrentSystemAccentBrush}" />
-                <Rectangle Height="44" RadiusX="2" RadiusY="2" Fill="{DynamicResource CurrentSystemAccentBrush}" />
-                <Rectangle Height="9" Margin="0,7" RadiusX="2" RadiusY="2" Fill="{DynamicResource CurrentSystemAccentBrush}" />
-                <Rectangle Height="28" RadiusX="2" RadiusY="2" Fill="{DynamicResource CurrentSystemAccentBrush}" />
-              </StackPanel>
             </Grid>
             <Grid Margin="13,14,10,12">
             <Grid.RowDefinitions>

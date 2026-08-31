@@ -1451,28 +1451,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                 BlendThemeChannel(accent.R, 6, .88),
                 BlendThemeChannel(accent.G, 9, .88),
                 BlendThemeChannel(accent.B, 12, .88)));
-        var sidebarBackground = new LinearGradientBrush
-        {
-            StartPoint = new Point(0, .5),
-            EndPoint = new Point(1, .5)
-        };
-        sidebarBackground.GradientStops.Add(new GradientStop(
-            Color.FromArgb(255, accent.R, accent.G, accent.B), 0));
-        sidebarBackground.GradientStops.Add(new GradientStop(
-            Color.FromArgb(255, accent.R, accent.G, accent.B), .02));
-        sidebarBackground.GradientStops.Add(new GradientStop(
-            Color.FromArgb(
-                255,
-                BlendThemeChannel(accent.R, 6, .80),
-                BlendThemeChannel(accent.G, 9, .80),
-                BlendThemeChannel(accent.B, 12, .80)),
-            .08));
-        sidebarBackground.GradientStops.Add(new GradientStop(
-            Color.FromRgb(8, 10, 8), .18));
-        sidebarBackground.GradientStops.Add(new GradientStop(
-            Color.FromRgb(5, 7, 5), 1));
-        sidebarBackground.Freeze();
-        Resources["CurrentSystemSidebarBrush"] = sidebarBackground;
+        SetCategoryThemeBrush("CurrentSystemSidebarBrush", Color.FromRgb(5, 7, 5));
 
         var sidebarSelection = new LinearGradientBrush
         {
@@ -2363,10 +2342,10 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     }
 
     private static MediaElement CreateResponsiveBackgroundVideoPlayer(FrameworkElement host)
-        => CreateResponsiveVideoPlayer(host, Stretch.Uniform);
+        => CreateResponsiveVideoPlayer(host, Stretch.UniformToFill);
 
     private static MediaElement CreateResponsiveSystemVideoPlayer(FrameworkElement host)
-        => CreateResponsiveVideoPlayer(host, Stretch.Uniform);
+        => CreateResponsiveVideoPlayer(host, Stretch.UniformToFill);
 
     private static MediaElement CreateResponsiveVideoPlayer(
         FrameworkElement host,
@@ -2388,9 +2367,9 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             UseLayoutRounding = true
         };
 
-        // The player box always occupies the complete background viewport. Only
-        // the video pixels are fitted inside it: Uniform keeps square, 4:3, 3:2
-        // and widescreen sources proportional, centered and fully visible.
+        // The player box always occupies the complete background viewport.
+        // UniformToFill keeps the source proportional and centered while making
+        // it cover the available space at every window size and resolution.
         player.SetBinding(
             WidthProperty,
             new Binding(nameof(ActualWidth))
