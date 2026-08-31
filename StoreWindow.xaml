@@ -8,6 +8,13 @@
       <SolidColorBrush x:Key="LimeBrush" Color="{StaticResource LimeColor}" />
       <SolidColorBrush x:Key="BlueBrush" Color="{StaticResource BlueColor}" />
       <SolidColorBrush x:Key="RedBrush" Color="{StaticResource RedColor}" />
+      <Color x:Key="GlobalAccentColor">#9DFF00</Color>
+      <SolidColorBrush x:Key="GlobalAccentBrush" Color="{StaticResource GlobalAccentColor}" />
+      <SolidColorBrush x:Key="GlobalBrightBrush" Color="#B7FF46" />
+      <SolidColorBrush x:Key="GlobalContrastBrush" Color="#071007" />
+      <SolidColorBrush x:Key="GlobalPanelBrush" Color="#241A2C12" />
+      <SolidColorBrush x:Key="GlobalLineBrush" Color="#663B5B2B" />
+      <SolidColorBrush x:Key="GlobalSelectionBrush" Color="#1C9DFF00" />
       <SolidColorBrush x:Key="MutedBrush" Color="#8E988C" />
       <SolidColorBrush x:Key="PanelSurface" Color="#0E120E" />
       <SolidColorBrush x:Key="LineBrush" Color="#293027" />
@@ -20,12 +27,11 @@
       <SolidColorBrush x:Key="CurrentSystemPanelBrush" Color="#2B2389FF" />
       <SolidColorBrush x:Key="CurrentSystemLineBrush" Color="#A02389FF" />
       <SolidColorBrush x:Key="CurrentSystemHeaderBrush" Color="#F20D172B" />
-      <SolidColorBrush x:Key="CurrentSystemSidebarBrush" Color="#FF050705" />
       <SolidColorBrush x:Key="CurrentSystemSidebarSelectionBrush" Color="#1C5FA5F5" />
       <LinearGradientBrush x:Key="CurrentSystemVideoOverlayBrush" StartPoint="0,.5" EndPoint="1,.5">
         <GradientStop Color="#FF000000" Offset="0" />
-        <GradientStop Color="#FF000000" Offset=".10" />
-        <GradientStop Color="#00000000" Offset=".20" />
+        <GradientStop Color="#FF000000" Offset=".30" />
+        <GradientStop Color="#00000000" Offset=".40" />
       </LinearGradientBrush>
       <BitmapImage x:Key="CatalogFallbackArtwork" UriSource="Assets/f15-turborama-user-original-v13.png" DecodePixelWidth="512" CacheOption="OnLoad" CreateOptions="DelayCreation" />
       <Style x:Key="TechScrollThumbStyle" TargetType="{x:Type Thumb}">
@@ -36,11 +42,11 @@
               <Grid Margin="1" ClipToBounds="False">
                 <Border x:Name="ThumbGlow"
                         CornerRadius="4"
-                        BorderBrush="{DynamicResource CurrentSystemAccentBrush}"
+                        BorderBrush="{StaticResource GlobalAccentBrush}"
                         BorderThickness="1"
                         Opacity=".42">
                   <Border.Effect>
-                    <DropShadowEffect Color="{DynamicResource CurrentSystemAccentColor}"
+                    <DropShadowEffect Color="{StaticResource GlobalAccentColor}"
                                       BlurRadius="8"
                                       ShadowDepth="0"
                                       Opacity=".72" />
@@ -48,8 +54,8 @@
                 </Border>
                 <Border x:Name="ThumbCore"
                         CornerRadius="4"
-                        Background="{DynamicResource CurrentSystemAccentBrush}"
-                        BorderBrush="{DynamicResource CurrentSystemBrightBrush}"
+                        Background="{StaticResource GlobalAccentBrush}"
+                        BorderBrush="{StaticResource GlobalBrightBrush}"
                         BorderThickness="1">
                 </Border>
               </Grid>
@@ -72,7 +78,7 @@
         <Setter Property="Width" Value="10" />
         <Setter Property="MinWidth" Value="10" />
         <Setter Property="Background" Value="#090C09" />
-        <Setter Property="Foreground" Value="{DynamicResource CurrentSystemAccentBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource GlobalAccentBrush}" />
         <Setter Property="Template">
           <Setter.Value>
             <ControlTemplate TargetType="{x:Type ScrollBar}">
@@ -80,7 +86,7 @@
                 <Border Width="3"
                         HorizontalAlignment="Center"
                         Background="#172017"
-                        BorderBrush="{DynamicResource CurrentSystemLineBrush}"
+                        BorderBrush="{StaticResource GlobalLineBrush}"
                         BorderThickness="1"
                         CornerRadius="2" />
                 <Track x:Name="PART_Track"
@@ -122,7 +128,7 @@
                     <Border Height="3"
                             VerticalAlignment="Center"
                             Background="#172017"
-                            BorderBrush="{DynamicResource CurrentSystemLineBrush}"
+                            BorderBrush="{StaticResource GlobalLineBrush}"
                             BorderThickness="1"
                             CornerRadius="2" />
                     <Track x:Name="PART_Track"
@@ -186,8 +192,8 @@
       <Style x:Key="PrimaryButtonStyle" TargetType="{x:Type Button}">
         <Setter Property="MinHeight" Value="42" />
         <Setter Property="Padding" Value="18,0" />
-        <Setter Property="Foreground" Value="{DynamicResource CurrentSystemContrastBrush}" />
-        <Setter Property="Background" Value="{DynamicResource CurrentSystemAccentBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource GlobalContrastBrush}" />
+        <Setter Property="Background" Value="{StaticResource GlobalAccentBrush}" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="FontSize" Value="12" />
         <Setter Property="FontWeight" Value="Bold" />
@@ -201,8 +207,8 @@
               </Border>
               <ControlTemplate.Triggers>
                 <Trigger Property="UIElement.IsMouseOver" Value="True">
-                  <Setter TargetName="Surface" Property="Border.Background" Value="{DynamicResource CurrentSystemBrightBrush}" />
-                  <Setter Property="Foreground" Value="{DynamicResource CurrentSystemBrightContrastBrush}" />
+                  <Setter TargetName="Surface" Property="Border.Background" Value="{StaticResource GlobalBrightBrush}" />
+                  <Setter Property="Foreground" Value="{StaticResource GlobalContrastBrush}" />
                 </Trigger>
                 <Trigger Property="IsPressed" Value="True">
                   <Setter TargetName="Surface" Property="UIElement.Opacity" Value=".76" />
@@ -216,6 +222,8 @@
         </Setter>
       </Style>
       <Style x:Key="DownloadNeonButtonStyle" TargetType="{x:Type Button}" BasedOn="{StaticResource PrimaryButtonStyle}">
+        <Setter Property="Foreground" Value="{DynamicResource CurrentSystemContrastBrush}" />
+        <Setter Property="Background" Value="{DynamicResource CurrentSystemAccentBrush}" />
         <Setter Property="Template">
           <Setter.Value>
             <ControlTemplate TargetType="{x:Type Button}">
@@ -299,8 +307,8 @@
               </Border>
               <ControlTemplate.Triggers>
                 <Trigger Property="UIElement.IsMouseOver" Value="True">
-                  <Setter TargetName="Surface" Property="Border.BorderBrush" Value="{DynamicResource CurrentSystemAccentBrush}" />
-                  <Setter Property="Foreground" Value="{DynamicResource CurrentSystemAccentBrush}" />
+                  <Setter TargetName="Surface" Property="Border.BorderBrush" Value="{StaticResource GlobalAccentBrush}" />
+                  <Setter Property="Foreground" Value="{StaticResource GlobalAccentBrush}" />
                 </Trigger>
                 <Trigger Property="IsPressed" Value="True">
                   <Setter TargetName="Surface" Property="UIElement.Opacity" Value=".7" />
@@ -317,7 +325,7 @@
         <Setter Property="Height" Value="45" />
         <Setter Property="Padding" Value="15,0" />
         <Setter Property="Margin" Value="0,1" />
-        <Setter Property="Foreground" Value="#A6AFA2" />
+        <Setter Property="Foreground" Value="#FFFFFFFF" />
         <Setter Property="Background" Value="#00FFFFFF" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="FontSize" Value="13" />
@@ -334,14 +342,14 @@
                    <Rectangle Height="1"
                               Margin="7,0,7,-1"
                               VerticalAlignment="Bottom"
-                              Fill="{DynamicResource CurrentSystemLineBrush}"
+                               Fill="{StaticResource GlobalLineBrush}"
                               Opacity=".28"
                               IsHitTestVisible="False" />
                  </Grid>
                </Border>
               <ControlTemplate.Triggers>
                 <Trigger Property="UIElement.IsMouseOver" Value="True">
-                  <Setter TargetName="Surface" Property="Border.Background" Value="{DynamicResource CurrentSystemSidebarSelectionBrush}" />
+                  <Setter TargetName="Surface" Property="Border.Background" Value="{StaticResource GlobalSelectionBrush}" />
                   <Setter Property="Foreground" Value="#FFFFFFFF" />
                   <Setter TargetName="Marker" Property="UIElement.Opacity" Value="1" />
                 </Trigger>
@@ -368,8 +376,8 @@
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Background" Value="#E9090C09" />
         <Setter Property="Foreground" Value="#FFFFFFFF" />
-        <Setter Property="TextBoxBase.CaretBrush" Value="{DynamicResource CurrentSystemAccentBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource CurrentSystemLineBrush}" />
+        <Setter Property="TextBoxBase.CaretBrush" Value="{StaticResource GlobalAccentBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource GlobalLineBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="FontSize" Value="13" />
         <Setter Property="Template">
@@ -383,7 +391,7 @@
               </Border>
               <ControlTemplate.Triggers>
                 <Trigger Property="UIElement.IsKeyboardFocused" Value="True">
-                  <Setter TargetName="Frame" Property="Border.BorderBrush" Value="{DynamicResource CurrentSystemAccentBrush}" />
+                  <Setter TargetName="Frame" Property="Border.BorderBrush" Value="{StaticResource GlobalAccentBrush}" />
                 </Trigger>
               </ControlTemplate.Triggers>
             </ControlTemplate>
@@ -432,10 +440,10 @@
                            SnapsToDevicePixels="True"
                            RenderOptions.BitmapScalingMode="HighQuality" />
                   </Grid>
-                  <TextBlock x:Name="CategoryTitle" Grid.Column="1" Foreground="#AAB3A6" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Text="{Binding DisplayName}" />
+                  <TextBlock x:Name="CategoryTitle" Grid.Column="1" Foreground="#FFFFFFFF" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Text="{Binding DisplayName}" />
                   <TextBlock x:Name="CategoryCode"
                              Grid.Column="2"
-                             Foreground="#596354"
+                             Foreground="#FFFFFFFF"
                              FontSize="9"
                              FontWeight="Bold"
                              VerticalAlignment="Center"
@@ -1060,7 +1068,7 @@
               </Button>
               <Button Name="DownloadJobResumeButton" Content="CONTINUAR" AutomationProperties.Name="Continuar download preservado" Tag="{Binding}" AutomationProperties.HelpText="{Binding Title}" Click="ResumeDownloadJob_Click">
                 <FrameworkElement.Style>
-                  <Style TargetType="{x:Type Button}" BasedOn="{StaticResource DownloadNeonButtonStyle}">
+                  <Style TargetType="{x:Type Button}" BasedOn="{StaticResource PrimaryButtonStyle}">
                     <Setter Property="Visibility" Value="Collapsed" />
                     <Style.Triggers>
                       <DataTrigger Value="True" Binding="{Binding CanResume}">
@@ -1144,7 +1152,7 @@
             <Image Source="Assets/turborama-app-icon.ico" Width="24" Height="24" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
             <TextBlock Text="TURBORAMA" FontSize="12" FontWeight="Bold" VerticalAlignment="Center" Margin="10,0,0,0" />
             <Rectangle Width="1" Height="15" Fill="#394035" Margin="11,0" />
-            <TextBlock Text="CENTRAL DE SISTEMAS" FontSize="10" FontWeight="SemiBold" Foreground="#778173" VerticalAlignment="Center" />
+            <TextBlock Text="CENTRAL DE SISTEMAS" FontSize="10" FontWeight="SemiBold" Foreground="#FFFFFFFF" VerticalAlignment="Center" />
             <Ellipse Width="5" Height="5" Fill="{StaticResource LimeBrush}" Margin="11,0,0,0">
               <UIElement.Effect>
                 <DropShadowEffect Color="#9DFF00" BlurRadius="10" ShadowDepth="0" />
@@ -1163,7 +1171,7 @@
           <ColumnDefinition Width="252" />
           <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
-        <Border x:Name="SidebarHost" Grid.Column="0" Background="{DynamicResource CurrentSystemSidebarBrush}" BorderBrush="#FF202620" BorderThickness="0,0,1,0">
+        <Border x:Name="SidebarHost" Grid.Column="0" Background="#FF050705" BorderBrush="#FF202620" BorderThickness="0,0,1,0">
           <Grid ClipToBounds="True">
             <Grid x:Name="SidebarLedLayer"
                   IsHitTestVisible="False"
@@ -1188,10 +1196,10 @@
                          VerticalAlignment="Stretch"
                          RadiusX="1"
                          RadiusY="1"
-                         Fill="{DynamicResource CurrentSystemAccentBrush}"
+                          Fill="{StaticResource GlobalAccentBrush}"
                          Opacity=".88">
                 <Rectangle.Effect>
-                  <DropShadowEffect Color="{DynamicResource CurrentSystemAccentColor}"
+                  <DropShadowEffect Color="{StaticResource GlobalAccentColor}"
                                     BlurRadius="7"
                                     ShadowDepth="0"
                                     Opacity=".72" />
@@ -1206,43 +1214,43 @@
               <RowDefinition Height="*" />
               <RowDefinition Height="68" />
             </Grid.RowDefinitions>
-            <Border Background="#E60B100C" BorderBrush="{DynamicResource CurrentSystemLineBrush}" BorderThickness="1" CornerRadius="12" Padding="11,8">
+            <Border Background="#E60B100C" BorderBrush="{StaticResource GlobalLineBrush}" BorderThickness="1" CornerRadius="12" Padding="11,8">
               <Grid>
                 <Image Source="Assets/turborama-logo-v3.png" Stretch="Uniform" HorizontalAlignment="Left" Width="188" />
                 <Border x:Name="SessionStatusBadge" HorizontalAlignment="Right" VerticalAlignment="Bottom" Background="#171B18" BorderBrush="#3C453E" BorderThickness="1" CornerRadius="4" Padding="6,3">
-                  <TextBlock x:Name="SessionStatusText" Text="SESSÃO NÃO VERIFICADA" Foreground="#9AA29C" FontSize="8" FontWeight="Bold" />
+                  <TextBlock x:Name="SessionStatusText" Text="SESSÃO NÃO VERIFICADA" Foreground="#FFFFFFFF" FontSize="8" FontWeight="Bold" />
                 </Border>
               </Grid>
             </Border>
             <StackPanel Grid.Row="1" Margin="0,19,0,0">
-              <TextBlock Text="NAVEGAÇÃO" Foreground="#596254" FontSize="9" FontWeight="Bold" Margin="14,0,0,7" />
-              <Button Content="⌂    Início" Tag="Home" AutomationProperties.Name="Início" Style="{StaticResource SidebarNavStyle}" Click="Nav_Click" />
-              <Button Content="▦    Biblioteca" Tag="Library" AutomationProperties.Name="Biblioteca" Style="{StaticResource SidebarNavStyle}" Click="Nav_Click" />
-              <Button Content="☷    Jogos locais" Tag="GameManager" AutomationProperties.Name="Jogos locais" Style="{StaticResource SidebarNavStyle}" Click="Nav_Click" />
-              <Button Content="⇩    Downloads" Tag="Downloads" AutomationProperties.Name="Downloads" Style="{StaticResource SidebarNavStyle}" Click="Nav_Click" />
+              <TextBlock Text="NAVEGAÇÃO" Foreground="#FFFFFFFF" FontSize="9" FontWeight="Bold" Margin="14,0,0,7" />
+              <Button x:Name="HomeNavButton" Content="⌂    Início" Tag="Home" AutomationProperties.Name="Início" Style="{StaticResource SidebarNavStyle}" Click="Nav_Click" />
+              <Button x:Name="LibraryNavButton" Content="▦    Biblioteca" Tag="Library" AutomationProperties.Name="Biblioteca" Style="{StaticResource SidebarNavStyle}" Click="Nav_Click" />
+              <Button x:Name="GameManagerNavButton" Content="☷    Jogos locais" Tag="GameManager" AutomationProperties.Name="Jogos locais" Style="{StaticResource SidebarNavStyle}" Click="Nav_Click" />
+              <Button x:Name="DownloadsNavButton" Content="⇩    Downloads" Tag="Downloads" AutomationProperties.Name="Downloads" Style="{StaticResource SidebarNavStyle}" Click="Nav_Click" />
             </StackPanel>
             <Grid Row="2" Margin="14,17,7,8">
               <Grid.ColumnDefinitions>
                 <ColumnDefinition />
                 <ColumnDefinition Width="Auto" />
               </Grid.ColumnDefinitions>
-              <TextBlock Text="SISTEMAS E COLEÇÕES" Foreground="#596254" FontSize="9" FontWeight="Bold" VerticalAlignment="Center" />
-              <Border Grid.Column="1" Background="{DynamicResource CurrentSystemPanelBrush}" BorderBrush="{DynamicResource CurrentSystemLineBrush}" BorderThickness="1" CornerRadius="5" Padding="6,3">
-                <TextBlock Text="22" Foreground="{DynamicResource CurrentSystemBrightBrush}" FontSize="8" FontWeight="Bold" />
+              <TextBlock Text="SISTEMAS E COLEÇÕES" Foreground="#FFFFFFFF" FontSize="9" FontWeight="Bold" VerticalAlignment="Center" />
+              <Border Grid.Column="1" Background="{StaticResource GlobalPanelBrush}" BorderBrush="{StaticResource GlobalLineBrush}" BorderThickness="1" CornerRadius="5" Padding="6,3">
+                <TextBlock Text="22" Foreground="#FFFFFFFF" FontSize="8" FontWeight="Bold" />
               </Border>
             </Grid>
             <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,0,-4,5">
               <ItemsControl Name="RetroCategoryList" ItemTemplate="{StaticResource RetroCategoryTemplate}" AutomationProperties.Name="Lista de sistemas retrô" ItemsSource="{Binding CatalogCategories}" />
             </ScrollViewer>
-            <Border Grid.Row="4" Background="#E60B100C" BorderBrush="{DynamicResource CurrentSystemLineBrush}" BorderThickness="1" CornerRadius="11" Padding="11">
+            <Border Grid.Row="4" Background="#E60B100C" BorderBrush="{StaticResource GlobalLineBrush}" BorderThickness="1" CornerRadius="11" Padding="11">
               <Grid>
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition Width="36" />
                   <ColumnDefinition Width="*" />
                   <ColumnDefinition Width="8" />
                 </Grid.ColumnDefinitions>
-                <Border Width="34" Height="34" CornerRadius="17" Background="{DynamicResource CurrentSystemPanelBrush}" BorderBrush="{DynamicResource CurrentSystemLineBrush}" BorderThickness="1">
-                  <TextBlock Text="T" Foreground="{DynamicResource CurrentSystemBrightBrush}" FontWeight="Black" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                <Border Width="34" Height="34" CornerRadius="17" Background="{StaticResource GlobalPanelBrush}" BorderBrush="{StaticResource GlobalLineBrush}" BorderThickness="1">
+                  <TextBlock Text="T" Foreground="#FFFFFFFF" FontWeight="Black" HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
                 <StackPanel Grid.Column="1" Margin="9,1,0,0">
                   <TextBlock Name="LicenseConsumerText"
@@ -1380,15 +1388,15 @@
                   <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal">
-                  <Rectangle Width="4" Height="38" RadiusX="2" Fill="{DynamicResource CurrentSystemAccentBrush}" Margin="0,1,12,0" />
+                  <Rectangle Width="4" Height="38" RadiusX="2" Fill="{StaticResource GlobalAccentBrush}" Margin="0,1,12,0" />
                   <StackPanel>
                     <TextBlock Text="Biblioteca por sistema" FontSize="27" FontWeight="Bold" />
                     <TextBlock Text="Capas, nomes e contagem completa de cada plataforma" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,3,0,0" />
                   </StackPanel>
                 </StackPanel>
-                <Border Grid.Column="1" Background="#E90A0E0B" BorderBrush="{DynamicResource CurrentSystemLineBrush}" BorderThickness="1" CornerRadius="9" Padding="18,8" VerticalAlignment="Center">
+                <Border Grid.Column="1" Background="#E90A0E0B" BorderBrush="{StaticResource GlobalLineBrush}" BorderThickness="1" CornerRadius="9" Padding="18,8" VerticalAlignment="Center">
                   <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{Binding LibraryTotalItemCount}" Foreground="{DynamicResource CurrentSystemAccentBrush}" FontSize="22" FontWeight="Bold" />
+                    <TextBlock Text="{Binding LibraryTotalItemCount}" Foreground="{StaticResource GlobalAccentBrush}" FontSize="22" FontWeight="Bold" />
                     <TextBlock Text="  jogos catalogados" Foreground="#B9C2B6" FontSize="11" VerticalAlignment="Center" />
                     <TextBlock Text="  •  22 sistemas" Foreground="#778174" FontSize="10" VerticalAlignment="Center" />
                   </StackPanel>
@@ -1414,7 +1422,7 @@
                 <ColumnDefinition Width="Auto" />
               </Grid.ColumnDefinitions>
               <StackPanel Orientation="Horizontal">
-                <Rectangle Width="4" Height="38" RadiusX="2" Fill="{DynamicResource CurrentSystemAccentBrush}" Margin="0,1,12,0" />
+                <Rectangle Width="4" Height="38" RadiusX="2" Fill="{StaticResource GlobalAccentBrush}" Margin="0,1,12,0" />
                 <StackPanel>
                   <TextBlock Text="Jogos locais" FontSize="27" FontWeight="Bold" />
                   <TextBlock Text="Analise os jogos da pasta de ROMs por sistema" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,3,0,0" />
@@ -1457,7 +1465,7 @@
                             <ColumnDefinition Width="Auto" />
                           </Grid.ColumnDefinitions>
                           <Image Source="{Binding MenuIconSource}" Width="17" Height="17" Stretch="Uniform" VerticalAlignment="Center" />
-                          <TextBlock Grid.Column="1" Text="{Binding DisplayName}" Foreground="#DCE3D9" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Grid.Column="1" Text="{Binding DisplayName}" Foreground="#FFFFFFFF" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                           <TextBlock Grid.Column="2" Text="{Binding ItemCount}" Foreground="{Binding AccentBrush}" FontSize="9" VerticalAlignment="Center" Margin="7,0,0,0" />
                         </Grid>
                       </DataTemplate>
@@ -1482,7 +1490,7 @@
                                   <Setter TargetName="SystemSurface" Property="Background" Value="#151B14" />
                                 </Trigger>
                                 <Trigger Property="IsSelected" Value="True">
-                                  <Setter TargetName="SystemSurface" Property="Background" Value="{DynamicResource CurrentSystemPanelBrush}" />
+                                  <Setter TargetName="SystemSurface" Property="Background" Value="{StaticResource GlobalPanelBrush}" />
                                 </Trigger>
                               </ControlTemplate.Triggers>
                             </ControlTemplate>
@@ -1554,9 +1562,9 @@
 
                 <Grid Grid.Row="2" Margin="0,9,0,9">
                   <TextBox AutomationProperties.Name="Buscar nos jogos locais" Style="{StaticResource SearchBoxStyle}" TextChanged="ManagedGameSearch_TextChanged" />
-                  <TextBlock Text="⌕" Foreground="{DynamicResource CurrentSystemAccentBrush}" FontSize="19" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="15,0,0,1" IsHitTestVisible="False" />
+                  <TextBlock Text="⌕" Foreground="{StaticResource GlobalAccentBrush}" FontSize="19" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="15,0,0,1" IsHitTestVisible="False" />
                   <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,15,0" IsHitTestVisible="False">
-                    <TextBlock Name="ManagedGameVisibleCount" Text="0" Foreground="{DynamicResource CurrentSystemAccentBrush}" FontWeight="Bold" />
+                    <TextBlock Name="ManagedGameVisibleCount" Text="0" Foreground="{StaticResource GlobalAccentBrush}" FontWeight="Bold" />
                     <TextBlock Text=" itens" Foreground="#687363" FontSize="9" VerticalAlignment="Center" />
                   </StackPanel>
                 </Grid>
@@ -1855,9 +1863,6 @@
                           Panel.ZIndex="1" />
                     <Border Background="{DynamicResource CurrentSystemVideoOverlayBrush}"
                             Panel.ZIndex="2" />
-                    <Border Background="{DynamicResource CurrentSystemAccentBrush}"
-                            Opacity=".018"
-                            Panel.ZIndex="3" />
                   </Grid>
                   <Viewbox x:Name="RetroCarouselScaleHost"
                            HorizontalAlignment="Stretch"

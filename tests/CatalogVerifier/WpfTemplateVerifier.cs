@@ -121,6 +121,10 @@ internal static class WpfTemplateVerifier
                     throw new InvalidDataException(
                         "Jogos locais precisa ser uma página separada, por sistema e com player de música.");
                 if (window.FindName("SidebarHost") is not Border sidebarHost
+                    || window.FindName("HomeNavButton") is not Button homeNavButton
+                    || window.FindName("LibraryNavButton") is not Button libraryNavButton
+                    || window.FindName("GameManagerNavButton") is not Button gameManagerNavButton
+                    || window.FindName("DownloadsNavButton") is not Button downloadsNavButton
                     || window.FindName("SidebarLedLayer") is not Grid sidebarLedLayer
                     || sidebarLedLayer.IsHitTestVisible
                     || sidebarLedLayer.Focusable
@@ -149,10 +153,7 @@ internal static class WpfTemplateVerifier
                 var ps3 = window.CatalogCategories.Single(item =>
                     item.Id.Equals("playstation-3", StringComparison.OrdinalIgnoreCase));
                 openCatalog.Invoke(window, [ps3]);
-                if (window.Resources["CurrentSystemSidebarBrush"] is not SolidColorBrush ps3Sidebar
-                    || ps3Sidebar.Color != Color.FromRgb(5, 7, 5)
-                    || ps3Sidebar.Color.A != 255
-                    || sidebarHost.Background is not SolidColorBrush renderedSidebar
+                if (sidebarHost.Background is not SolidColorBrush renderedSidebar
                     || renderedSidebar.Color != Color.FromRgb(5, 7, 5))
                     throw new InvalidDataException(
                         "O menu lateral original precisa permanecer sólido, opaco e praticamente preto.");
@@ -163,7 +164,7 @@ internal static class WpfTemplateVerifier
                 if (window.Resources["TechScrollThumbStyle"] is not Style scrollThumbStyle
                     || scrollThumbStyle.TargetType != typeof(Thumb))
                     throw new InvalidDataException(
-                        "A barra de rolagem tecnológica precisa manter o estilo de destaque dinâmico.");
+                        "A barra de rolagem tecnológica precisa manter o estilo global padrão.");
                 if (window.Resources["CurrentSystemVideoOverlayBrush"] is not LinearGradientBrush overlay
                     || overlay.StartPoint != new Point(0, .5)
                     || overlay.EndPoint != new Point(1, .5)
@@ -171,12 +172,12 @@ internal static class WpfTemplateVerifier
                     || overlay.GradientStops[0].Color != Color.FromArgb(255, 0, 0, 0)
                     || overlay.GradientStops[0].Offset != 0
                     || overlay.GradientStops[1].Color != Color.FromArgb(255, 0, 0, 0)
-                    || overlay.GradientStops[1].Offset != .10
+                    || overlay.GradientStops[1].Offset != .30
                     || overlay.GradientStops[2].Color != Color.FromArgb(0, 0, 0, 0)
-                    || overlay.GradientStops[2].Offset != .20
+                    || overlay.GradientStops[2].Offset != .40
                     || window.Resources.Values.OfType<GradientBrush>().Count() != 1)
                     throw new InvalidDataException(
-                        "Somente o vídeo pode manter degradê: preto até 10% e transparente aos 20%.");
+                        "Somente o vídeo pode manter degradê: preto até 30% e transparente aos 40%.");
 
                 var requestedThemeColors = new Dictionary<string, Color>(StringComparer.OrdinalIgnoreCase)
                 {
@@ -201,13 +202,30 @@ internal static class WpfTemplateVerifier
                 window.Dispatcher.Invoke(
                     () => window.UpdateLayout(),
                     DispatcherPriority.ApplicationIdle);
+                var categoryTitles = FindVisualDescendants<TextBlock>(window)
+                    .Where(item => item.Name == "CategoryTitle")
+                    .ToArray();
                 if (Math.Abs(sidebarHost.ActualWidth - 252) > .5
                     || sidebarHost.ActualHeight <= 0
                     || window.Resources["CurrentSystemAccentBrush"] is not SolidColorBrush activeAccent
+                    || window.Resources["GlobalAccentBrush"] is not SolidColorBrush globalAccent
+                    || globalAccent.Color != Color.FromRgb(157, 255, 0)
                     || sidebarLed.Fill is not SolidColorBrush ledAccent
-                    || activeAccent.Color != ledAccent.Color)
+                    || ledAccent.Color != globalAccent.Color
+                    || homeNavButton.Foreground is not SolidColorBrush homeNavForeground
+                    || libraryNavButton.Foreground is not SolidColorBrush libraryNavForeground
+                    || gameManagerNavButton.Foreground is not SolidColorBrush gameManagerNavForeground
+                    || downloadsNavButton.Foreground is not SolidColorBrush downloadsNavForeground
+                    || homeNavForeground.Color != Colors.White
+                    || libraryNavForeground.Color != Colors.White
+                    || gameManagerNavForeground.Color != Colors.White
+                    || downloadsNavForeground.Color != Colors.White
+                    || categoryTitles.Length == 0
+                    || categoryTitles.Any(item =>
+                        item.Foreground is not SolidColorBrush titleBrush
+                        || titleBrush.Color != Colors.White))
                     throw new InvalidDataException(
-                        "O menu lateral original precisa preservar 252 px e o LED deve acompanhar a cor do sistema ativo.");
+                        "O menu global precisa permanecer no verde padrão e todos os nomes laterais precisam ser brancos.");
                 VerifyBuiltInMusicAutoplay(window);
                 VerifyAsyncThumbnailBinding(window);
                 VerifyResponsiveBackgroundVideo(window);
@@ -1676,13 +1694,25 @@ internal static class WpfTemplateVerifier
         if (!background.ClipToBounds
             || !host.ClipToBounds
             || !systemHost.ClipToBounds
+            || background.Children.Count != 3
+            || !ReferenceEquals(background.Children[0], host)
+            || !ReferenceEquals(background.Children[1], systemHost)
+            || background.Children[2] is not Border videoOverlay
+            || videoOverlay.Background is not LinearGradientBrush
+            || !ReferenceEquals(
+                videoOverlay.Background,
+                window.Resources["CurrentSystemVideoOverlayBrush"])
+            || Panel.GetZIndex(videoOverlay) != 2
+            || videoOverlay.HorizontalAlignment != HorizontalAlignment.Stretch
+            || videoOverlay.VerticalAlignment != VerticalAlignment.Stretch
             || host.HorizontalAlignment != HorizontalAlignment.Stretch
             || host.VerticalAlignment != VerticalAlignment.Stretch
             || systemHost.HorizontalAlignment != HorizontalAlignment.Stretch
             || systemHost.VerticalAlignment != VerticalAlignment.Stretch
             || scaleHost.Stretch != Stretch.Uniform
             || scaleHost.StretchDirection != StretchDirection.DownOnly)
-            throw new InvalidDataException("O host do vídeo de fundo não acompanha a área disponível.");
+            throw new InvalidDataException(
+                "O vídeo precisa ocupar a área disponível e manter apenas a máscara preta de overlay.");
 
         var factory = typeof(StoreWindow).GetMethod(
                           "CreateResponsiveBackgroundVideoPlayer",
@@ -1748,7 +1778,11 @@ internal static class WpfTemplateVerifier
                     || Math.Abs(host.ActualWidth - background.ActualWidth) > 0.5
                     || Math.Abs(host.ActualHeight - background.ActualHeight) > 0.5
                     || Math.Abs(systemHost.ActualWidth - background.ActualWidth) > 0.5
-                    || Math.Abs(systemHost.ActualHeight - background.ActualHeight) > 0.5)
+                    || Math.Abs(systemHost.ActualHeight - background.ActualHeight) > 0.5
+                    || Math.Abs(videoOverlay.ActualWidth - background.ActualWidth) > 0.5
+                    || Math.Abs(videoOverlay.ActualHeight - background.ActualHeight) > 0.5
+                    || Math.Abs(background.ActualWidth - carouselHost.ActualWidth) > 0.5
+                    || Math.Abs(background.ActualHeight - carouselHost.ActualHeight) > 0.5)
                     throw new InvalidDataException(
                         $"O vídeo de fundo não acompanhou a janela em {width:0}×{height:0}: " +
                         $"player={player.Width:0.##}×{player.Height:0.##}, " +

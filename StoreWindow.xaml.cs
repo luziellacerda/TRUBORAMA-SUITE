@@ -1451,8 +1451,6 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                 BlendThemeChannel(accent.R, 6, .88),
                 BlendThemeChannel(accent.G, 9, .88),
                 BlendThemeChannel(accent.B, 12, .88)));
-        SetCategoryThemeBrush("CurrentSystemSidebarBrush", Color.FromRgb(5, 7, 5));
-
         SetCategoryThemeBrush(
             "CurrentSystemSidebarSelectionBrush",
             Color.FromArgb(28, accent.R, accent.G, accent.B));
