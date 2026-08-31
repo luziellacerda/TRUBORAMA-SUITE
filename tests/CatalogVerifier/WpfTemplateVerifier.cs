@@ -136,23 +136,30 @@ internal static class WpfTemplateVerifier
                     || ps3Sidebar.GradientStops[0].Color != Color.FromRgb(81, 184, 223)
                     || ps3Sidebar.GradientStops[0].Offset != 0
                     || ps3Sidebar.GradientStops[1].Color != Color.FromRgb(81, 184, 223)
-                    || ps3Sidebar.GradientStops[1].Offset != .05
-                    || ps3Sidebar.GradientStops[3].Offset != .32
+                    || ps3Sidebar.GradientStops[1].Offset != .02
+                    || ps3Sidebar.GradientStops[2].Color.A != 64
+                    || ps3Sidebar.GradientStops[2].Offset != .08
+                    || ps3Sidebar.GradientStops[3].Color != Color.FromRgb(8, 10, 8)
+                    || ps3Sidebar.GradientStops[3].Offset != .18
                     || ps3Sidebar.GradientStops[^1].Color.R > 8
                     || ps3Sidebar.GradientStops[^1].Color.G > 8
                     || ps3Sidebar.GradientStops[^1].Color.B > 8
                     || ps3Sidebar.GradientStops[^1].Offset != 1)
                     throw new InvalidDataException(
-                        "O menu lateral precisa manter 5% de cor suave e chegar cedo ao preto.");
+                        "O menu lateral precisa manter 2% de cor suave e chegar cedo ao preto.");
                 if (window.Resources["CurrentSystemSidebarSelectionBrush"] is not LinearGradientBrush selection
                     || selection.GradientStops.Count != 5
                     || selection.GradientStops[0].Color != Color.FromRgb(81, 184, 223)
                     || selection.GradientStops[1].Color != Color.FromRgb(81, 184, 223)
-                    || selection.GradientStops[1].Offset != .05
+                    || selection.GradientStops[1].Offset != .02
+                    || selection.GradientStops[2].Color.A != 110
+                    || selection.GradientStops[2].Offset != .07
+                    || selection.GradientStops[3].Color.A != 28
+                    || selection.GradientStops[3].Offset != .14
                     || selection.GradientStops[^1].Color.A != 0
-                    || selection.GradientStops[^1].Offset != .42)
+                    || selection.GradientStops[^1].Offset != .20)
                     throw new InvalidDataException(
-                        "A seleção lateral precisa manter 5% de cor e um degradê tecnológico curto.");
+                        "A seleção lateral precisa manter 2% de cor e um degradê tecnológico curto.");
                 if (window.Resources["TechScrollThumbStyle"] is not Style scrollThumbStyle
                     || scrollThumbStyle.TargetType != typeof(Thumb))
                     throw new InvalidDataException(
@@ -1670,6 +1677,15 @@ internal static class WpfTemplateVerifier
                           "CreateResponsiveBackgroundVideoPlayer");
         var player = factory.Invoke(null, [host]) as MediaElement
                      ?? throw new InvalidDataException("O player responsivo não pôde ser criado.");
+        var systemFactory = typeof(StoreWindow).GetMethod(
+                                "CreateResponsiveSystemVideoPlayer",
+                                BindingFlags.Static | BindingFlags.NonPublic)
+                            ?? throw new MissingMethodException(
+                                nameof(StoreWindow),
+                                "CreateResponsiveSystemVideoPlayer");
+        var systemPlayer = systemFactory.Invoke(null, [systemHost]) as MediaElement
+                           ?? throw new InvalidDataException(
+                               "O player proporcional do sistema não pôde ser criado.");
         if (player.Stretch != Stretch.UniformToFill
             || player.StretchDirection != StretchDirection.Both
             || player.HorizontalAlignment != HorizontalAlignment.Stretch
@@ -1679,7 +1695,17 @@ internal static class WpfTemplateVerifier
             || player.RenderTransform is not null and not MatrixTransform { Matrix.IsIdentity: true })
             throw new InvalidDataException(
                 "O player precisa preencher toda a área, proporcional, centralizado e sem áudio.");
+        if (systemPlayer.Stretch != Stretch.Uniform
+            || systemPlayer.StretchDirection != StretchDirection.Both
+            || systemPlayer.HorizontalAlignment != HorizontalAlignment.Stretch
+            || systemPlayer.VerticalAlignment != VerticalAlignment.Stretch
+            || !systemPlayer.IsMuted
+            || Math.Abs(systemPlayer.Volume) > double.Epsilon
+            || systemPlayer.RenderTransform is not null and not MatrixTransform { Matrix.IsIdentity: true })
+            throw new InvalidDataException(
+                "O vídeo específico do sistema precisa permanecer inteiro, proporcional e centralizado.");
         host.Children.Add(player);
+        systemHost.Children.Add(systemPlayer);
         var originalCarouselVisibility = carouselHost.Visibility;
         carouselHost.Visibility = Visibility.Visible;
         try
@@ -1698,6 +1724,8 @@ internal static class WpfTemplateVerifier
 
                 if (Math.Abs(player.Width - host.ActualWidth) > 0.5
                     || Math.Abs(player.Height - host.ActualHeight) > 0.5
+                    || Math.Abs(systemPlayer.Width - systemHost.ActualWidth) > 0.5
+                    || Math.Abs(systemPlayer.Height - systemHost.ActualHeight) > 0.5
                     || Math.Abs(host.ActualWidth - background.ActualWidth) > 0.5
                     || Math.Abs(host.ActualHeight - background.ActualHeight) > 0.5
                     || Math.Abs(systemHost.ActualWidth - background.ActualWidth) > 0.5
@@ -1779,6 +1807,7 @@ internal static class WpfTemplateVerifier
         {
             carouselHost.Visibility = originalCarouselVisibility;
             host.Children.Remove(player);
+            systemHost.Children.Remove(systemPlayer);
         }
     }
 

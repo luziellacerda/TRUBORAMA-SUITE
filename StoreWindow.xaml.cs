@@ -1459,16 +1459,16 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         sidebarBackground.GradientStops.Add(new GradientStop(
             Color.FromArgb(255, accent.R, accent.G, accent.B), 0));
         sidebarBackground.GradientStops.Add(new GradientStop(
-            Color.FromArgb(255, accent.R, accent.G, accent.B), .05));
+            Color.FromArgb(255, accent.R, accent.G, accent.B), .02));
         sidebarBackground.GradientStops.Add(new GradientStop(
             Color.FromArgb(
                 64,
                 BlendThemeChannel(accent.R, 6, .55),
                 BlendThemeChannel(accent.G, 9, .55),
                 BlendThemeChannel(accent.B, 12, .55)),
-            .16));
+            .08));
         sidebarBackground.GradientStops.Add(new GradientStop(
-            Color.FromRgb(8, 10, 8), .32));
+            Color.FromRgb(8, 10, 8), .18));
         sidebarBackground.GradientStops.Add(new GradientStop(
             Color.FromRgb(5, 7, 5), 1));
         sidebarBackground.Freeze();
@@ -1482,13 +1482,13 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         sidebarSelection.GradientStops.Add(new GradientStop(
             Color.FromArgb(255, accent.R, accent.G, accent.B), 0));
         sidebarSelection.GradientStops.Add(new GradientStop(
-            Color.FromArgb(255, accent.R, accent.G, accent.B), .05));
+            Color.FromArgb(255, accent.R, accent.G, accent.B), .02));
         sidebarSelection.GradientStops.Add(new GradientStop(
-            Color.FromArgb(110, accent.R, accent.G, accent.B), .14));
+            Color.FromArgb(110, accent.R, accent.G, accent.B), .07));
         sidebarSelection.GradientStops.Add(new GradientStop(
-            Color.FromArgb(28, accent.R, accent.G, accent.B), .28));
+            Color.FromArgb(28, accent.R, accent.G, accent.B), .14));
         sidebarSelection.GradientStops.Add(new GradientStop(
-            Color.FromArgb(0, 0, 0, 0), .42));
+            Color.FromArgb(0, 0, 0, 0), .20));
         sidebarSelection.Freeze();
         Resources["CurrentSystemSidebarSelectionBrush"] = sidebarSelection;
 
@@ -2334,7 +2334,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         }
 
         CloseRetroSystemVideoCore(clearFallback: false);
-        var player = CreateResponsiveBackgroundVideoPlayer(playerHost);
+        var player = CreateResponsiveSystemVideoPlayer(playerHost);
         player.Opacity = 0;
         player.Tag = generation;
         player.MediaOpened += RetroSystemVideo_MediaOpened;
@@ -2363,6 +2363,14 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     }
 
     private static MediaElement CreateResponsiveBackgroundVideoPlayer(FrameworkElement host)
+        => CreateResponsiveVideoPlayer(host, Stretch.UniformToFill);
+
+    private static MediaElement CreateResponsiveSystemVideoPlayer(FrameworkElement host)
+        => CreateResponsiveVideoPlayer(host, Stretch.Uniform);
+
+    private static MediaElement CreateResponsiveVideoPlayer(
+        FrameworkElement host,
+        Stretch stretch)
     {
         var player = new MediaElement
         {
@@ -2370,7 +2378,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             UnloadedBehavior = MediaState.Manual,
             IsMuted = true,
             Volume = 0,
-            Stretch = Stretch.UniformToFill,
+            Stretch = stretch,
             StretchDirection = StretchDirection.Both,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
@@ -2380,9 +2388,10 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             UseLayoutRounding = true
         };
 
-        // Keep the player box tied to the viewport and use a centered proportional
-        // cover. Different source ratios may be cropped at the edges, but the
-        // background always fills the complete area without stretching or bars.
+        // Keep the player box tied to the viewport. The universal layer uses a
+        // proportional cover, while the selected system layer uses a centered
+        // proportional fit so legacy 4:3 and square footage is never zoomed or
+        // perceived as distorted. The cover remains visible behind the fit layer.
         player.SetBinding(
             WidthProperty,
             new Binding(nameof(ActualWidth))

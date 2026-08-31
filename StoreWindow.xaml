@@ -22,17 +22,17 @@
       <SolidColorBrush x:Key="CurrentSystemHeaderBrush" Color="#F20D172B" />
       <LinearGradientBrush x:Key="CurrentSystemSidebarBrush" StartPoint="0,.5" EndPoint="1,.5">
         <GradientStop Color="#FF5FA5F5" Offset="0" />
-        <GradientStop Color="#FF5FA5F5" Offset=".05" />
-        <GradientStop Color="#402D506C" Offset=".16" />
-        <GradientStop Color="#FF080A08" Offset=".32" />
+        <GradientStop Color="#FF5FA5F5" Offset=".02" />
+        <GradientStop Color="#402D506C" Offset=".08" />
+        <GradientStop Color="#FF080A08" Offset=".18" />
         <GradientStop Color="#FF050705" Offset="1" />
       </LinearGradientBrush>
       <LinearGradientBrush x:Key="CurrentSystemSidebarSelectionBrush" StartPoint="0,.5" EndPoint="1,.5">
         <GradientStop Color="#FF5FA5F5" Offset="0" />
-        <GradientStop Color="#FF5FA5F5" Offset=".05" />
-        <GradientStop Color="#6E5FA5F5" Offset=".14" />
-        <GradientStop Color="#1C5FA5F5" Offset=".28" />
-        <GradientStop Color="#00000000" Offset=".42" />
+        <GradientStop Color="#FF5FA5F5" Offset=".02" />
+        <GradientStop Color="#6E5FA5F5" Offset=".07" />
+        <GradientStop Color="#1C5FA5F5" Offset=".14" />
+        <GradientStop Color="#00000000" Offset=".20" />
       </LinearGradientBrush>
       <LinearGradientBrush x:Key="CurrentSystemVideoOverlayBrush" StartPoint="0,.5" EndPoint="1,.5">
         <GradientStop Color="#FF000000" Offset="0" />
