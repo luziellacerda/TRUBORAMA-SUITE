@@ -21,18 +21,11 @@
       <SolidColorBrush x:Key="CurrentSystemLineBrush" Color="#A02389FF" />
       <SolidColorBrush x:Key="CurrentSystemHeaderBrush" Color="#F20D172B" />
       <SolidColorBrush x:Key="CurrentSystemSidebarBrush" Color="#FF050705" />
-      <LinearGradientBrush x:Key="CurrentSystemSidebarSelectionBrush" StartPoint="0,.5" EndPoint="1,.5">
-        <GradientStop Color="#FF5FA5F5" Offset="0" />
-        <GradientStop Color="#FF5FA5F5" Offset=".02" />
-        <GradientStop Color="#6E5FA5F5" Offset=".07" />
-        <GradientStop Color="#1C5FA5F5" Offset=".14" />
-        <GradientStop Color="#00000000" Offset=".20" />
-      </LinearGradientBrush>
+      <SolidColorBrush x:Key="CurrentSystemSidebarSelectionBrush" Color="#1C5FA5F5" />
       <LinearGradientBrush x:Key="CurrentSystemVideoOverlayBrush" StartPoint="0,.5" EndPoint="1,.5">
         <GradientStop Color="#FF000000" Offset="0" />
-        <GradientStop Color="#D2000000" Offset=".30" />
-        <GradientStop Color="#5C000000" Offset=".62" />
-        <GradientStop Color="#00000000" Offset="1" />
+        <GradientStop Color="#FF000000" Offset=".10" />
+        <GradientStop Color="#00000000" Offset=".20" />
       </LinearGradientBrush>
       <BitmapImage x:Key="CatalogFallbackArtwork" UriSource="Assets/f15-turborama-user-original-v13.png" DecodePixelWidth="512" CacheOption="OnLoad" CreateOptions="DelayCreation" />
       <Style x:Key="TechScrollThumbStyle" TargetType="{x:Type Thumb}">
@@ -58,15 +51,6 @@
                         Background="{DynamicResource CurrentSystemAccentBrush}"
                         BorderBrush="{DynamicResource CurrentSystemBrightBrush}"
                         BorderThickness="1">
-                  <Rectangle Margin="2" RadiusX="2" RadiusY="2" IsHitTestVisible="False">
-                    <Rectangle.Fill>
-                      <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                        <GradientStop Color="#00FFFFFF" Offset="0" />
-                        <GradientStop Color="#88FFFFFF" Offset=".48" />
-                        <GradientStop Color="#00FFFFFF" Offset="1" />
-                      </LinearGradientBrush>
-                    </Rectangle.Fill>
-                  </Rectangle>
                 </Border>
               </Grid>
               <ControlTemplate.Triggers>
@@ -259,24 +243,6 @@
                         Padding="{TemplateBinding Control.Padding}"
                         ClipToBounds="True">
                   <Grid ClipToBounds="True">
-                    <Rectangle x:Name="LaserSweep"
-                               Width="48"
-                               Margin="-52,0,0,0"
-                               HorizontalAlignment="Left"
-                               Opacity="0"
-                               IsHitTestVisible="False"
-                               CacheMode="BitmapCache">
-                      <Rectangle.Fill>
-                        <LinearGradientBrush StartPoint="0,.5" EndPoint="1,.5">
-                          <GradientStop Color="#00FFFFFF" Offset="0" />
-                          <GradientStop Color="#A8FFFFFF" Offset=".48" />
-                          <GradientStop Color="#00FFFFFF" Offset="1" />
-                        </LinearGradientBrush>
-                      </Rectangle.Fill>
-                      <Rectangle.RenderTransform>
-                        <TranslateTransform x:Name="LaserTranslate" X="0" />
-                      </Rectangle.RenderTransform>
-                    </Rectangle>
                     <ContentPresenter HorizontalAlignment="{TemplateBinding Control.HorizontalContentAlignment}"
                                       VerticalAlignment="Center" />
                   </Grid>
@@ -292,22 +258,9 @@
                                          From=".30" To=".72" Duration="0:0:1.15" />
                       </Storyboard>
                     </BeginStoryboard>
-                    <BeginStoryboard x:Name="DownloadLaserSweep">
-                      <Storyboard RepeatBehavior="Forever">
-                        <DoubleAnimation Storyboard.TargetName="LaserSweep"
-                                         Storyboard.TargetProperty="Opacity"
-                                         From="0" To=".82" Duration="0:0:.18"
-                                         AutoReverse="True" />
-                        <DoubleAnimation Storyboard.TargetName="LaserTranslate"
-                                         Storyboard.TargetProperty="X"
-                                         From="0" To="290" Duration="0:0:1.65"
-                                         BeginTime="0:0:.15" />
-                      </Storyboard>
-                    </BeginStoryboard>
                   </Trigger.EnterActions>
                   <Trigger.ExitActions>
                     <RemoveStoryboard BeginStoryboardName="DownloadNeonPulse" />
-                    <RemoveStoryboard BeginStoryboardName="DownloadLaserSweep" />
                   </Trigger.ExitActions>
                 </Trigger>
                 <Trigger Property="UIElement.IsMouseOver" Value="True">
@@ -321,7 +274,6 @@
                 <Trigger Property="IsEnabled" Value="False">
                   <Setter TargetName="Surface" Property="UIElement.Opacity" Value=".34" />
                   <Setter TargetName="NeonAura" Property="Visibility" Value="Collapsed" />
-                  <Setter TargetName="LaserSweep" Property="Visibility" Value="Collapsed" />
                 </Trigger>
               </ControlTemplate.Triggers>
             </ControlTemplate>
@@ -578,14 +530,6 @@
                              Stretch="UniformToFill"
                              RenderOptions.BitmapScalingMode="HighQuality"
                              SnapsToDevicePixels="True" />
-                      <Border>
-                        <Border.Background>
-                          <LinearGradientBrush StartPoint="0,.5" EndPoint="1,.5">
-                            <GradientStop Color="#00000000" Offset=".48" />
-                            <GradientStop Color="#C8000000" Offset="1" />
-                          </LinearGradientBrush>
-                        </Border.Background>
-                      </Border>
                       <Border VerticalAlignment="Bottom" Height="32" Background="#C7000000">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                           <Image Source="{Binding MenuIconSource}" Width="19" Height="19" Margin="0,0,7,0" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
@@ -761,21 +705,6 @@
                     <TextBlock Text="CAPA TURBORAMA" Foreground="#BEC7BA" FontSize="8" FontWeight="Bold" Margin="0,9,0,0" />
                   </StackPanel>
                 </Border>
-                <Rectangle Name="CardShimmer" Width="78" Opacity="0" IsHitTestVisible="False" HorizontalAlignment="Left" VerticalAlignment="Stretch">
-                  <Shape.Fill>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                      <GradientStop Color="#00FFFFFF" Offset="0" />
-                      <GradientStop Color="#26FFFFFF" Offset=".5" />
-                      <GradientStop Color="#00FFFFFF" Offset="1" />
-                    </LinearGradientBrush>
-                  </Shape.Fill>
-                  <UIElement.RenderTransform>
-                    <TransformGroup>
-                      <SkewTransform AngleX="-16" />
-                      <TranslateTransform x:Name="ShimmerTranslate" X="-120" />
-                    </TransformGroup>
-                  </UIElement.RenderTransform>
-                </Rectangle>
                 <Grid Name="CardBusyOverlay" Height="34" VerticalAlignment="Bottom" IsHitTestVisible="False">
                   <FrameworkElement.Style>
                     <Style TargetType="{x:Type Grid}">
@@ -842,12 +771,6 @@
               <Storyboard AutoReverse="True" RepeatBehavior="Forever">
                 <DoubleAnimation Storyboard.TargetName="CardGlow" Storyboard.TargetProperty="Opacity" From=".28" To=".82" Duration="0:0:.75" />
                 <DoubleAnimation Storyboard.TargetName="CardGlow" Storyboard.TargetProperty="BlurRadius" From="14" To="28" Duration="0:0:.75" />
-              </Storyboard>
-            </BeginStoryboard>
-            <BeginStoryboard>
-              <Storyboard>
-                <DoubleAnimation Storyboard.TargetName="CardShimmer" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:.16" AutoReverse="True" />
-                <DoubleAnimation Storyboard.TargetName="ShimmerTranslate" Storyboard.TargetProperty="X" From="-120" To="430" Duration="0:0:.62" />
               </Storyboard>
             </BeginStoryboard>
           </EventTrigger>
@@ -965,25 +888,6 @@
                                  Height="3"
                                  VerticalAlignment="Bottom" />
                   </Grid>
-                  <Border x:Name="PosterLightSweep"
-                          Width="58"
-                          HorizontalAlignment="Left"
-                          Opacity="0"
-                          IsHitTestVisible="False">
-                    <Border.Background>
-                      <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                        <GradientStop Color="#00FFFFFF" Offset="0" />
-                        <GradientStop Color="#42FFFFFF" Offset=".5" />
-                        <GradientStop Color="#00FFFFFF" Offset="1" />
-                      </LinearGradientBrush>
-                    </Border.Background>
-                    <Border.RenderTransform>
-                      <TransformGroup>
-                        <SkewTransform AngleX="-12" />
-                        <TranslateTransform x:Name="PosterLightSweepTransform" X="-130" />
-                      </TransformGroup>
-                    </Border.RenderTransform>
-                  </Border>
                   <Border x:Name="PosterHoverTint" Background="Transparent" IsHitTestVisible="False" />
                 </Grid>
               </Grid>
@@ -992,18 +896,6 @@
                   <Setter TargetName="PosterHoverTint" Property="Background" Value="#12FFFFFF" />
                   <Setter TargetName="PosterGlow" Property="Opacity" Value=".88" />
                   <Setter TargetName="PosterGlowAura" Property="Opacity" Value=".20" />
-                  <Trigger.EnterActions>
-                    <BeginStoryboard>
-                      <Storyboard>
-                        <DoubleAnimation Storyboard.TargetName="PosterLightSweep"
-                                         Storyboard.TargetProperty="Opacity"
-                                         From="0" To=".75" Duration="0:0:.12" AutoReverse="True" />
-                        <DoubleAnimation Storyboard.TargetName="PosterLightSweepTransform"
-                                         Storyboard.TargetProperty="X"
-                                         From="-130" To="410" Duration="0:0:.48" />
-                      </Storyboard>
-                    </BeginStoryboard>
-                  </Trigger.EnterActions>
                 </Trigger>
                 <Trigger Property="IsPressed" Value="True">
                   <Setter TargetName="PosterHoverTint" Property="Background" Value="#26000000" />
@@ -1372,14 +1264,7 @@
             </Grid>
           </Grid>
         </Border>
-        <Grid Column="1">
-          <Panel.Background>
-            <RadialGradientBrush Center=".84,.13" GradientOrigin=".84,.13" RadiusX=".82" RadiusY=".82">
-              <GradientStop Color="#172310" Offset="0" />
-              <GradientStop Color="#080A08" Offset=".42" />
-              <GradientStop Color="#070907" Offset="1" />
-            </RadialGradientBrush>
-          </Panel.Background>
+        <Grid Column="1" Background="#070907">
           <ScrollViewer Name="HomePage" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="Página inicial">
             <StackPanel Margin="30,26,24,36">
               <Grid Margin="3,0,3,19">
@@ -1406,16 +1291,7 @@
               <Border Height="348" CornerRadius="18" BorderBrush="#466232" BorderThickness="1" ClipToBounds="True">
                 <Grid>
                   <Image Source="Assets/f15-turborama-user-original-v13.png" Stretch="UniformToFill" HorizontalAlignment="Stretch" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality" />
-                  <Border>
-                    <Border.Background>
-                      <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                        <GradientStop Color="#FC070A07" Offset="0" />
-                        <GradientStop Color="#E5080C08" Offset=".38" />
-                        <GradientStop Color="#8E061006" Offset=".64" />
-                        <GradientStop Color="#20000000" Offset="1" />
-                      </LinearGradientBrush>
-                    </Border.Background>
-                  </Border>
+                  <Border Background="#A8070A07" />
                   <Canvas IsHitTestVisible="False">
                     <Ellipse Width="420" Height="420" Canvas.Left="700" Canvas.Top="-40" Stroke="#5C9DFF00" StrokeThickness="1" />
                     <Ellipse Width="315" Height="315" Canvas.Left="752" Canvas.Top="12" Stroke="#4C2389FF" StrokeThickness="2" StrokeDashArray="2 7" />

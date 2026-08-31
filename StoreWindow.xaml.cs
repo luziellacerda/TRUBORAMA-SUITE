@@ -1453,35 +1453,9 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                 BlendThemeChannel(accent.B, 12, .88)));
         SetCategoryThemeBrush("CurrentSystemSidebarBrush", Color.FromRgb(5, 7, 5));
 
-        var sidebarSelection = new LinearGradientBrush
-        {
-            StartPoint = new Point(0, .5),
-            EndPoint = new Point(1, .5)
-        };
-        sidebarSelection.GradientStops.Add(new GradientStop(
-            Color.FromArgb(255, accent.R, accent.G, accent.B), 0));
-        sidebarSelection.GradientStops.Add(new GradientStop(
-            Color.FromArgb(255, accent.R, accent.G, accent.B), .02));
-        sidebarSelection.GradientStops.Add(new GradientStop(
-            Color.FromArgb(110, accent.R, accent.G, accent.B), .07));
-        sidebarSelection.GradientStops.Add(new GradientStop(
-            Color.FromArgb(28, accent.R, accent.G, accent.B), .14));
-        sidebarSelection.GradientStops.Add(new GradientStop(
-            Color.FromArgb(0, 0, 0, 0), .20));
-        sidebarSelection.Freeze();
-        Resources["CurrentSystemSidebarSelectionBrush"] = sidebarSelection;
-
-        var videoOverlay = new LinearGradientBrush
-        {
-            StartPoint = new Point(0, .5),
-            EndPoint = new Point(1, .5)
-        };
-        videoOverlay.GradientStops.Add(new GradientStop(Color.FromArgb(255, 0, 0, 0), 0));
-        videoOverlay.GradientStops.Add(new GradientStop(Color.FromArgb(210, 0, 0, 0), .30));
-        videoOverlay.GradientStops.Add(new GradientStop(Color.FromArgb(92, 0, 0, 0), .62));
-        videoOverlay.GradientStops.Add(new GradientStop(Color.FromArgb(0, 0, 0, 0), 1));
-        videoOverlay.Freeze();
-        Resources["CurrentSystemVideoOverlayBrush"] = videoOverlay;
+        SetCategoryThemeBrush(
+            "CurrentSystemSidebarSelectionBrush",
+            Color.FromArgb(28, accent.R, accent.G, accent.B));
     }
 
     private void SetCategoryThemeBrush(string key, Color color)

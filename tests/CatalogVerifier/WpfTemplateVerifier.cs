@@ -156,28 +156,27 @@ internal static class WpfTemplateVerifier
                     || renderedSidebar.Color != Color.FromRgb(5, 7, 5))
                     throw new InvalidDataException(
                         "O menu lateral original precisa permanecer sólido, opaco e praticamente preto.");
-                if (window.Resources["CurrentSystemSidebarSelectionBrush"] is not LinearGradientBrush selection
-                    || selection.GradientStops.Count != 5
-                    || selection.GradientStops[0].Color != Color.FromRgb(81, 184, 223)
-                    || selection.GradientStops[1].Color != Color.FromRgb(81, 184, 223)
-                    || selection.GradientStops[1].Offset != .02
-                    || selection.GradientStops[2].Color.A != 110
-                    || selection.GradientStops[2].Offset != .07
-                    || selection.GradientStops[3].Color.A != 28
-                    || selection.GradientStops[3].Offset != .14
-                    || selection.GradientStops[^1].Color.A != 0
-                    || selection.GradientStops[^1].Offset != .20)
+                if (window.Resources["CurrentSystemSidebarSelectionBrush"] is not SolidColorBrush selection
+                    || selection.Color != Color.FromArgb(28, 81, 184, 223))
                     throw new InvalidDataException(
-                        "A seleção lateral precisa manter 2% de cor e um degradê tecnológico curto.");
+                        "A seleção lateral precisa usar somente uma cor sólida e discreta.");
                 if (window.Resources["TechScrollThumbStyle"] is not Style scrollThumbStyle
                     || scrollThumbStyle.TargetType != typeof(Thumb))
                     throw new InvalidDataException(
                         "A barra de rolagem tecnológica precisa manter o estilo de destaque dinâmico.");
                 if (window.Resources["CurrentSystemVideoOverlayBrush"] is not LinearGradientBrush overlay
-                    || overlay.GradientStops.Count < 2
-                    || overlay.GradientStops[0].Color.A != 255
-                    || overlay.GradientStops[^1].Color.A != 0)
-                    throw new InvalidDataException("O vídeo precisa do degradê preto para transparente.");
+                    || overlay.StartPoint != new Point(0, .5)
+                    || overlay.EndPoint != new Point(1, .5)
+                    || overlay.GradientStops.Count != 3
+                    || overlay.GradientStops[0].Color != Color.FromArgb(255, 0, 0, 0)
+                    || overlay.GradientStops[0].Offset != 0
+                    || overlay.GradientStops[1].Color != Color.FromArgb(255, 0, 0, 0)
+                    || overlay.GradientStops[1].Offset != .10
+                    || overlay.GradientStops[2].Color != Color.FromArgb(0, 0, 0, 0)
+                    || overlay.GradientStops[2].Offset != .20
+                    || window.Resources.Values.OfType<GradientBrush>().Count() != 1)
+                    throw new InvalidDataException(
+                        "Somente o vídeo pode manter degradê: preto até 10% e transparente aos 20%.");
 
                 var requestedThemeColors = new Dictionary<string, Color>(StringComparer.OrdinalIgnoreCase)
                 {
