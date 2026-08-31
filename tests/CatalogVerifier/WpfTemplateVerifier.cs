@@ -120,6 +120,29 @@ internal static class WpfTemplateVerifier
                     || window.FindName("MusicPlayPauseGlyph") is not TextBlock)
                     throw new InvalidDataException(
                         "Jogos locais precisa ser uma página separada, por sistema e com player de música.");
+                if (window.FindName("SidebarHost") is not Border sidebarHost
+                    || window.FindName("SidebarCoverFrame") is not Grid sidebarFrame
+                    || sidebarFrame.IsHitTestVisible
+                    || sidebarFrame.Focusable
+                    || FindVisualDescendants<Control>(sidebarFrame).Any()
+                    || window.FindName("SidebarMetalTopRail") is not System.Windows.Shapes.Path
+                    || window.FindName("SidebarMetalBottomRail") is not System.Windows.Shapes.Path
+                    || window.FindName("SidebarMetalLeftRail") is not System.Windows.Shapes.Rectangle
+                    || window.FindName("SidebarMetalRightRail") is not System.Windows.Shapes.Rectangle
+                    || window.FindName("SidebarFrameTopLeftGlow") is not System.Windows.Shapes.Path topGlow
+                    || topGlow.Stroke is null
+                    || topGlow.Effect is not System.Windows.Media.Effects.DropShadowEffect
+                    || window.FindName("SidebarFrameBottomRightGlow") is not System.Windows.Shapes.Path bottomGlow
+                    || bottomGlow.Stroke is null
+                    || bottomGlow.Effect is not System.Windows.Media.Effects.DropShadowEffect
+                    || window.FindName("SidebarFrameLeftEnergySegments") is not StackPanel leftSegments
+                    || leftSegments.Children.Count != 5
+                    || leftSegments.Children.Cast<UIElement>().Any(item => item is not System.Windows.Shapes.Rectangle)
+                    || window.FindName("SidebarFrameRightEnergySegments") is not StackPanel rightSegments
+                    || rightSegments.Children.Count != 5
+                    || rightSegments.Children.Cast<UIElement>().Any(item => item is not System.Windows.Shapes.Rectangle))
+                    throw new InvalidDataException(
+                        "A moldura lateral precisa manter cantos metálicos e trilhos de energia sem capturar cliques.");
                 if (window.FindName("LicenseConsumerText") is not TextBlock licenseConsumer
                     || licenseConsumer.Text != "Cliente ••••FIER"
                     || licenseConsumer.Text.Contains("TR-WPF-VERIFIER", StringComparison.Ordinal)
@@ -193,6 +216,13 @@ internal static class WpfTemplateVerifier
                 window.Dispatcher.Invoke(
                     () => window.UpdateLayout(),
                     DispatcherPriority.ApplicationIdle);
+                if (Math.Abs(sidebarHost.ActualWidth - 252) > .5
+                    || sidebarHost.ActualHeight <= 0
+                    || window.Resources["CurrentSystemAccentBrush"] is not SolidColorBrush activeAccent
+                    || topGlow.Stroke is not SolidColorBrush frameAccent
+                    || activeAccent.Color != frameAccent.Color)
+                    throw new InvalidDataException(
+                        "A moldura tecnológica precisa preservar 252 px e acompanhar a cor do sistema ativo.");
                 VerifyBuiltInMusicAutoplay(window);
                 VerifyAsyncThumbnailBinding(window);
                 VerifyResponsiveBackgroundVideo(window);
