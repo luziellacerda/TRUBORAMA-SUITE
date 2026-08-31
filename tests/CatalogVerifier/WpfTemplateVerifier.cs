@@ -125,10 +125,17 @@ internal static class WpfTemplateVerifier
                     || sidebarFrame.IsHitTestVisible
                     || sidebarFrame.Focusable
                     || FindVisualDescendants<Control>(sidebarFrame).Any()
-                    || window.FindName("SidebarMetalTopRail") is not System.Windows.Shapes.Path
-                    || window.FindName("SidebarMetalBottomRail") is not System.Windows.Shapes.Path
-                    || window.FindName("SidebarMetalLeftRail") is not System.Windows.Shapes.Rectangle
-                    || window.FindName("SidebarMetalRightRail") is not System.Windows.Shapes.Rectangle
+                    || window.FindName("SidebarMetalTopRail") is not System.Windows.Shapes.Path topRail
+                    || window.FindName("SidebarMetalBottomRail") is not System.Windows.Shapes.Path bottomRail
+                    || window.FindName("SidebarMetalLeftRail") is not System.Windows.Shapes.Rectangle leftRail
+                    || window.FindName("SidebarMetalRightRail") is not System.Windows.Shapes.Rectangle rightRail
+                    || topRail.Opacity != 1
+                    || bottomRail.Opacity != 1
+                    || leftRail.Opacity != 1
+                    || rightRail.Opacity != 1
+                    || window.FindName("SidebarTopLedBar") is not System.Windows.Shapes.Rectangle topLed
+                    || topLed.Fill is null
+                    || topLed.Effect is not System.Windows.Media.Effects.DropShadowEffect
                     || window.FindName("SidebarFrameTopLeftGlow") is not System.Windows.Shapes.Path topGlow
                     || topGlow.Stroke is null
                     || topGlow.Effect is not System.Windows.Media.Effects.DropShadowEffect
@@ -160,16 +167,23 @@ internal static class WpfTemplateVerifier
                     || ps3Sidebar.GradientStops[0].Offset != 0
                     || ps3Sidebar.GradientStops[1].Color != Color.FromRgb(81, 184, 223)
                     || ps3Sidebar.GradientStops[1].Offset != .02
-                    || ps3Sidebar.GradientStops[2].Color.A != 64
+                    || ps3Sidebar.GradientStops[2].Color != Color.FromRgb(21, 44, 54)
                     || ps3Sidebar.GradientStops[2].Offset != .08
                     || ps3Sidebar.GradientStops[3].Color != Color.FromRgb(8, 10, 8)
                     || ps3Sidebar.GradientStops[3].Offset != .18
                     || ps3Sidebar.GradientStops[^1].Color.R > 8
                     || ps3Sidebar.GradientStops[^1].Color.G > 8
                     || ps3Sidebar.GradientStops[^1].Color.B > 8
-                    || ps3Sidebar.GradientStops[^1].Offset != 1)
+                    || ps3Sidebar.GradientStops[^1].Offset != 1
+                    || ps3Sidebar.GradientStops.Any(stop => stop.Color.A != 255))
                     throw new InvalidDataException(
-                        "O menu lateral precisa manter 2% de cor suave e chegar cedo ao preto.");
+                        "O menu lateral precisa ser opaco, manter 2% de cor suave e chegar cedo ao preto.");
+                if (window.Resources["SidebarMetalCapBrush"] is not LinearGradientBrush metalCap
+                    || window.Resources["SidebarMetalSideBrush"] is not LinearGradientBrush metalSide
+                    || metalCap.GradientStops.Any(stop => stop.Color.A != 255)
+                    || metalSide.GradientStops.Any(stop => stop.Color.A != 255))
+                    throw new InvalidDataException(
+                        "A moldura metálica lateral precisa permanecer completamente opaca.");
                 if (window.Resources["CurrentSystemSidebarSelectionBrush"] is not LinearGradientBrush selection
                     || selection.GradientStops.Count != 5
                     || selection.GradientStops[0].Color != Color.FromRgb(81, 184, 223)
@@ -1573,11 +1587,11 @@ internal static class WpfTemplateVerifier
                 }
                 if (player.NaturalVideoWidth <= 0
                     || player.NaturalVideoHeight <= 0
-                    || player.Stretch != Stretch.UniformToFill
+                    || player.Stretch != Stretch.Uniform
                     || player.StretchDirection != StretchDirection.Both
                     || player.RenderTransform is not null and not MatrixTransform { Matrix.IsIdentity: true })
                     throw new InvalidDataException(
-                        "O vídeo real não permaneceu proporcional e preenchendo a área após MediaOpened.");
+                        "O vídeo real não permaneceu inteiro, proporcional e centralizado após MediaOpened.");
             }
             finally
             {
@@ -1716,19 +1730,23 @@ internal static class WpfTemplateVerifier
         var systemPlayer = systemFactory.Invoke(null, [systemHost]) as MediaElement
                            ?? throw new InvalidDataException(
                                "O player proporcional do sistema não pôde ser criado.");
-        if (player.Stretch != Stretch.UniformToFill
+        if (player.Stretch != Stretch.Uniform
             || player.StretchDirection != StretchDirection.Both
             || player.HorizontalAlignment != HorizontalAlignment.Stretch
             || player.VerticalAlignment != VerticalAlignment.Stretch
+            || BindingOperations.GetBindingExpressionBase(player, FrameworkElement.WidthProperty) is null
+            || BindingOperations.GetBindingExpressionBase(player, FrameworkElement.HeightProperty) is null
             || !player.IsMuted
             || Math.Abs(player.Volume) > double.Epsilon
             || player.RenderTransform is not null and not MatrixTransform { Matrix.IsIdentity: true })
             throw new InvalidDataException(
-                "O player precisa preencher toda a área, proporcional, centralizado e sem áudio.");
+                "O player universal precisa permanecer inteiro, proporcional, centralizado e sem áudio.");
         if (systemPlayer.Stretch != Stretch.Uniform
             || systemPlayer.StretchDirection != StretchDirection.Both
             || systemPlayer.HorizontalAlignment != HorizontalAlignment.Stretch
             || systemPlayer.VerticalAlignment != VerticalAlignment.Stretch
+            || BindingOperations.GetBindingExpressionBase(systemPlayer, FrameworkElement.WidthProperty) is null
+            || BindingOperations.GetBindingExpressionBase(systemPlayer, FrameworkElement.HeightProperty) is null
             || !systemPlayer.IsMuted
             || Math.Abs(systemPlayer.Volume) > double.Epsilon
             || systemPlayer.RenderTransform is not null and not MatrixTransform { Matrix.IsIdentity: true })

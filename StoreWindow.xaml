@@ -23,7 +23,7 @@
       <LinearGradientBrush x:Key="CurrentSystemSidebarBrush" StartPoint="0,.5" EndPoint="1,.5">
         <GradientStop Color="#FF5FA5F5" Offset="0" />
         <GradientStop Color="#FF5FA5F5" Offset=".02" />
-        <GradientStop Color="#402D506C" Offset=".08" />
+        <GradientStop Color="#FF18283B" Offset=".08" />
         <GradientStop Color="#FF080A08" Offset=".18" />
         <GradientStop Color="#FF050705" Offset="1" />
       </LinearGradientBrush>
@@ -41,14 +41,14 @@
         <GradientStop Color="#00000000" Offset="1" />
       </LinearGradientBrush>
       <LinearGradientBrush x:Key="SidebarMetalCapBrush" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="#F2020302" Offset="0" />
-        <GradientStop Color="#EE303630" Offset=".48" />
-        <GradientStop Color="#F2050705" Offset="1" />
+        <GradientStop Color="#FF020302" Offset="0" />
+        <GradientStop Color="#FF303630" Offset=".48" />
+        <GradientStop Color="#FF050705" Offset="1" />
       </LinearGradientBrush>
       <LinearGradientBrush x:Key="SidebarMetalSideBrush" StartPoint="0,0" EndPoint="1,0">
-        <GradientStop Color="#E6020302" Offset="0" />
-        <GradientStop Color="#D9353C35" Offset=".48" />
-        <GradientStop Color="#E6050705" Offset="1" />
+        <GradientStop Color="#FF020302" Offset="0" />
+        <GradientStop Color="#FF353C35" Offset=".48" />
+        <GradientStop Color="#FF050705" Offset="1" />
       </LinearGradientBrush>
       <BitmapImage x:Key="CatalogFallbackArtwork" UriSource="Assets/f15-turborama-user-original-v13.png" DecodePixelWidth="512" CacheOption="OnLoad" CreateOptions="DelayCreation" />
       <Style x:Key="TechScrollThumbStyle" TargetType="{x:Type Thumb}">
@@ -1298,6 +1298,9 @@
                 <EventTrigger RoutedEvent="FrameworkElement.Loaded">
                   <BeginStoryboard>
                     <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                      <DoubleAnimation Storyboard.TargetName="SidebarTopLedBar"
+                                       Storyboard.TargetProperty="Opacity"
+                                       From=".72" To="1" Duration="0:0:1.4" />
                       <DoubleAnimation Storyboard.TargetName="SidebarFrameLeftEnergySegments"
                                        Storyboard.TargetProperty="Opacity"
                                        From=".42" To=".78" Duration="0:0:1.8" />
@@ -1318,7 +1321,6 @@
                     Fill="{StaticResource SidebarMetalCapBrush}"
                     Stroke="#80596359"
                     StrokeThickness="1"
-                    Opacity=".72"
                     Data="M 0,25 L 0,12 L 12,0 L 68,0 L 78,6 L 162,6 L 172,0 L 228,0 L 240,12 L 240,25 Z" />
               <Path x:Name="SidebarMetalBottomRail"
                     Height="25"
@@ -1329,20 +1331,34 @@
                     Fill="{StaticResource SidebarMetalCapBrush}"
                     Stroke="#80596359"
                     StrokeThickness="1"
-                    Opacity=".72"
                     Data="M 0,0 L 0,13 L 12,25 L 68,25 L 78,19 L 162,19 L 172,25 L 228,25 L 240,13 L 240,0 Z" />
               <Rectangle x:Name="SidebarMetalLeftRail"
                          Width="5"
                          Margin="6,25,0,25"
                          HorizontalAlignment="Left"
-                         Fill="{StaticResource SidebarMetalSideBrush}"
-                         Opacity=".58" />
+                         Fill="{StaticResource SidebarMetalSideBrush}" />
               <Rectangle x:Name="SidebarMetalRightRail"
                          Width="5"
                          Margin="0,25,6,25"
                          HorizontalAlignment="Right"
-                         Fill="{StaticResource SidebarMetalSideBrush}"
-                         Opacity=".58" />
+                         Fill="{StaticResource SidebarMetalSideBrush}" />
+
+              <Rectangle x:Name="SidebarTopLedBar"
+                         Height="3"
+                         Margin="22,7,22,0"
+                         HorizontalAlignment="Stretch"
+                         VerticalAlignment="Top"
+                         RadiusX="1.5"
+                         RadiusY="1.5"
+                         Fill="{DynamicResource CurrentSystemAccentBrush}"
+                         Opacity=".88">
+                <Rectangle.Effect>
+                  <DropShadowEffect Color="{DynamicResource CurrentSystemAccentColor}"
+                                    BlurRadius="12"
+                                    ShadowDepth="0"
+                                    Opacity=".90" />
+                </Rectangle.Effect>
+              </Rectangle>
 
               <Border Margin="5"
                       BorderBrush="#4A414A43"

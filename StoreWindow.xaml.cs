@@ -1462,10 +1462,10 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             Color.FromArgb(255, accent.R, accent.G, accent.B), .02));
         sidebarBackground.GradientStops.Add(new GradientStop(
             Color.FromArgb(
-                64,
-                BlendThemeChannel(accent.R, 6, .55),
-                BlendThemeChannel(accent.G, 9, .55),
-                BlendThemeChannel(accent.B, 12, .55)),
+                255,
+                BlendThemeChannel(accent.R, 6, .80),
+                BlendThemeChannel(accent.G, 9, .80),
+                BlendThemeChannel(accent.B, 12, .80)),
             .08));
         sidebarBackground.GradientStops.Add(new GradientStop(
             Color.FromRgb(8, 10, 8), .18));
@@ -2363,7 +2363,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     }
 
     private static MediaElement CreateResponsiveBackgroundVideoPlayer(FrameworkElement host)
-        => CreateResponsiveVideoPlayer(host, Stretch.UniformToFill);
+        => CreateResponsiveVideoPlayer(host, Stretch.Uniform);
 
     private static MediaElement CreateResponsiveSystemVideoPlayer(FrameworkElement host)
         => CreateResponsiveVideoPlayer(host, Stretch.Uniform);
@@ -2388,10 +2388,9 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             UseLayoutRounding = true
         };
 
-        // Keep the player box tied to the viewport. The universal layer uses a
-        // proportional cover, while the selected system layer uses a centered
-        // proportional fit so legacy 4:3 and square footage is never zoomed or
-        // perceived as distorted. The cover remains visible behind the fit layer.
+        // The player box always occupies the complete background viewport. Only
+        // the video pixels are fitted inside it: Uniform keeps square, 4:3, 3:2
+        // and widescreen sources proportional, centered and fully visible.
         player.SetBinding(
             WidthProperty,
             new Binding(nameof(ActualWidth))
