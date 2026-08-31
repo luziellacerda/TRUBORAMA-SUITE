@@ -897,6 +897,39 @@ public sealed class CatalogArchiveExtractor
         }
     }
 
+    internal static string BuildGameDestinationPath(
+        string gameLibraryRoot,
+        string category,
+        string itemId)
+    {
+        var categoryRoot = BuildCategoryDestinationPath(gameLibraryRoot, category);
+        var stableItemId = NormalizeStableItemId(itemId);
+        var destinationPath = Path.GetFullPath(Path.Combine(
+            categoryRoot,
+            BuildStableItemDirectoryName(stableItemId)));
+        EnsureWithinRoot(
+            destinationPath,
+            categoryRoot,
+            $"O destino calculado saiu da biblioteca {GameLibraryFolderName}.");
+        return destinationPath;
+    }
+
+    internal static string BuildCategoryDestinationPath(
+        string gameLibraryRoot,
+        string category)
+    {
+        var canonicalRoot = Path.TrimEndingDirectorySeparator(
+            Path.GetFullPath(gameLibraryRoot));
+        _ = RequireGameLibraryRoot(canonicalRoot);
+        var safeCategory = SanitizeDestinationSegment(category, "categoria");
+        var categoryPath = Path.GetFullPath(Path.Combine(canonicalRoot, safeCategory));
+        EnsureWithinRoot(
+            categoryPath,
+            canonicalRoot,
+            $"A categoria calculada saiu da biblioteca {GameLibraryFolderName}.");
+        return categoryPath;
+    }
+
     private static string SanitizeDestinationSegment(string value, string fieldName)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -916,15 +949,7 @@ public sealed class CatalogArchiveExtractor
     private static string ResolveStableItemId(string? itemId, string canonicalArchivePath)
     {
         if (!string.IsNullOrWhiteSpace(itemId))
-        {
-            var normalized = itemId.Trim().ToLowerInvariant();
-            if (normalized.Length is < 1 or > 160
-                || normalized.Any(character => !(char.IsAsciiLetterOrDigit(character)
-                                                   || character is '-' or '_' or '.')))
-                throw new InvalidDataException(
-                    "O identificador estável do item possui formato inválido.");
-            return normalized;
-        }
+            return NormalizeStableItemId(itemId);
 
         // Compatibility path for existing callers. Current downloaded package
         // names already contain the catalog item identifier and its hash, so the
@@ -932,6 +957,17 @@ public sealed class CatalogArchiveExtractor
         var archiveName = Path.GetFileNameWithoutExtension(canonicalArchivePath);
         return SanitizeDestinationSegment(archiveName, "identificador do pacote")
             .ToLowerInvariant();
+    }
+
+    private static string NormalizeStableItemId(string itemId)
+    {
+        var normalized = itemId.Trim().ToLowerInvariant();
+        if (normalized.Length is < 1 or > 160
+            || normalized.Any(character => !(char.IsAsciiLetterOrDigit(character)
+                                               || character is '-' or '_' or '.')))
+            throw new InvalidDataException(
+                "O identificador estável do item possui formato inválido.");
+        return normalized;
     }
 
     private static string BuildStableItemDirectoryName(string stableItemId)

@@ -57,11 +57,33 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         new(LoadBackgroundVideoIntegrityMap);
     private static readonly Lazy<IReadOnlyDictionary<string, string>> RetroPlatformDescriptions =
         new(LoadRetroPlatformDescriptions);
+    private static readonly HashSet<string> SupportedMusicExtensions = new(
+        [".mp3", ".wav", ".wma", ".m4a", ".aac"],
+        StringComparer.OrdinalIgnoreCase);
+    private static readonly Dictionary<string, Color> EmulatorCoverAccentMap =
+        new Dictionary<string, Color>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["f95f1d8257dc3d0ec31c199c8d30ba0e"] = Color.FromRgb(255, 51, 71),
+            ["c430156afd3ca0b0f10579218c7aedc1"] = Color.FromRgb(56, 189, 248),
+            ["d2326fb5c3bf0d258dc869a20f883612"] = Color.FromRgb(56, 189, 248),
+            ["303aed3c0caf2e9e02d3f229cfeb18b6"] = Color.FromRgb(56, 189, 248),
+            ["d43efb43df478b8e78759de456be6177"] = Color.FromRgb(192, 83, 255),
+            ["cb4b3fa79fd5c10714e2a92e6777da08"] = Color.FromRgb(255, 51, 71),
+            ["7468dcff66e5c9f90202455b19b629c6"] = Color.FromRgb(139, 92, 246),
+            ["2c6872aec304fb6faa038b8cc65dee58"] = Color.FromRgb(239, 68, 68),
+            ["83864e2a73f63bc39dbfbd84b20f0795"] = Color.FromRgb(168, 85, 247),
+            ["f9f47bfde74241481308ebdfda080778"] = Color.FromRgb(34, 211, 238),
+            ["f754c3e71638008f72dce88d1c5b9590"] = Color.FromRgb(14, 165, 233),
+            ["492a56ae14eb149854ccdd23b6617f08"] = Color.FromRgb(132, 204, 22),
+            ["aab30de07d8cf800b283271fd0365aca"] = Color.FromRgb(163, 230, 53),
+            ["4c2d5717ad93c2b6277453f7ae39aa13"] = Color.FromRgb(56, 189, 248),
+            ["40ff54b598e3f23a31cea45c856397e8"] = Color.FromRgb(14, 165, 233),
+            ["2dccd65b139159b74c7327df00fcfda9"] = Color.FromRgb(34, 197, 94),
+            ["962f9229c145b1e91e079f8c2601f0af"] = Color.FromRgb(34, 197, 94)
+        };
     private static readonly object FailedVideoCloseQuarantineGate = new();
     private static readonly List<(MediaElement Player, TrustedVideoLease Lease)>
         FailedVideoCloseQuarantine = [];
-    private static readonly ConditionalWeakTable<MediaElement, ResponsiveBackgroundVideoLayout>
-        ResponsiveBackgroundVideoLayouts = new();
     private static int _videoPlaybackDisabled;
     private static readonly IReadOnlyDictionary<string, string> BuiltInRetroPlatformDescriptions =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -114,6 +136,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         };
 
     private readonly CatalogDownloadService _downloadService;
+    private readonly CatalogLocalLibraryService _localLibraryService;
     private readonly AuthorizedStoreContext _authorization;
     private readonly SuiteLicensingRuntime _licensingRuntime;
     private readonly SuiteAuthorizationSubscription _authorizationSubscription;
@@ -127,6 +150,14 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     private readonly Dictionary<string, string> _extractionRootsByItem =
         new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _approvedOpenRoots = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, CatalogLocalGameInspection> _localGameInspectionCache =
+        new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _managedGameDeletionInProgress =
+        new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<CatalogItem> _managedGameSystemItems = [];
+    private readonly List<CatalogLocalOrphanInspection> _managedGameSystemOrphans = [];
+    private readonly MediaPlayer _musicPlayer = new();
+    private readonly List<string> _musicTracks = [];
     private readonly CatalogArchiveExtractor _archiveExtractor = new();
     private readonly SemaphoreSlim _extractionQueue = new(1, 1);
     private CatalogRepository? _catalogRepository;
@@ -136,6 +167,17 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     private string _installFolderPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
     private string _gameLibraryFolderPath = string.Empty;
     private string _temporaryFolderPath = string.Empty;
+    private string _musicFolderPath = string.Empty;
+    private string _managedGameSearchText = string.Empty;
+    private LibrarySystemSummary? _selectedManagedGameSystem;
+    private CancellationTokenSource? _localLibraryScanCancellation;
+    private int _localLibraryScanVersion;
+    private CancellationTokenSource? _musicPlaylistLoadCancellation;
+    private int _musicPlaylistLoadVersion;
+    private int _musicTrackIndex = -1;
+    private string _openedMusicTrackPath = string.Empty;
+    private bool _isMusicPlaying;
+    private int _consecutiveMusicFailures;
     private bool _hasCatalogItems;
     private int _libraryTotalItemCount;
     private bool _canGoToPreviousPage;
@@ -176,6 +218,10 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         double Height,
         double Opacity,
         int ZIndex);
+
+    private sealed record DirectGamePlacement(
+        string LocalFilePath,
+        bool SourceStateCleanupPending);
 
     private readonly record struct RetroSystemVideoIntegrity(string Sha256, long Length);
 
@@ -310,6 +356,8 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     public ObservableCollection<CatalogCategory> FeaturedCategories { get; } = [];
     public ObservableCollection<CatalogItem> CatalogItems { get; } = [];
     public ObservableCollection<LibrarySystemSummary> LibrarySystems { get; } = [];
+    public ObservableCollection<LibrarySystemSummary> ManagedGameSystems { get; } = [];
+    public ObservableCollection<CatalogLocalGameEntry> ManagedGames { get; } = [];
     public ObservableCollection<PageNumber> PageNumbers { get; } = [];
     public ObservableCollection<CatalogDownloadJob> DownloadJobs { get; } = [];
 
@@ -327,6 +375,18 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     public bool HasDownloads => DownloadJobs.Count > 0;
     public Visibility DownloadsEmptyVisibility => HasDownloads ? Visibility.Collapsed : Visibility.Visible;
     public Visibility DownloadsListVisibility => HasDownloads ? Visibility.Visible : Visibility.Collapsed;
+
+    public LibrarySystemSummary? SelectedManagedGameSystem
+    {
+        get => _selectedManagedGameSystem;
+        set
+        {
+            if (ReferenceEquals(_selectedManagedGameSystem, value)) return;
+            _selectedManagedGameSystem = value;
+            OnPropertyChanged();
+            BeginManagedGameSystemRefresh();
+        }
+    }
 
     public CatalogCategory? SelectedCategory
     {
@@ -402,6 +462,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             {
                 MaximumFileSizeBytes = 512L * 1024L * 1024L * 1024L
             });
+        _localLibraryService = new CatalogLocalLibraryService(_downloadService);
         _authorizationSubscription = _licensingRuntime.AttachAuthorizationConsumer(
             _authorization,
             LicensingRuntime_AuthorizationRevoked);
@@ -413,8 +474,15 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             ThrowIfOperationUnauthorized();
             InitializeComponent();
             DataContext = this;
+            LicenseConsumerText.Text = FormatMaskedLicenseId(_authorization.LicenseId);
+            LicenseConsumerStatusText.Text = "Licença ativa";
             _installFolderPath = LocalDataPaths.ReadInstallFolder() ?? _installFolderPath;
             _gameLibraryFolderPath = LocalDataPaths.ReadGameLibraryFolder() ?? string.Empty;
+            _musicFolderPath = LocalDataPaths.ReadMusicFolder() ?? string.Empty;
+            _musicPlayer.Volume = .35;
+            _musicPlayer.MediaOpened += MusicPlayer_MediaOpened;
+            _musicPlayer.MediaEnded += MusicPlayer_MediaEnded;
+            _musicPlayer.MediaFailed += MusicPlayer_MediaFailed;
             RememberApprovedRoot(_installFolderPath);
             if (IsExistingGameLibraryFolder(_gameLibraryFolderPath))
                 RememberApprovedRoot(_gameLibraryFolderPath);
@@ -480,6 +548,8 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             CatalogCategories.Clear();
             FeaturedCategories.Clear();
             LibrarySystems.Clear();
+            ManagedGameSystems.Clear();
+            ManagedGames.Clear();
             LibraryTotalItemCount = 0;
             CatalogItems.Clear();
             PageNumbers.Clear();
@@ -523,6 +593,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     private void RefreshLibrarySystems()
     {
         LibrarySystems.Clear();
+        ManagedGameSystems.Clear();
         LibraryTotalItemCount = 0;
         if (_catalogRepository is null) return;
 
@@ -536,14 +607,617 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             var cover = result.Items.Count > 0
                 ? result.Items[0].ImageSource
                 : string.Empty;
-            LibrarySystems.Add(new LibrarySystemSummary
+            var summary = new LibrarySystemSummary
             {
                 Category = category,
                 CoverImageSource = cover,
                 ItemCount = result.TotalItems
-            });
+            };
+            LibrarySystems.Add(summary);
+            if (!category.Id.Equals("system-tools", StringComparison.OrdinalIgnoreCase))
+                ManagedGameSystems.Add(summary);
             LibraryTotalItemCount += result.TotalItems;
         }
+    }
+
+    private void BeginManagedGameSystemRefresh()
+    {
+        if (_catalogRepository is null || SelectedManagedGameSystem is not { } selectedSystem)
+            return;
+
+        CancelManagedGameScan();
+        _managedGameSystemItems.Clear();
+        _managedGameSystemOrphans.Clear();
+        _localGameInspectionCache.Clear();
+        var result = _catalogRepository.Query(
+            selectedSystem.CategoryId,
+            searchText: null,
+            requestedPage: 1,
+            pageSize: Math.Max(1, _catalogRepository.ItemCount));
+        var systemItems = result.Items.Where(IsGameItem).ToArray();
+        _managedGameSystemItems.AddRange(systemItems);
+        RenderManagedGames();
+        _ = InspectManagedGameSystemAsync(selectedSystem, systemItems);
+    }
+
+    private void ManagedGameSearch_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        _managedGameSearchText = sender is TextBox textBox ? textBox.Text.Trim() : string.Empty;
+        RenderManagedGames();
+    }
+
+    private void RefreshManagedGames_Click(object sender, RoutedEventArgs e) =>
+        BeginManagedGameSystemRefresh();
+
+    private void RenderManagedGames()
+    {
+        var filteredItems = string.IsNullOrWhiteSpace(_managedGameSearchText)
+            ? _managedGameSystemItems
+            : _managedGameSystemItems.Where(item =>
+                    item.Title.Contains(_managedGameSearchText, StringComparison.CurrentCultureIgnoreCase)
+                    || item.Subtitle.Contains(_managedGameSearchText, StringComparison.CurrentCultureIgnoreCase)
+                    || item.Keywords.Contains(_managedGameSearchText, StringComparison.CurrentCultureIgnoreCase))
+                .ToList();
+
+        ManagedGames.Clear();
+        foreach (var item in filteredItems)
+        {
+            var entry = new CatalogLocalGameEntry(item);
+            if (_localGameInspectionCache.TryGetValue(item.Id, out var inspection))
+                entry.Apply(inspection);
+            ManagedGames.Add(entry);
+        }
+
+        var filteredOrphans = string.IsNullOrWhiteSpace(_managedGameSearchText)
+            ? _managedGameSystemOrphans
+            : _managedGameSystemOrphans.Where(orphan =>
+                    orphan.Name.Contains(
+                        _managedGameSearchText,
+                        StringComparison.CurrentCultureIgnoreCase)
+                    || orphan.LocalPath.Contains(
+                        _managedGameSearchText,
+                        StringComparison.CurrentCultureIgnoreCase))
+                .ToList();
+        var categoryId = SelectedManagedGameSystem?.CategoryId ?? string.Empty;
+        foreach (var orphan in filteredOrphans)
+            ManagedGames.Add(new CatalogLocalGameEntry(categoryId, orphan));
+
+        UpdateManagedGameSummary();
+    }
+
+    private async Task InspectManagedGameSystemAsync(
+        LibrarySystemSummary selectedSystem,
+        CatalogItem[] systemItems)
+    {
+        var gameLibraryRoot = EnsureGameLibraryFolder();
+        if (gameLibraryRoot is null)
+        {
+            foreach (var item in systemItems)
+            {
+                _localGameInspectionCache[item.Id] = new CatalogLocalGameInspection(
+                    CatalogLocalGameStatus.Unavailable,
+                    string.Empty,
+                    $"Selecione a pasta '{CatalogArchiveExtractor.GameLibraryFolderName}' para analisar este jogo.");
+            }
+            _managedGameSystemOrphans.Clear();
+            RenderManagedGames();
+            SetManagedGameStatus("Selecione a pasta de ROMs para analisar os jogos locais.");
+            return;
+        }
+
+        var version = ++_localLibraryScanVersion;
+        var scanCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            _storeOperationCancellation.Token);
+        _localLibraryScanCancellation = scanCancellation;
+        SetManagedGameStatus(
+            $"Analisando {selectedSystem.DisplayName} em {CatalogArchiveExtractor.GameLibraryFolderName}...");
+
+        try
+        {
+            var inspection = await _localLibraryService.InspectSystemAsync(
+                gameLibraryRoot,
+                selectedSystem.DisplayName,
+                systemItems,
+                scanCancellation.Token);
+            if (scanCancellation.IsCancellationRequested
+                || version != _localLibraryScanVersion)
+                return;
+
+            for (var index = 0; index < systemItems.Length; index++)
+                _localGameInspectionCache[systemItems[index].Id] = inspection.CatalogItems[index];
+            _managedGameSystemOrphans.Clear();
+            _managedGameSystemOrphans.AddRange(inspection.Orphans);
+            RenderManagedGames();
+            SetManagedGameStatus(
+                $"Análise concluída: {GetManagedDownloadedCount()} baixado(s), " +
+                $"{GetManagedMissingCount()} não baixado(s), " +
+                $"{_managedGameSystemOrphans.Count} não reconhecido(s). " +
+                inspection.CategoryDetail);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception) when (exception is IOException
+                                           or UnauthorizedAccessException
+                                           or InvalidDataException
+                                           or ArgumentException
+                                           or NotSupportedException)
+        {
+            SetManagedGameStatus($"Não foi possível analisar a pasta local: {exception.Message}");
+        }
+        finally
+        {
+            if (ReferenceEquals(_localLibraryScanCancellation, scanCancellation))
+                _localLibraryScanCancellation = null;
+            scanCancellation.Dispose();
+        }
+    }
+
+    private async void DeleteManagedGame_Click(object sender, RoutedEventArgs e)
+    {
+        if (!TryEnsureAuthorized("excluir o jogo local")) return;
+        var entry = (sender as FrameworkElement)?.DataContext as CatalogLocalGameEntry;
+        if (entry is null || !entry.CanDelete)
+        {
+            SetManagedGameStatus("O jogo selecionado não possui conteúdo local removível.");
+            return;
+        }
+        if (entry.Item is { } activeCatalogItem
+            && (_downloadService.IsActive(entry.ItemId) || activeCatalogItem.IsBusy))
+        {
+            SetManagedGameStatus($"{entry.Title}: aguarde o download ou a extração terminar.");
+            return;
+        }
+        if (!IsExistingGameLibraryFolder(_gameLibraryFolderPath))
+        {
+            SetManagedGameStatus("A pasta de ROMs configurada não está disponível.");
+            return;
+        }
+
+        var deletionExplanation = entry.IsOrphan
+            ? "Este item não é reconhecido pelo catálogo e será removido da pasta do sistema."
+            : "O jogo continuará aparecendo no catálogo como não baixado e poderá ser baixado novamente.";
+        var localPath = string.IsNullOrWhiteSpace(entry.LocalPath)
+            ? "(caminho local indisponível)"
+            : entry.LocalPath;
+        var confirmation = MessageBox.Show(
+            this,
+            $"Excluir permanentemente os arquivos locais de:\n\n{entry.Title}\n\n" +
+            $"Caminho local exato:\n{localPath}\n\n" +
+            deletionExplanation,
+            "Excluir jogo local",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning,
+            MessageBoxResult.No);
+        if (confirmation != MessageBoxResult.Yes) return;
+        if (!_managedGameDeletionInProgress.Add(entry.ItemId))
+        {
+            SetManagedGameStatus($"{entry.Title}: a exclusão já está em andamento.");
+            return;
+        }
+
+        try
+        {
+            CancelManagedGameScan();
+            var gameLibraryRoot = Path.GetFullPath(_gameLibraryFolderPath);
+            SetManagedGameStatus($"Excluindo {entry.Title} com validação de caminho...");
+            if (entry.Orphan is { } orphan)
+            {
+                var categoryName = SelectedManagedGameSystem?.DisplayName
+                                   ?? throw new InvalidOperationException(
+                                       "Nenhum sistema está selecionado para a exclusão.");
+                var currentItems = _managedGameSystemItems.ToArray();
+                var deleted = await CatalogLocalLibraryService.DeleteOrphanAsync(
+                    gameLibraryRoot,
+                    categoryName,
+                    orphan,
+                    currentItems,
+                    _storeOperationCancellation.Token);
+                ThrowIfOperationUnauthorized();
+                SetManagedGameStatus(deleted
+                    ? $"{entry.Title}: item não reconhecido excluído com segurança."
+                    : $"{entry.Title}: o item já não existia na pasta do sistema.");
+            }
+            else
+            {
+                var catalogItemToDelete = entry.Item
+                                          ?? throw new InvalidOperationException(
+                                              "O item do catálogo não está mais disponível.");
+                var downloadRoot = GetDownloadRoot(catalogItemToDelete);
+                var deleted = await _localLibraryService.DeleteAsync(
+                    gameLibraryRoot,
+                    catalogItemToDelete,
+                    _storeOperationCancellation.Token);
+                ThrowIfOperationUnauthorized();
+                var packageStateRemoved = !catalogItemToDelete.HasAuthorizedArtifact
+                                          || _downloadService.Discard(
+                                              catalogItemToDelete,
+                                              downloadRoot);
+
+                _extractionRootsByItem.Remove(entry.ItemId);
+                if (packageStateRemoved)
+                    _downloadRootsByItem.Remove(entry.ItemId);
+                NotifyDownloadCollectionChanged();
+                if (!packageStateRemoved)
+                {
+                    SetManagedGameStatus(deleted
+                        ? $"{entry.Title}: instalação excluída; o pacote ou progresso permaneceu para uma nova tentativa de limpeza."
+                        : $"{entry.Title}: instalação já ausente; o pacote ou progresso não pôde ser limpo agora.");
+                }
+                else
+                {
+                    SetManagedGameStatus(deleted
+                        ? $"{entry.Title}: jogo, pacote e progresso locais excluídos."
+                        : $"{entry.Title}: pacote e progresso removidos; a instalação já não existia.");
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            SetManagedGameStatus("A exclusão foi cancelada porque a sessão terminou.");
+        }
+        catch (SuiteAuthorizationException)
+        {
+            SetManagedGameStatus("A exclusão foi interrompida porque a sessão terminou.");
+        }
+        catch (Exception exception) when (exception is IOException
+                                           or UnauthorizedAccessException
+                                           or InvalidDataException
+                                           or ArgumentException
+                                           or NotSupportedException)
+        {
+            SetManagedGameStatus($"A exclusão segura foi interrompida: {exception.Message}");
+        }
+        finally
+        {
+            _managedGameDeletionInProgress.Remove(entry.ItemId);
+            if (Volatile.Read(ref _storeReady) != 0)
+                BeginManagedGameSystemRefresh();
+        }
+    }
+
+    private void ChooseManagedGameFolder_Click(object sender, RoutedEventArgs e)
+    {
+        if (!TryEnsureAuthorized("alterar a pasta de ROMs")) return;
+        if (_managedGameDeletionInProgress.Count > 0)
+        {
+            SetManagedGameStatus("Aguarde a exclusão local terminar antes de trocar a pasta.");
+            return;
+        }
+        var initialFolder = IsExistingGameLibraryFolder(_gameLibraryFolderPath)
+            ? _gameLibraryFolderPath
+            : _installFolderPath;
+        var selected = ChooseAndPersistGameLibraryFolder(
+            initialFolder,
+            $"Selecione a pasta '{CatalogArchiveExtractor.GameLibraryFolderName}'");
+        if (selected is null) return;
+        _gameLibraryFolderPath = selected;
+        BeginManagedGameSystemRefresh();
+    }
+
+    private void OpenManagedGameFolder_Click(object sender, RoutedEventArgs e)
+    {
+        if (!TryEnsureAuthorized("abrir a pasta de ROMs")) return;
+        if (!IsExistingGameLibraryFolder(_gameLibraryFolderPath))
+        {
+            SetManagedGameStatus("A pasta de ROMs configurada não está disponível.");
+            return;
+        }
+
+        try
+        {
+            Process.Start(CreateExplorerStartInfo(_gameLibraryFolderPath));
+            SetManagedGameStatus("Pasta de ROMs aberta.");
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or Win32Exception)
+        {
+            SetManagedGameStatus($"Não foi possível abrir a pasta: {exception.Message}");
+        }
+    }
+
+    private void UpdateManagedGameSummary()
+    {
+        SetText("ManagedGameSystemTitle", SelectedManagedGameSystem?.DisplayName ?? "Jogos locais");
+        SetText(
+            "ManagedGameDownloadedCount",
+            GetManagedDownloadedCount().ToString(System.Globalization.CultureInfo.InvariantCulture));
+        SetText(
+            "ManagedGameMissingCount",
+            GetManagedMissingCount().ToString(System.Globalization.CultureInfo.InvariantCulture));
+        SetText(
+            "ManagedGameVisibleCount",
+            ManagedGames.Count.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        SetVisibility("ManagedGamesEmptyPanel", ManagedGames.Count == 0);
+        if (FindNamed<ListBox>("ManagedGamesList") is { } list)
+            list.Visibility = ManagedGames.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private int GetManagedDownloadedCount() => _localGameInspectionCache.Values.Count(inspection =>
+        inspection.Status == CatalogLocalGameStatus.Downloaded);
+
+    private int GetManagedMissingCount() => _localGameInspectionCache.Values.Count(inspection =>
+        inspection.Status == CatalogLocalGameStatus.NotDownloaded);
+
+    private void SetManagedGameStatus(string message) =>
+        SetText("ManagedGameManagerStatus", message);
+
+    private void CancelManagedGameScan()
+    {
+        ++_localLibraryScanVersion;
+        var cancellation = _localLibraryScanCancellation;
+        _localLibraryScanCancellation = null;
+        if (cancellation is null) return;
+        try { cancellation.Cancel(); }
+        catch (ObjectDisposedException) { }
+    }
+
+    private void RefreshManagedGamesIfVisible(string categoryId)
+    {
+        if (FindNamed<UIElement>("GameManagerPage")?.IsVisible == true
+            && SelectedManagedGameSystem?.CategoryId.Equals(
+                categoryId,
+                StringComparison.OrdinalIgnoreCase) == true)
+            BeginManagedGameSystemRefresh();
+    }
+
+    private Task InitializeMusicPlayerFromSavedFolderAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_musicFolderPath)
+            || !Directory.Exists(_musicFolderPath))
+        {
+            UpdateMusicPlayerUi("Escolha uma pasta de músicas", isPlaying: false);
+            return Task.CompletedTask;
+        }
+
+        return LoadMusicPlaylistAsync(
+            _musicFolderPath,
+            startPlayback: false,
+            persistAfterValidation: false);
+    }
+
+    private async void ChooseMusicFolder_Click(object sender, RoutedEventArgs e)
+    {
+        var initialFolder = Directory.Exists(_musicFolderPath)
+            ? _musicFolderPath
+            : Environment.GetFolderPath(Environment.SpecialFolder.MyMusic);
+        var selected = ChooseFolder("Escolha a pasta de músicas", initialFolder);
+        if (selected is null) return;
+        await LoadMusicPlaylistAsync(
+            selected,
+            startPlayback: true,
+            persistAfterValidation: true);
+    }
+
+    private async Task LoadMusicPlaylistAsync(
+        string folder,
+        bool startPlayback,
+        bool persistAfterValidation)
+    {
+        CancelMusicPlaylistLoad();
+        var version = ++_musicPlaylistLoadVersion;
+        var loadCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            _storeOperationCancellation.Token);
+        _musicPlaylistLoadCancellation = loadCancellation;
+        UpdateMusicPlayerUi("Analisando a pasta de músicas...", _isMusicPlaying);
+        try
+        {
+            var tracks = await Task.Run(
+                () => DiscoverMusicTracks(folder, loadCancellation.Token),
+                loadCancellation.Token);
+            if (loadCancellation.IsCancellationRequested
+                || version != _musicPlaylistLoadVersion)
+                return;
+            if (tracks.Count == 0)
+                throw new InvalidDataException("Nenhuma música compatível foi encontrada.");
+            if (persistAfterValidation && !LocalDataPaths.WriteMusicFolder(folder))
+                throw new IOException("Não foi possível salvar a pasta de músicas escolhida.");
+
+            _musicPlayer.Stop();
+            _musicPlayer.Close();
+            _musicTracks.Clear();
+            _musicTracks.AddRange(tracks);
+            _musicTrackIndex = 0;
+            _openedMusicTrackPath = string.Empty;
+            _isMusicPlaying = false;
+            _consecutiveMusicFailures = 0;
+            _musicFolderPath = Path.GetFullPath(folder);
+
+            if (startPlayback) PlayMusicAtIndex(_musicTrackIndex);
+            else UpdateMusicPlayerUi(
+                Path.GetFileNameWithoutExtension(_musicTracks[_musicTrackIndex]),
+                isPlaying: false);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception) when (exception is IOException
+                                           or UnauthorizedAccessException
+                                           or InvalidDataException
+                                           or ArgumentException
+                                           or NotSupportedException)
+        {
+            if (version != _musicPlaylistLoadVersion) return;
+            _musicPlayer.Stop();
+            _musicPlayer.Close();
+            _musicTracks.Clear();
+            _musicTrackIndex = -1;
+            _openedMusicTrackPath = string.Empty;
+            _isMusicPlaying = false;
+            UpdateMusicPlayerUi($"Pasta de músicas indisponível: {exception.Message}", false);
+        }
+        finally
+        {
+            if (ReferenceEquals(_musicPlaylistLoadCancellation, loadCancellation))
+                _musicPlaylistLoadCancellation = null;
+            loadCancellation.Dispose();
+        }
+    }
+
+    private static List<string> DiscoverMusicTracks(
+        string folder,
+        CancellationToken cancellationToken)
+    {
+        const int maximumEntries = 25_000;
+        var root = PathIdentity.Canonicalize(folder);
+        if (!Directory.Exists(root))
+            throw new DirectoryNotFoundException("A pasta de músicas não foi encontrada.");
+
+        var pending = new Stack<string>();
+        var tracks = new List<string>();
+        var visitedEntries = 0;
+        pending.Push(root);
+        while (pending.Count > 0)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var current = pending.Pop();
+            using var tree = PathIdentity.OpenDirectoryTree(current);
+            foreach (var entry in Directory.EnumerateFileSystemEntries(current))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                visitedEntries++;
+                if (visitedEntries > maximumEntries)
+                    throw new InvalidDataException(
+                        "A pasta de músicas excede o limite de 25.000 arquivos e pastas.");
+                var attributes = File.GetAttributes(entry);
+                if ((attributes & FileAttributes.ReparsePoint) != 0) continue;
+                if ((attributes & FileAttributes.Directory) != 0)
+                {
+                    pending.Push(entry);
+                    continue;
+                }
+
+                if (SupportedMusicExtensions.Contains(Path.GetExtension(entry)))
+                    tracks.Add(PathIdentity.Canonicalize(entry));
+            }
+            tree.Revalidate();
+        }
+
+        tracks.Sort(StringComparer.CurrentCultureIgnoreCase);
+        return tracks;
+    }
+
+    private void CancelMusicPlaylistLoad()
+    {
+        ++_musicPlaylistLoadVersion;
+        var cancellation = _musicPlaylistLoadCancellation;
+        _musicPlaylistLoadCancellation = null;
+        if (cancellation is null) return;
+        try { cancellation.Cancel(); }
+        catch (ObjectDisposedException) { }
+    }
+
+    private void MusicPrevious_Click(object sender, RoutedEventArgs e) =>
+        MoveMusicTrack(-1);
+
+    private void MusicNext_Click(object sender, RoutedEventArgs e) =>
+        MoveMusicTrack(1);
+
+    private void MoveMusicTrack(int direction)
+    {
+        if (_musicTracks.Count == 0) return;
+        var next = (_musicTrackIndex + direction) % _musicTracks.Count;
+        if (next < 0) next += _musicTracks.Count;
+        PlayMusicAtIndex(next);
+    }
+
+    private void MusicPlayPause_Click(object sender, RoutedEventArgs e)
+    {
+        if (_musicTracks.Count == 0)
+        {
+            ChooseMusicFolder_Click(sender, e);
+            return;
+        }
+
+        if (_isMusicPlaying)
+        {
+            _musicPlayer.Pause();
+            _isMusicPlaying = false;
+        }
+        else if (_musicTrackIndex >= 0)
+        {
+            var selectedPath = _musicTracks[_musicTrackIndex];
+            if (!_openedMusicTrackPath.Equals(
+                    selectedPath,
+                    StringComparison.OrdinalIgnoreCase))
+                PlayMusicAtIndex(_musicTrackIndex);
+            else
+            {
+                _musicPlayer.Play();
+                _isMusicPlaying = true;
+            }
+        }
+        UpdateMusicPlayerUi(
+            Path.GetFileNameWithoutExtension(_musicTracks[_musicTrackIndex]),
+            _isMusicPlaying);
+    }
+
+    private void MusicVolume_ValueChanged(
+        object sender,
+        RoutedPropertyChangedEventArgs<double> e)
+    {
+        _musicPlayer.Volume = Math.Clamp(e.NewValue / 100d, 0d, 1d);
+    }
+
+    private void PlayMusicAtIndex(int index)
+    {
+        if (index < 0 || index >= _musicTracks.Count) return;
+        _musicTrackIndex = index;
+        var path = _musicTracks[index];
+        try
+        {
+            var attributes = File.GetAttributes(path);
+            if ((attributes & (FileAttributes.Directory | FileAttributes.ReparsePoint)) != 0)
+                throw new InvalidDataException("A faixa não é um arquivo local comum.");
+            _musicPlayer.Open(new Uri(path, UriKind.Absolute));
+            _openedMusicTrackPath = path;
+            _musicPlayer.Play();
+            _isMusicPlaying = true;
+            UpdateMusicPlayerUi(Path.GetFileNameWithoutExtension(path), true);
+        }
+        catch (Exception exception) when (exception is IOException
+                                           or UnauthorizedAccessException
+                                           or InvalidDataException
+                                           or UriFormatException
+                                           or NotSupportedException)
+        {
+            _openedMusicTrackPath = string.Empty;
+            _isMusicPlaying = false;
+            UpdateMusicPlayerUi($"Faixa indisponível: {exception.Message}", false);
+        }
+    }
+
+    private void MusicPlayer_MediaOpened(object? sender, EventArgs e)
+    {
+        _consecutiveMusicFailures = 0;
+        if (_musicTrackIndex >= 0 && _musicTrackIndex < _musicTracks.Count)
+            UpdateMusicPlayerUi(
+                Path.GetFileNameWithoutExtension(_musicTracks[_musicTrackIndex]),
+                _isMusicPlaying);
+    }
+
+    private void MusicPlayer_MediaEnded(object? sender, EventArgs e)
+    {
+        _consecutiveMusicFailures = 0;
+        MoveMusicTrack(1);
+    }
+
+    private void MusicPlayer_MediaFailed(object? sender, ExceptionEventArgs e)
+    {
+        _consecutiveMusicFailures++;
+        if (_musicTracks.Count == 0 || _consecutiveMusicFailures >= _musicTracks.Count)
+        {
+            _isMusicPlaying = false;
+            UpdateMusicPlayerUi("Nenhuma faixa pôde ser reproduzida", false);
+            return;
+        }
+        MoveMusicTrack(1);
+    }
+
+    private void UpdateMusicPlayerUi(string trackLabel, bool isPlaying)
+    {
+        SetText("MusicTrackTitle", trackLabel);
+        SetText("MusicPlayPauseGlyph", isPlaying ? "Ⅱ" : "▶");
+        SetText("MusicPlaybackStatus", isPlaying ? "TOCANDO" : "PAUSADO");
     }
 
     private void OpenFirstCatalog_Click(object sender, RoutedEventArgs e)
@@ -606,19 +1280,23 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             _ => accent
         };
 
+        ApplyThemeAccent(accent);
+    }
+
+    private void ApplyThemeAccent(Color accent)
+    {
         var bright = Color.FromRgb(
             BlendThemeChannel(accent.R, 255, .22),
             BlendThemeChannel(accent.G, 255, .22),
             BlendThemeChannel(accent.B, 255, .22));
-        var perceivedBrightness = (accent.R * 299 + accent.G * 587 + accent.B * 114) / 1000;
-        var contrast = perceivedBrightness >= 170
-            ? Color.FromRgb(7, 12, 7)
-            : Colors.White;
+        var contrast = ChooseThemeContrastColor(accent);
+        var brightContrast = ChooseThemeContrastColor(bright);
 
         Resources["CurrentSystemAccentColor"] = accent;
         SetCategoryThemeBrush("CurrentSystemAccentBrush", accent);
         SetCategoryThemeBrush("CurrentSystemBrightBrush", bright);
         SetCategoryThemeBrush("CurrentSystemContrastBrush", contrast);
+        SetCategoryThemeBrush("CurrentSystemBrightContrastBrush", brightContrast);
         SetCategoryThemeBrush(
             "CurrentSystemSurfaceBrush",
             Color.FromArgb(10, accent.R, accent.G, accent.B));
@@ -635,14 +1313,42 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                 BlendThemeChannel(accent.R, 6, .88),
                 BlendThemeChannel(accent.G, 9, .88),
                 BlendThemeChannel(accent.B, 12, .88)));
-        var sidebar = categoryId == "playstation-3"
-            ? Color.FromRgb(2, 4, 6)
-            : Color.FromArgb(
-                255,
-                BlendThemeChannel(accent.R, 5, .95),
-                BlendThemeChannel(accent.G, 8, .95),
-                BlendThemeChannel(accent.B, 10, .95));
-        SetCategoryThemeBrush("CurrentSystemSidebarBrush", sidebar);
+        var sidebarBackground = new LinearGradientBrush
+        {
+            StartPoint = new Point(0, .5),
+            EndPoint = new Point(1, .5)
+        };
+        sidebarBackground.GradientStops.Add(new GradientStop(
+            Color.FromArgb(255, accent.R, accent.G, accent.B), 0));
+        sidebarBackground.GradientStops.Add(new GradientStop(
+            Color.FromArgb(
+                74,
+                BlendThemeChannel(accent.R, 6, .42),
+                BlendThemeChannel(accent.G, 9, .42),
+                BlendThemeChannel(accent.B, 12, .42)),
+            .16));
+        sidebarBackground.GradientStops.Add(new GradientStop(
+            Color.FromRgb(8, 10, 8), .62));
+        sidebarBackground.GradientStops.Add(new GradientStop(
+            Color.FromRgb(5, 7, 5), 1));
+        sidebarBackground.Freeze();
+        Resources["CurrentSystemSidebarBrush"] = sidebarBackground;
+
+        var sidebarSelection = new LinearGradientBrush
+        {
+            StartPoint = new Point(0, .5),
+            EndPoint = new Point(1, .5)
+        };
+        sidebarSelection.GradientStops.Add(new GradientStop(
+            Color.FromArgb(255, accent.R, accent.G, accent.B), 0));
+        sidebarSelection.GradientStops.Add(new GradientStop(
+            Color.FromArgb(176, accent.R, accent.G, accent.B), .12));
+        sidebarSelection.GradientStops.Add(new GradientStop(
+            Color.FromArgb(62, accent.R, accent.G, accent.B), .48));
+        sidebarSelection.GradientStops.Add(new GradientStop(
+            Color.FromArgb(0, 0, 0, 0), 1));
+        sidebarSelection.Freeze();
+        Resources["CurrentSystemSidebarSelectionBrush"] = sidebarSelection;
 
         var videoOverlay = new LinearGradientBrush
         {
@@ -669,6 +1375,46 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             (int)Math.Round(source + (target - source) * amount),
             byte.MinValue,
             byte.MaxValue);
+
+    internal static string FormatMaskedLicenseId(string licenseId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(licenseId);
+        var normalized = licenseId.Trim();
+        if (normalized.Length <= 4) return "Cliente ••••";
+        return $"Cliente ••••{normalized[^4..]}";
+    }
+
+    internal static Color ChooseThemeContrastColor(Color background)
+    {
+        var dark = Color.FromRgb(7, 12, 7);
+        var light = Colors.White;
+        return CalculateContrastRatio(dark, background)
+               >= CalculateContrastRatio(light, background)
+            ? dark
+            : light;
+    }
+
+    private static double CalculateContrastRatio(Color foreground, Color background)
+    {
+        var foregroundLuminance = CalculateRelativeLuminance(foreground);
+        var backgroundLuminance = CalculateRelativeLuminance(background);
+        var lighter = Math.Max(foregroundLuminance, backgroundLuminance);
+        var darker = Math.Min(foregroundLuminance, backgroundLuminance);
+        return (lighter + .05) / (darker + .05);
+    }
+
+    private static double CalculateRelativeLuminance(Color color) =>
+        .2126 * LinearizeColorChannel(color.R)
+        + .7152 * LinearizeColorChannel(color.G)
+        + .0722 * LinearizeColorChannel(color.B);
+
+    private static double LinearizeColorChannel(byte channel)
+    {
+        var normalized = channel / 255d;
+        return normalized <= .04045
+            ? normalized / 12.92
+            : Math.Pow((normalized + .055) / 1.055, 2.4);
+    }
 
     private void Search_TextChanged(object sender, TextChangedEventArgs e)
     {
@@ -994,6 +1740,13 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         if (_retroCarouselItems.Count == 0) return;
 
         var current = _retroCarouselItems[WrapRetroCarouselIndex(_retroCarouselIndex)];
+        if (SelectedCategory?.Id.Equals("emulators", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            if (EmulatorCoverAccentMap.TryGetValue(current.Id, out var emulatorAccent))
+                ApplyThemeAccent(emulatorAccent);
+            else
+                ApplyCategoryTheme(SelectedCategory);
+        }
         SetText("RetroCarouselTitle", current.Title);
         SetText("RetroCarouselPackageType", $"{current.Category}  •  {current.Version}");
         SetText(
@@ -1260,7 +2013,6 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         {
             player.MediaEnded -= RetroUniversalVideo_MediaEnded;
             player.MediaFailed -= RetroUniversalVideo_MediaFailed;
-            ReleaseResponsiveBackgroundVideoPlayer(player);
             try { player.Stop(); }
             catch (InvalidOperationException) { }
             try
@@ -1472,18 +2224,19 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             IsMuted = true,
             Volume = 0,
             Stretch = Stretch.Uniform,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
+            StretchDirection = StretchDirection.Both,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
             Focusable = false,
             IsHitTestVisible = false,
             SnapsToDevicePixels = true,
-            UseLayoutRounding = true,
-            RenderTransformOrigin = new Point(0.5, 0.5),
-            RenderTransform = new ScaleTransform()
+            UseLayoutRounding = true
         };
 
-        // Keep the layout box tied to the viewport. The render transform below
-        // performs the cover crop without changing measure or stretching video.
+        // Keep the player box tied to the viewport and let WPF fit the complete
+        // frame inside it. Most legacy system videos are 4:3 while this area is
+        // panoramic; Uniform preserves their aspect ratio and centers the frame
+        // without the aggressive crop previously produced by a render transform.
         player.SetBinding(
             WidthProperty,
             new Binding(nameof(ActualWidth))
@@ -1498,94 +2251,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                 Source = host,
                 Mode = BindingMode.OneWay
             });
-        ResponsiveBackgroundVideoLayouts.Add(
-            player,
-            new ResponsiveBackgroundVideoLayout(host, player));
         return player;
-    }
-
-    private static double CalculateBackgroundVideoCoverScale(
-        double viewportWidth,
-        double viewportHeight,
-        double naturalVideoWidth,
-        double naturalVideoHeight)
-    {
-        if (!double.IsFinite(viewportWidth)
-            || !double.IsFinite(viewportHeight)
-            || !double.IsFinite(naturalVideoWidth)
-            || !double.IsFinite(naturalVideoHeight)
-            || viewportWidth <= 0
-            || viewportHeight <= 0
-            || naturalVideoWidth <= 0
-            || naturalVideoHeight <= 0)
-            return 1;
-
-        var containedScale = Math.Min(
-            viewportWidth / naturalVideoWidth,
-            viewportHeight / naturalVideoHeight);
-        var coverScale = Math.Max(
-            viewportWidth / naturalVideoWidth,
-            viewportHeight / naturalVideoHeight);
-        return coverScale / containedScale;
-    }
-
-    private static void ReleaseResponsiveBackgroundVideoPlayer(MediaElement player)
-    {
-        if (!ResponsiveBackgroundVideoLayouts.TryGetValue(player, out var layout))
-            return;
-
-        ResponsiveBackgroundVideoLayouts.Remove(player);
-        layout.Dispose();
-    }
-
-    private sealed class ResponsiveBackgroundVideoLayout : IDisposable
-    {
-        private readonly FrameworkElement _host;
-        private readonly MediaElement _player;
-        private bool _disposed;
-
-        internal ResponsiveBackgroundVideoLayout(
-            FrameworkElement host,
-            MediaElement player)
-        {
-            _host = host;
-            _player = player;
-            _host.SizeChanged += Host_SizeChanged;
-            _player.MediaOpened += Player_MediaOpened;
-            _player.Unloaded += Player_Unloaded;
-            UpdateCoverScale();
-        }
-
-        public void Dispose()
-        {
-            if (_disposed) return;
-            _disposed = true;
-            _host.SizeChanged -= Host_SizeChanged;
-            _player.MediaOpened -= Player_MediaOpened;
-            _player.Unloaded -= Player_Unloaded;
-        }
-
-        private void Host_SizeChanged(object sender, SizeChangedEventArgs e) =>
-            UpdateCoverScale();
-
-        private void Player_MediaOpened(object sender, RoutedEventArgs e) =>
-            UpdateCoverScale();
-
-        private void Player_Unloaded(object sender, RoutedEventArgs e) => Dispose();
-
-        private void UpdateCoverScale()
-        {
-            if (_disposed || _player.RenderTransform is not ScaleTransform transform)
-                return;
-
-            var scale = CalculateBackgroundVideoCoverScale(
-                _host.ActualWidth,
-                _host.ActualHeight,
-                _player.NaturalVideoWidth,
-                _player.NaturalVideoHeight);
-            transform.ScaleX = scale;
-            transform.ScaleY = scale;
-        }
     }
 
     private void RetroSystemVideo_MediaOpened(object? sender, RoutedEventArgs e)
@@ -1799,7 +2465,6 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             player.MediaOpened -= RetroSystemVideo_MediaOpened;
             player.MediaEnded -= RetroSystemVideo_MediaEnded;
             player.MediaFailed -= RetroSystemVideo_MediaFailed;
-            ReleaseResponsiveBackgroundVideoPlayer(player);
             player.BeginAnimation(OpacityProperty, null);
             player.Opacity = 0;
             player.Tag = null;
@@ -3135,6 +3800,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     private async void StoreWindow_Loaded(object sender, RoutedEventArgs e)
     {
         Loaded -= StoreWindow_Loaded;
+        _ = InitializeMusicPlayerFromSavedFolderAsync();
         if (_catalogRepository is null) return;
 
         try
@@ -3336,18 +4002,21 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             if (isGameItem && !shouldExtract)
             {
                 ThrowIfOperationUnauthorized();
-                var placedPath = await EnsureDownloadedGameIsInsideLibraryAsync(
+                var placement = await EnsureDownloadedGameIsInsideLibraryAsync(
                     item,
                     result.LocalFilePath,
-                    gameLibraryRoot!);
+                    gameLibraryRoot!,
+                    installationRoot);
                 ThrowIfOperationUnauthorized();
-                if (placedPath is not null)
+                if (placement is not null)
                 {
                     ThrowIfOperationUnauthorized();
-                    item.CompleteDownload(placedPath);
+                    item.CompleteDownload(placement.LocalFilePath);
+                    RefreshManagedGamesIfVisible(item.CategoryId);
                     RememberApprovedRoot(gameLibraryRoot!);
-                    SetCatalogStatus(
-                        $"{item.Title}: download concluído em {CatalogArchiveExtractor.GameLibraryFolderName}.");
+                    SetCatalogStatus(placement.SourceStateCleanupPending
+                        ? $"{item.Title}: jogo concluído em {CatalogArchiveExtractor.GameLibraryFolderName}; o estado antigo ficou pendente para limpeza, sem afetar o arquivo instalado."
+                        : $"{item.Title}: download concluído em {CatalogArchiveExtractor.GameLibraryFolderName}.");
                 }
                 return;
             }
@@ -3494,6 +4163,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
             ThrowIfOperationUnauthorized();
             item.CompleteExtraction(result.DestinationPath);
+            RefreshManagedGamesIfVisible(item.CategoryId);
             var libraryName = isGameItem
                 ? CatalogArchiveExtractor.GameLibraryFolderName
                 : CatalogArchiveExtractor.LibraryFolderName;
@@ -3597,6 +4267,11 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         if (item is null)
         {
             SetCatalogStatus("Não foi possível identificar o pacote selecionado. Nenhum download foi iniciado.");
+            return;
+        }
+        if (_managedGameDeletionInProgress.Contains(item.Id))
+        {
+            SetCatalogStatus($"{item.Title}: aguarde a exclusão local terminar.");
             return;
         }
 
@@ -3934,11 +4609,13 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         }
     }
 
-    private async Task<string?> EnsureDownloadedGameIsInsideLibraryAsync(
+    private async Task<DirectGamePlacement?> EnsureDownloadedGameIsInsideLibraryAsync(
         CatalogItem item,
         string downloadedPath,
-        string gameLibraryRoot)
+        string gameLibraryRoot,
+        string downloadRoot)
     {
+        string? publishedDestination = null;
         try
         {
             var sourcePath = Path.GetFullPath(downloadedPath);
@@ -3952,10 +4629,11 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                 item);
             if (sourcePath.Equals(destinationPath, StringComparison.OrdinalIgnoreCase)
                 && File.Exists(sourcePath))
-                return sourcePath;
+                return new DirectGamePlacement(sourcePath, false);
             if (!File.Exists(sourcePath))
             {
-                if (File.Exists(destinationPath)) return destinationPath;
+                if (File.Exists(destinationPath))
+                    return new DirectGamePlacement(destinationPath, false);
                 throw new FileNotFoundException("O arquivo concluído não foi encontrado.", sourcePath);
             }
 
@@ -3969,15 +4647,36 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             Directory.CreateDirectory(destinationDirectory);
             EnsureGameLibraryDestinationSafe(canonicalLibrary, destinationPath);
 
-            ThrowIfOperationUnauthorized();
-            await MoveFilePreservingSourceOnFailureAsync(
+            var relocation = _downloadService.PrepareCompletedDirectDownloadRelocation(
+                downloadRoot,
+                canonicalLibrary,
+                item,
                 sourcePath,
                 destinationPath,
-                item.Artifact
-                ?? throw new InvalidDataException("O artefato do jogo não possui identidade autorizada."),
                 _storeOperationCancellation.Token);
             ThrowIfOperationUnauthorized();
-            return destinationPath;
+            try
+            {
+                await MoveFilePreservingSourceOnFailureAsync(
+                    sourcePath,
+                    destinationPath,
+                    item.Artifact
+                    ?? throw new InvalidDataException("O artefato do jogo não possui identidade autorizada."),
+                    _storeOperationCancellation.Token);
+                publishedDestination = destinationPath;
+            }
+            catch
+            {
+                _downloadService.CancelCompletedDirectDownloadRelocation(relocation);
+                throw;
+            }
+            var sourceStateRemoved = _downloadService
+                .CompleteCompletedDirectDownloadRelocation(
+                    relocation,
+                    CancellationToken.None);
+            return new DirectGamePlacement(
+                destinationPath,
+                SourceStateCleanupPending: !sourceStateRemoved);
         }
         catch (Exception exception) when (exception is IOException
                                            or UnauthorizedAccessException
@@ -3985,6 +4684,14 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                                            or ArgumentException
                                            or NotSupportedException)
         {
+            if (publishedDestination is not null)
+            {
+                SetCatalogStatus(
+                    $"{item.Title}: o arquivo foi instalado em '{publishedDestination}', mas a limpeza do estado antigo ficou pendente: {exception.Message}");
+                return new DirectGamePlacement(
+                    publishedDestination,
+                    SourceStateCleanupPending: true);
+            }
             SetCatalogStatus(
                 $"{item.Title}: o download foi preservado em '{downloadedPath}', mas não pôde ser colocado em {CatalogArchiveExtractor.GameLibraryFolderName}: {exception.Message}");
             return null;
@@ -4280,6 +4987,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         var isHome = normalizedPage.Equals("Store", StringComparison.OrdinalIgnoreCase)
                      || normalizedPage.Equals("Home", StringComparison.OrdinalIgnoreCase);
         var isLibrary = normalizedPage.Equals("Library", StringComparison.OrdinalIgnoreCase);
+        var isGameManager = normalizedPage.Equals("GameManager", StringComparison.OrdinalIgnoreCase);
         var isDownloads = normalizedPage.Equals("Downloads", StringComparison.OrdinalIgnoreCase);
         var isCatalog = normalizedPage.Equals("Catalog", StringComparison.OrdinalIgnoreCase)
                         || normalizedPage.Equals("Retro", StringComparison.OrdinalIgnoreCase);
@@ -4294,6 +5002,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         SetVisibility("HomePage", isHome);
         SetVisibility("StorePage", isHome);
         SetVisibility("LibraryPage", isLibrary);
+        SetVisibility("GameManagerPage", isGameManager);
         SetVisibility("DownloadsPage", isDownloads);
         SetVisibility("CatalogPage", isCatalog);
 
@@ -4303,8 +5012,18 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             return;
         }
 
+        if (isGameManager)
+        {
+            if (SelectedManagedGameSystem is null)
+                SelectedManagedGameSystem = ManagedGameSystems.FirstOrDefault();
+            else
+                BeginManagedGameSystemRefresh();
+        }
+
         var (title, subtitle) = isLibrary
             ? ("Minha biblioteca", "Acompanhe sua coleção Turborama")
+            : isGameManager
+                ? ("Jogos locais", "Analise e gerencie a pasta de ROMs")
             : isDownloads
                 ? ("Downloads", "Gerencie instalações, atualizações e fila")
                 : ("Descobrir", "Encontre sua próxima experiência");
@@ -4602,6 +5321,9 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             SessionStatusText.Foreground = Brushes.OrangeRed;
             SessionStatusBadge.Background = new SolidColorBrush(Color.FromRgb(40, 15, 15));
             SessionStatusBadge.BorderBrush = new SolidColorBrush(Color.FromRgb(98, 38, 38));
+            LicenseConsumerText.Text = "Cliente desconectado";
+            LicenseConsumerStatusText.Text = "Licença sem sessão";
+            LicenseConsumerStatusText.Foreground = Brushes.OrangeRed;
             IsEnabled = false;
             SetCatalogStatus("A autorização expirou ou foi revogada. Entre novamente.");
             var login = new PremiumLoginWindow();
@@ -4618,12 +5340,19 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         // explicit user pause and prevent automatic continuation next launch.
         _downloadService.Dispose();
         CancelStoreOperations();
+        CancelManagedGameScan();
+        CancelMusicPlaylistLoad();
         StateChanged -= StoreWindow_StateChanged;
         _windowSource?.RemoveHook(WindowMessageHook);
         _windowSource = null;
         _authorizationSubscription.Dispose();
         StopRetroSystemVideo(clearFallback: true);
         StopRetroUniversalVideo();
+        _musicPlayer.MediaOpened -= MusicPlayer_MediaOpened;
+        _musicPlayer.MediaEnded -= MusicPlayer_MediaEnded;
+        _musicPlayer.MediaFailed -= MusicPlayer_MediaFailed;
+        _musicPlayer.Stop();
+        _musicPlayer.Close();
         foreach (var job in DownloadJobs) job.Dispose();
         _ = DisposeLicensingRuntimeAsync(_licensingRuntime);
         base.OnClosed(e);

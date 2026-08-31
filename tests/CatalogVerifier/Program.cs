@@ -118,6 +118,26 @@ if (args is ["--verify-wpf"])
     return;
 }
 
+if (args is ["--verify-local-library"])
+{
+    var localLibraryRoot = Path.Combine(
+        Path.GetTempPath(),
+        "TurboramaLocalLibraryVerifier-" + Guid.NewGuid().ToString("N"));
+    Directory.CreateDirectory(localLibraryRoot);
+    try
+    {
+        await CatalogLocalLibraryVerifier.RunAsync(localLibraryRoot);
+        Console.WriteLine(
+            "PASS: detecção e exclusão confinada dos jogos locais verificadas.");
+    }
+    finally
+    {
+        if (Directory.Exists(localLibraryRoot))
+            Directory.Delete(localLibraryRoot, recursive: true);
+    }
+    return;
+}
+
 if (args.Length != 1)
     throw new ArgumentException("Informe o caminho para catalog.json.");
 
@@ -387,10 +407,7 @@ foreach (var (fileName, expected) in backgroundVideoIntegrity)
     Assert(videoBytes.AsSpan().IndexOf("avc1"u8) >= 0,
         $"O vídeo de fundo precisa usar H.264 compatível com o Windows: {fileName}.");
     var hasAacTrack = videoBytes.AsSpan().IndexOf("mp4a"u8) >= 0;
-    if (fileName.Equals("Turborama-background-nintendo-switch.mp4", StringComparison.Ordinal))
-        Assert(!hasAacTrack, "O derivado Nintendo Switch precisa permanecer sem áudio.");
-    else
-        Assert(hasAacTrack, $"A faixa AAC esperada está ausente: {fileName}.");
+    Assert(hasAacTrack, $"A faixa AAC esperada está ausente: {fileName}.");
     Assert(Convert.ToHexString(SHA256.HashData(videoBytes)).Equals(
             expected.Sha256,
             StringComparison.OrdinalIgnoreCase),
@@ -502,6 +519,10 @@ try
     GameLibraryLocatorVerifier.Run(Path.Combine(temporaryRoot, "library-locator-tests"));
     Assert(TurboBoxManager.PathIdentity.OutstandingDirectoryHandles == 0,
         "GameLibraryLocatorVerifier deixou leases de diretório ativos.");
+    await CatalogLocalLibraryVerifier.RunAsync(
+        Path.Combine(temporaryRoot, "local-library-tests"));
+    Assert(TurboBoxManager.PathIdentity.OutstandingDirectoryHandles == 0,
+        "CatalogLocalLibraryVerifier deixou leases de diretório ativos.");
 }
 catch (Exception exception)
 {

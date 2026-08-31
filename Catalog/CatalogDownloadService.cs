@@ -48,6 +48,24 @@ public sealed record CatalogResumableDownload(
     bool ArchiveReady = false,
     string ArchiveFilePath = "");
 
+internal sealed record CatalogCompletedDirectDownload(
+    string ItemId,
+    string LocalFilePath,
+    string StateFilePath,
+    long ContentLength,
+    string Sha256);
+
+internal sealed record CatalogDirectDownloadRelocation(
+    string ItemId,
+    string SourceRoot,
+    string DestinationRoot,
+    string SourceFilePath,
+    string DestinationFilePath,
+    string SourceStateFilePath,
+    string SourceAttestationFilePath,
+    string DestinationStateFilePath,
+    string DestinationAttestationFilePath);
+
 /// <summary>
 /// Persistent downloader whose durable authority is an artifact descriptor,
 /// never a URL. Every network attempt asks the request provider for a fresh,
@@ -56,10 +74,13 @@ public sealed record CatalogResumableDownload(
 public sealed class CatalogDownloadService : IDisposable
 {
     private const string ResumeSuffix = ".resume.json";
+    private const string LocalAttestationSuffix = ".local-attestation.dpapi";
     private const string LockSuffix = ".download.lock";
     private const int ResumeSchemaVersion = 2;
+    private const int LocalAttestationSchemaVersion = 1;
     private const int BufferSize = 128 * 1024;
     private const int MaximumMetadataBytes = 64 * 1024;
+    private const int MaximumAttestationBytes = 64 * 1024;
     private const int MaximumImmediateRestarts = 2;
     private const uint GenericRead = 0x80000000;
     private const uint GenericWrite = 0x40000000;
@@ -75,11 +96,19 @@ public sealed class CatalogDownloadService : IDisposable
     private const uint FileFlagBackupSemantics = 0x02000000;
     private const uint FileFlagOpenReparsePoint = 0x00200000;
     private static readonly TimeSpan MaximumRetryDelay = TimeSpan.FromMinutes(5);
+    private static readonly byte[] LocalAttestationEntropy = SHA256.HashData(
+        "TURBORAMA_SUITE_DIRECT_LOCAL_ATTESTATION_V1"u8.ToArray());
 
     private static readonly JsonSerializerOptions ResumeJsonOptions = new()
     {
         PropertyNameCaseInsensitive = false,
         WriteIndented = true,
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
+    };
+
+    private static readonly JsonSerializerOptions LocalAttestationJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = false,
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
     };
 
@@ -204,6 +233,7 @@ public sealed class CatalogDownloadService : IDisposable
                 savedStates =
                 [new ResumeFileSet(
                     destinationPath + ".part" + ResumeSuffix,
+                    destinationPath + ".part" + LocalAttestationSuffix,
                     destinationPath + ".part",
                     destinationPath,
                     CreateMetadata(item, artifact))];
@@ -422,6 +452,385 @@ public sealed class CatalogDownloadService : IDisposable
             }
         }
         return records;
+    }
+
+    /// <summary>
+    /// Discovers completed direct downloads from the durable local state that
+    /// was written while an artifact descriptor was authorized. This state is
+    /// used only for local inventory and confined deletion; it never grants
+    /// permission to download, execute, or extract content.
+    ///
+    /// Direct files completed by older builds without this sidecar cannot be
+    /// attributed after their server authorization has already disappeared.
+    /// Their identity is deliberately not guessed from names or folders.
+    /// </summary>
+    internal IReadOnlyList<CatalogCompletedDirectDownload> DiscoverCompletedDirectDownloads(
+        string installationRoot,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var canonicalRoot = Path.GetFullPath(installationRoot);
+        if (!Directory.Exists(canonicalRoot)) return [];
+
+        var records = new List<CatalogCompletedDirectDownload>();
+        foreach (var saved in FindResumeFileSets(canonicalRoot, cancellationToken))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                if (TryBuildCompletedDirectDownload(
+                        canonicalRoot,
+                        saved,
+                        cancellationToken,
+                        out var record))
+                    records.Add(record);
+            }
+            catch (Exception exception) when (exception is IOException
+                                               or UnauthorizedAccessException
+                                               or InvalidDataException
+                                               or ArgumentException
+                                               or NotSupportedException
+                                               or CryptographicException)
+            {
+                // Local state is untrusted. Invalid entries are never promoted.
+            }
+        }
+        return records;
+    }
+
+    /// <summary>
+    /// Migrates a legacy direct file only while the current server descriptor
+    /// can still prove its exact path, size, and SHA-256.
+    /// </summary>
+    internal CatalogCompletedDirectDownload? TryRecordCompletedDirectDownload(
+        string installationRoot,
+        CatalogItem item,
+        CancellationToken cancellationToken)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(item);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (_active.ContainsKey(item.Id)) return null;
+
+        string destinationPath = string.Empty;
+        FileStream? artifactLock = null;
+        try
+        {
+            var artifact = RequireValidArtifact(item);
+            if (artifact.ExtractPolicy != CatalogExtractPolicy.None) return null;
+            var canonicalRoot = ValidateInstallationRoot(installationRoot);
+            destinationPath = BuildSafeDestinationPath(canonicalRoot, item);
+            if (!File.Exists(destinationPath)) return null;
+
+            using var pathLease = PathIdentity.OpenDirectoryTree(
+                Path.GetDirectoryName(destinationPath)!);
+            artifactLock = AcquireArtifactLock(destinationPath, pathLease);
+            pathLease.Revalidate();
+            using var payload = pathLease.OpenFile(
+                destinationPath,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                BufferSize,
+                FileOptions.SequentialScan);
+            var payloadIdentity = PathIdentity.CaptureFileIdentity(
+                payload.SafeFileHandle,
+                destinationPath);
+            if (!ValidateOpenFile(payload, artifact, cancellationToken)) return null;
+
+            var metadata = CreateMetadata(item, artifact);
+            metadata.ArchiveReady = true;
+            metadata.IsPaused = false;
+            var metadataPath = destinationPath + ".part" + ResumeSuffix;
+            if (!TrySaveCompletedState(
+                    metadata,
+                    metadataPath,
+                    destinationPath + ".part" + LocalAttestationSuffix,
+                    destinationPath,
+                    canonicalRoot,
+                    item,
+                    artifact,
+                    pathLease)) return null;
+            _ = PathIdentity.RevalidateFile(
+                payload.SafeFileHandle,
+                destinationPath,
+                payloadIdentity);
+            pathLease.Revalidate();
+
+            return new CatalogCompletedDirectDownload(
+                item.Id,
+                destinationPath,
+                metadataPath,
+                artifact.ContentLength,
+                artifact.Sha256);
+        }
+        catch (Exception exception) when (exception is IOException
+                                           or UnauthorizedAccessException
+                                           or InvalidDataException
+                                           or ArgumentException
+                                           or NotSupportedException
+                                           or CryptographicException)
+        {
+            return null;
+        }
+        finally
+        {
+            DisposeArtifactLock(artifactLock, destinationPath);
+        }
+    }
+
+    internal CatalogDirectDownloadRelocation PrepareCompletedDirectDownloadRelocation(
+        string sourceRoot,
+        string destinationRoot,
+        CatalogItem item,
+        string sourceFilePath,
+        string destinationFilePath,
+        CancellationToken cancellationToken)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(item);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (_active.ContainsKey(item.Id))
+            throw new IOException("O download ainda está ativo e não pode ser movido.");
+
+        var artifact = RequireValidArtifact(item);
+        if (artifact.ExtractPolicy != CatalogExtractPolicy.None)
+            throw new InvalidDataException("Somente downloads diretos podem usar esta movimentação.");
+        var canonicalSourceRoot = ValidateInstallationRoot(sourceRoot);
+        var canonicalDestinationRoot = ValidateInstallationRoot(destinationRoot);
+        var expectedSource = BuildSafeDestinationPath(canonicalSourceRoot, item);
+        var expectedDestination = BuildSafeDestinationPath(canonicalDestinationRoot, item);
+        if (!PathsEqual(expectedSource, sourceFilePath)
+            || !PathsEqual(expectedDestination, destinationFilePath)
+            || PathsEqual(expectedSource, expectedDestination))
+            throw new InvalidDataException("A movimentação não corresponde aos caminhos autorizados do artefato.");
+        if (!File.Exists(expectedSource))
+            throw new FileNotFoundException("O arquivo direto de origem não foi encontrado.", expectedSource);
+        if (File.Exists(expectedDestination)
+            || Directory.Exists(expectedDestination)
+            || File.Exists(expectedDestination + ".part"))
+            throw new IOException("O destino da movimentação já está ocupado.");
+
+        var sourceDirectory = Path.GetDirectoryName(expectedSource)!;
+        var destinationDirectory = Path.GetDirectoryName(expectedDestination)!;
+        using var sourceLease = PathIdentity.OpenDirectoryTree(sourceDirectory);
+        using var destinationLease = PathIdentity.OpenDirectoryTree(
+            destinationDirectory,
+            createIfMissing: true);
+        FileStream? sourceLock = null;
+        FileStream? destinationLock = null;
+        try
+        {
+            sourceLock = AcquireArtifactLock(expectedSource, sourceLease);
+            destinationLock = AcquireArtifactLock(expectedDestination, destinationLease);
+            using var payload = sourceLease.OpenFile(
+                expectedSource,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                BufferSize,
+                FileOptions.SequentialScan);
+            var payloadIdentity = PathIdentity.CaptureFileIdentity(
+                payload.SafeFileHandle,
+                expectedSource);
+            if (!ValidateOpenFile(payload, artifact, cancellationToken))
+                throw new InvalidDataException("A origem não corresponde ao artefato autorizado.");
+
+            var destinationState = expectedDestination + ".part" + ResumeSuffix;
+            var destinationAttestation = expectedDestination + ".part" + LocalAttestationSuffix;
+            var stateFailure = string.Empty;
+            var attestationFailure = string.Empty;
+            if (!TryDeleteFileStrict(
+                    destinationState,
+                    canonicalDestinationRoot,
+                    out stateFailure)
+                || !TryDeleteFileStrict(
+                    destinationAttestation,
+                    canonicalDestinationRoot,
+                    out attestationFailure))
+                throw new IOException(string.IsNullOrWhiteSpace(stateFailure)
+                    ? attestationFailure
+                    : stateFailure);
+
+            var metadata = CreateMetadata(item, artifact);
+            metadata.ArchiveReady = true;
+            metadata.IsPaused = false;
+            if (!TrySaveCompletedState(
+                    metadata,
+                    destinationState,
+                    destinationAttestation,
+                    expectedDestination,
+                    canonicalDestinationRoot,
+                    item,
+                    artifact,
+                    destinationLease))
+                throw new IOException("Não foi possível proteger o estado local no novo destino.");
+
+            _ = PathIdentity.RevalidateFile(
+                payload.SafeFileHandle,
+                expectedSource,
+                payloadIdentity);
+            sourceLease.Revalidate();
+            destinationLease.Revalidate();
+            return new CatalogDirectDownloadRelocation(
+                item.Id,
+                canonicalSourceRoot,
+                canonicalDestinationRoot,
+                expectedSource,
+                expectedDestination,
+                expectedSource + ".part" + ResumeSuffix,
+                expectedSource + ".part" + LocalAttestationSuffix,
+                destinationState,
+                destinationAttestation);
+        }
+        finally
+        {
+            DisposeArtifactLock(destinationLock, expectedDestination);
+            DisposeArtifactLock(sourceLock, expectedSource);
+        }
+    }
+
+    internal bool CompleteCompletedDirectDownloadRelocation(
+        CatalogDirectDownloadRelocation relocation,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(relocation);
+        cancellationToken.ThrowIfCancellationRequested();
+        var records = DiscoverCompletedDirectDownloads(
+            relocation.DestinationRoot,
+            cancellationToken);
+        if (!records.Any(record =>
+                record.ItemId.Equals(relocation.ItemId, StringComparison.Ordinal)
+                && PathsEqual(record.LocalFilePath, relocation.DestinationFilePath)))
+            throw new InvalidDataException(
+                "O destino movido não preservou a atestação local protegida.");
+        if (File.Exists(relocation.SourceFilePath))
+            throw new IOException("A origem ainda existe; o estado anterior foi preservado.");
+
+        var stateRemoved = TryDeleteFileStrict(
+            relocation.SourceStateFilePath,
+            relocation.SourceRoot,
+            out _);
+        var attestationRemoved = TryDeleteFileStrict(
+            relocation.SourceAttestationFilePath,
+            relocation.SourceRoot,
+            out _);
+        return stateRemoved && attestationRemoved;
+    }
+
+    internal void CancelCompletedDirectDownloadRelocation(
+        CatalogDirectDownloadRelocation relocation)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(relocation);
+        if (File.Exists(relocation.DestinationFilePath)) return;
+        _ = TryDeleteFileStrict(
+            relocation.DestinationAttestationFilePath,
+            relocation.DestinationRoot,
+            out _);
+        _ = TryDeleteFileStrict(
+            relocation.DestinationStateFilePath,
+            relocation.DestinationRoot,
+            out _);
+    }
+
+    internal bool DiscardCompletedDirectDownload(
+        string installationRoot,
+        string itemId,
+        string localFilePath,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!IsSafeIdentity(itemId, 128) || _active.ContainsKey(itemId)) return false;
+
+        string destinationPath = string.Empty;
+        FileStream? artifactLock = null;
+        try
+        {
+            var canonicalRoot = ValidateInstallationRoot(installationRoot);
+            var canonicalRequestedPath = Path.GetFullPath(localFilePath);
+            if (!IsWithinRoot(canonicalRequestedPath, canonicalRoot)) return false;
+
+            var candidates = new List<ResumeFileSet>();
+            foreach (var saved in FindResumeFileSets(canonicalRoot, cancellationToken))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!saved.Metadata.ItemId.Equals(itemId, StringComparison.Ordinal)
+                    || !PathsEqual(saved.DestinationPath, canonicalRequestedPath))
+                    continue;
+                if (TryBuildCompletedDirectDownload(
+                        canonicalRoot,
+                        saved,
+                        cancellationToken,
+                        out _))
+                    candidates.Add(saved);
+            }
+            if (candidates.Count != 1) return false;
+
+            var candidate = candidates[0];
+            destinationPath = candidate.DestinationPath;
+            using var pathLease = PathIdentity.OpenDirectoryTree(
+                Path.GetDirectoryName(destinationPath)!);
+            artifactLock = AcquireArtifactLock(destinationPath, pathLease);
+            pathLease.Revalidate();
+            var currentMetadata = LoadResumeMetadata(candidate.MetadataPath, pathLease);
+            if (currentMetadata is null) return false;
+            var current = candidate with { Metadata = currentMetadata };
+            if (!TryGetAttestedDescriptor(
+                    canonicalRoot,
+                    current,
+                    destinationPath,
+                    out var attestedItemId,
+                    out var artifact)
+                || !attestedItemId.Equals(itemId, StringComparison.Ordinal))
+                return false;
+
+            using var payload = pathLease.OpenFile(
+                destinationPath,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                BufferSize,
+                FileOptions.SequentialScan,
+                deleteAccess: true);
+            var payloadIdentity = PathIdentity.CaptureFileIdentity(
+                payload.SafeFileHandle,
+                destinationPath);
+            if (!ValidateOpenFile(payload, artifact, cancellationToken)) return false;
+            _ = PathIdentity.RevalidateFile(
+                payload.SafeFileHandle,
+                destinationPath,
+                payloadIdentity);
+            pathLease.Revalidate();
+
+            // Once the exact, revalidated payload was removed, failure to clean
+            // an inert sidecar must not be reported as failure of the deletion.
+            PathIdentity.DeleteByHandle(
+                payload.SafeFileHandle,
+                destinationPath,
+                payloadIdentity);
+            _ = TryDeleteFileStrict(candidate.PartialPath, canonicalRoot, out _);
+            _ = TryDeletePreservedPartialsStrict(
+                candidate.PartialPath,
+                canonicalRoot,
+                out _);
+            _ = TryDeleteFileStrict(candidate.MetadataPath, canonicalRoot, out _);
+            _ = TryDeleteFileStrict(candidate.AttestationPath, canonicalRoot, out _);
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException
+                                           or UnauthorizedAccessException
+                                           or InvalidDataException
+                                           or ArgumentException
+                                           or NotSupportedException
+                                           or CryptographicException)
+        {
+            return false;
+        }
+        finally
+        {
+            DisposeArtifactLock(artifactLock, destinationPath);
+        }
     }
 
     public async Task<CatalogDownloadResult> DownloadAsync(
@@ -689,16 +1098,9 @@ public sealed class CatalogDownloadService : IDisposable
                     active.PathLease,
                     active.Cancellation.Token))
             {
-                active.Metadata.ArchiveReady = artifact.ExtractPolicy == CatalogExtractPolicy.ExtractArchive;
-                if (active.Metadata.ArchiveReady)
-                {
-                    if (!TrySaveResumeMetadata(active))
-                        throw new IOException("Não foi possível registrar o pacote verificado.");
-                }
-                else
-                {
-                    DeleteExactFile(active.MetadataPath);
-                }
+                active.Metadata.ArchiveReady = true;
+                if (!TrySaveCompletedState(active, item, artifact))
+                    throw new IOException("Não foi possível registrar o pacote verificado.");
                 SetCompletedItem(item, active.DestinationPath, artifact);
                 return true;
             }
@@ -1201,17 +1603,10 @@ public sealed class CatalogDownloadService : IDisposable
                      active.Cancellation.Token))
             throw new InvalidDataException("O arquivo publicado não preservou a integridade autorizada.");
 
-        active.Metadata.ArchiveReady = artifact.ExtractPolicy == CatalogExtractPolicy.ExtractArchive;
+        active.Metadata.ArchiveReady = true;
         active.Metadata.IsPaused = false;
-        if (active.Metadata.ArchiveReady)
-        {
-            if (!TrySaveResumeMetadata(active))
-                throw new IOException("Não foi possível registrar o pacote verificado.");
-        }
-        else
-        {
-            _ = TryDeleteFileStrict(active.MetadataPath, active.InstallationRoot, out _);
-        }
+        if (!TrySaveCompletedState(active, item, artifact))
+            throw new IOException("Não foi possível registrar o pacote verificado.");
         DeletePreservedPartials(active.PartialPath);
         SetCompletedItem(item, active.DestinationPath, artifact);
     }
@@ -1304,6 +1699,198 @@ public sealed class CatalogDownloadService : IDisposable
             UpdatedUtc = DateTimeOffset.UtcNow
         };
 
+    private bool TryBuildCompletedDirectDownload(
+        string installationRoot,
+        ResumeFileSet saved,
+        CancellationToken cancellationToken,
+        out CatalogCompletedDirectDownload record)
+    {
+        record = null!;
+        var metadata = saved.Metadata;
+        if (metadata.ExtractPolicy != CatalogExtractPolicy.None
+            || !metadata.ArchiveReady
+            || metadata.IsPaused
+            || File.Exists(saved.PartialPath))
+            return false;
+
+        var expectedPath = BuildSafeDestinationPath(installationRoot, metadata);
+        if (!PathsEqual(saved.DestinationPath, expectedPath)
+            || !PathsEqual(saved.MetadataPath, expectedPath + ".part" + ResumeSuffix)
+            || !PathsEqual(
+                saved.AttestationPath,
+                expectedPath + ".part" + LocalAttestationSuffix))
+            return false;
+
+        if (!TryGetAttestedDescriptor(
+                installationRoot,
+                saved,
+                expectedPath,
+                out var attestedItemId,
+                out var artifact)
+            || !ValidateFile(expectedPath, artifact, cancellationToken))
+            return false;
+
+        record = new CatalogCompletedDirectDownload(
+            attestedItemId,
+            expectedPath,
+            saved.MetadataPath,
+            metadata.ContentLength,
+            metadata.Sha256);
+        return true;
+    }
+
+    private bool TryGetAttestedDescriptor(
+        string installationRoot,
+        ResumeFileSet saved,
+        string expectedPath,
+        out string itemId,
+        out CatalogArtifactDescriptor artifact)
+    {
+        itemId = string.Empty;
+        artifact = null!;
+        var attestation = LoadLocalAttestation(
+            installationRoot,
+            saved.AttestationPath);
+        if (attestation is null
+            || !ValidateLocalAttestationShape(attestation)
+            || !AttestationMatchesMetadata(attestation, saved.Metadata)
+            || !FixedTimeHexEquals(
+                attestation.PathBindingSha256,
+                ComputePathBinding(expectedPath)))
+            return false;
+
+        artifact = CreateArtifactDescriptor(attestation);
+        ValidateArtifact(artifact);
+        itemId = attestation.ItemId;
+        return true;
+    }
+
+    private static LocalDirectDownloadAttestation? LoadLocalAttestation(
+        string installationRoot,
+        string attestationPath)
+    {
+        byte[]? protectedBytes = null;
+        byte[]? clearText = null;
+        try
+        {
+            if (!File.Exists(attestationPath)) return null;
+            EnsureNoReparsePoints(installationRoot, attestationPath);
+            using var stream = OpenValidatedFile(
+                attestationPath,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                asynchronous: false);
+            if (stream.Length is <= 0 or > MaximumAttestationBytes) return null;
+            protectedBytes = GC.AllocateUninitializedArray<byte>((int)stream.Length);
+            stream.ReadExactly(protectedBytes);
+            clearText = ProtectedData.Unprotect(
+                protectedBytes,
+                LocalAttestationEntropy,
+                DataProtectionScope.CurrentUser);
+            if (clearText.Length is <= 0 or > MaximumAttestationBytes) return null;
+            return JsonSerializer.Deserialize<LocalDirectDownloadAttestation>(
+                clearText,
+                LocalAttestationJsonOptions);
+        }
+        catch (Exception exception) when (exception is IOException
+                                           or UnauthorizedAccessException
+                                           or InvalidDataException
+                                           or JsonException
+                                           or CryptographicException
+                                           or PlatformNotSupportedException)
+        {
+            return null;
+        }
+        finally
+        {
+            if (protectedBytes is not null) CryptographicOperations.ZeroMemory(protectedBytes);
+            if (clearText is not null) CryptographicOperations.ZeroMemory(clearText);
+        }
+    }
+
+    private bool ValidateLocalAttestationShape(
+        LocalDirectDownloadAttestation attestation) =>
+        attestation.SchemaVersion == LocalAttestationSchemaVersion
+        && attestation.Purpose.Equals(
+            "TURBORAMA_SUITE_DIRECT_DOWNLOAD",
+            StringComparison.Ordinal)
+        && IsSafeIdentity(attestation.ItemId, 128)
+        && attestation.ProductId.Equals(
+            CatalogArtifactDescriptor.TurboramaSuiteProductId,
+            StringComparison.Ordinal)
+        && IsLowerHex(attestation.ArtifactId, 32)
+        && attestation.ArtifactVersion > 0
+        && attestation.ContentLength > 0
+        && attestation.ContentLength <= _options.MaximumFileSizeBytes
+        && IsCanonicalSha256(attestation.Sha256)
+        && IsLowerHex(attestation.ManifestIdentity, 64)
+        && attestation.ExtractPolicy == CatalogExtractPolicy.None
+        && IsSafeExtension(attestation.FileExtension)
+        && IsSafeFileName(attestation.SafeFileName, attestation.FileExtension)
+        && IsCanonicalSha256(attestation.PathBindingSha256)
+        && attestation.IssuedUtc != default;
+
+    private static bool AttestationMatchesMetadata(
+        LocalDirectDownloadAttestation attestation,
+        DownloadResumeMetadata metadata) =>
+        attestation.ItemId.Equals(metadata.ItemId, StringComparison.Ordinal)
+        && attestation.ProductId.Equals(metadata.ProductId, StringComparison.Ordinal)
+        && attestation.ArtifactId.Equals(metadata.ArtifactId, StringComparison.Ordinal)
+        && attestation.ArtifactVersion == metadata.ArtifactVersion
+        && attestation.ContentLength == metadata.ContentLength
+        && attestation.Sha256.Equals(metadata.Sha256, StringComparison.Ordinal)
+        && attestation.ManifestIdentity.Equals(metadata.ManifestIdentity, StringComparison.Ordinal)
+        && attestation.ExtractPolicy == metadata.ExtractPolicy
+        && attestation.SafeFileName.Equals(metadata.SafeFileName, StringComparison.Ordinal)
+        && attestation.FileExtension.Equals(metadata.FileExtension, StringComparison.Ordinal);
+
+    private static bool FixedTimeHexEquals(string left, string right)
+    {
+        if (!IsCanonicalSha256(left) || !IsCanonicalSha256(right)) return false;
+        var leftBytes = Convert.FromHexString(left);
+        var rightBytes = Convert.FromHexString(right);
+        try
+        {
+            return CryptographicOperations.FixedTimeEquals(leftBytes, rightBytes);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(leftBytes);
+            CryptographicOperations.ZeroMemory(rightBytes);
+        }
+    }
+
+    private static CatalogArtifactDescriptor CreateArtifactDescriptor(
+        LocalDirectDownloadAttestation attestation) => new()
+        {
+            ArtifactId = attestation.ArtifactId,
+            ArtifactVersion = attestation.ArtifactVersion,
+            ContentLength = attestation.ContentLength,
+            Sha256 = attestation.Sha256,
+            SafeFileName = attestation.SafeFileName,
+            FileExtension = attestation.FileExtension,
+            ExtractPolicy = attestation.ExtractPolicy,
+            ManifestIdentity = attestation.ManifestIdentity
+        };
+
+    private static string BuildSafeDestinationPath(
+        string installationRoot,
+        DownloadResumeMetadata metadata)
+    {
+        var canonicalRoot = Path.GetFullPath(installationRoot);
+        var destinationPath = Path.GetFullPath(Path.Combine(
+            canonicalRoot,
+            "artifacts",
+            SanitizePathSegment(metadata.ArtifactId, 96),
+            metadata.ArtifactVersion.ToString(CultureInfo.InvariantCulture),
+            metadata.SafeFileName));
+        if (!IsWithinRoot(destinationPath, canonicalRoot))
+            throw new InvalidDataException("O destino persistido saiu da pasta autorizada.");
+        EnsureNoReparsePoints(canonicalRoot, Path.GetDirectoryName(destinationPath)!);
+        return destinationPath;
+    }
+
     private List<ResumeFileSet> FindResumeFileSets(
         string installationRoot,
         CancellationToken cancellationToken = default)
@@ -1381,6 +1968,7 @@ public sealed class CatalogDownloadService : IDisposable
                 EnsureNoReparsePoints(root, destinationPath);
                 matches.Add(new ResumeFileSet(
                     metadataPath,
+                    destinationPath + ".part" + LocalAttestationSuffix,
                     partialPath,
                     destinationPath,
                     metadata));
@@ -1472,49 +2060,62 @@ public sealed class CatalogDownloadService : IDisposable
 
     private static bool TrySaveResumeMetadata(ActiveDownload active)
     {
+        lock (active.MetadataGate)
+        {
+            if (active.PauseRequested) active.Metadata.IsPaused = true;
+            return TrySaveResumeMetadata(
+                active.Metadata,
+                active.MetadataPath,
+                active.InstallationRoot,
+                active.PathLease);
+        }
+    }
+
+    private static bool TrySaveResumeMetadata(
+        DownloadResumeMetadata metadata,
+        string metadataPath,
+        string installationRoot,
+        PathIdentity.DirectoryTreeLease pathLease)
+    {
         string? temporaryPath = null;
         try
         {
-            lock (active.MetadataGate)
+            metadata.UpdatedUtc = DateTimeOffset.UtcNow;
+            temporaryPath = metadataPath + ".tmp-" + Guid.NewGuid().ToString("N");
+            pathLease.Revalidate();
+            var serialized = JsonSerializer.SerializeToUtf8Bytes(
+                metadata,
+                ResumeJsonOptions);
+            using (var temporary = pathLease.OpenFile(
+                       temporaryPath,
+                       FileMode.CreateNew,
+                       FileAccess.ReadWrite,
+                       FileShare.None,
+                       BufferSize,
+                       FileOptions.WriteThrough,
+                       deleteAccess: true))
             {
-                if (active.PauseRequested) active.Metadata.IsPaused = true;
-                active.Metadata.UpdatedUtc = DateTimeOffset.UtcNow;
-                temporaryPath = active.MetadataPath + ".tmp-" + Guid.NewGuid().ToString("N");
-                active.PathLease.Revalidate();
-                var serialized = JsonSerializer.SerializeToUtf8Bytes(
-                    active.Metadata,
-                    ResumeJsonOptions);
-                using (var temporary = active.PathLease.OpenFile(
-                           temporaryPath,
-                           FileMode.CreateNew,
-                           FileAccess.ReadWrite,
-                           FileShare.None,
-                           BufferSize,
-                           FileOptions.WriteThrough,
-                           deleteAccess: true))
-                {
-                    var temporaryIdentity = PathIdentity.CaptureFileIdentity(
-                        temporary.SafeFileHandle,
-                        temporaryPath);
-                    temporary.Write(serialized);
-                    temporary.Flush(flushToDisk: true);
-                    _ = PathIdentity.RevalidateFile(
-                        temporary.SafeFileHandle,
-                        temporaryPath,
-                        temporaryIdentity);
-                    active.PathLease.Revalidate();
-                    _ = PathIdentity.RenameByHandle(
-                        temporary.SafeFileHandle,
-                        temporaryIdentity,
-                        active.PathLease.AnchorHandle,
-                        Path.GetDirectoryName(active.MetadataPath)!,
-                        Path.GetFileName(active.MetadataPath),
-                        replaceIfExists: true);
-                }
-                temporaryPath = null;
-                active.PathLease.Revalidate();
-                return true;
+                var temporaryIdentity = PathIdentity.CaptureFileIdentity(
+                    temporary.SafeFileHandle,
+                    temporaryPath);
+                temporary.Write(serialized);
+                temporary.Flush(flushToDisk: true);
+                _ = PathIdentity.RevalidateFile(
+                    temporary.SafeFileHandle,
+                    temporaryPath,
+                    temporaryIdentity);
+                pathLease.Revalidate();
+                _ = PathIdentity.RenameByHandle(
+                    temporary.SafeFileHandle,
+                    temporaryIdentity,
+                    pathLease.AnchorHandle,
+                    Path.GetDirectoryName(metadataPath)!,
+                    Path.GetFileName(metadataPath),
+                    replaceIfExists: true);
             }
+            temporaryPath = null;
+            pathLease.Revalidate();
+            return true;
         }
         catch (Exception exception) when (exception is IOException
                                            or UnauthorizedAccessException
@@ -1527,13 +2128,194 @@ public sealed class CatalogDownloadService : IDisposable
         {
             if (temporaryPath is not null)
             {
-                try { _ = PathIdentity.DeleteFileExact(temporaryPath, active.InstallationRoot); }
+                try { _ = PathIdentity.DeleteFileExact(temporaryPath, installationRoot); }
                 catch (Exception exception) when (exception is IOException
                                                    or UnauthorizedAccessException
                                                    or InvalidDataException)
                 {
                 }
             }
+        }
+    }
+
+    private static bool TrySaveCompletedState(
+        ActiveDownload active,
+        CatalogItem item,
+        CatalogArtifactDescriptor artifact)
+    {
+        return TrySaveCompletedState(
+            active.Metadata,
+            active.MetadataPath,
+            active.PartialPath + LocalAttestationSuffix,
+            active.DestinationPath,
+            active.InstallationRoot,
+            item,
+            artifact,
+            active.PathLease);
+    }
+
+    private static bool TrySaveCompletedState(
+        DownloadResumeMetadata metadata,
+        string metadataPath,
+        string attestationPath,
+        string destinationPath,
+        string installationRoot,
+        CatalogItem item,
+        CatalogArtifactDescriptor artifact,
+        PathIdentity.DirectoryTreeLease pathLease)
+    {
+        if (!TrySaveResumeMetadata(
+                metadata,
+                metadataPath,
+                installationRoot,
+                pathLease)) return false;
+        if (artifact.ExtractPolicy != CatalogExtractPolicy.None) return true;
+        if (TrySaveLocalAttestation(
+                destinationPath,
+                attestationPath,
+                installationRoot,
+                item,
+                artifact,
+                pathLease)) return true;
+        _ = TryDeleteFileStrict(metadataPath, installationRoot, out _);
+        return false;
+    }
+
+    private static bool TrySaveLocalAttestation(
+        string destinationPath,
+        string attestationPath,
+        string installationRoot,
+        CatalogItem item,
+        CatalogArtifactDescriptor artifact,
+        PathIdentity.DirectoryTreeLease pathLease)
+    {
+        byte[]? clearText = null;
+        byte[]? protectedBytes = null;
+        try
+        {
+            var attestation = new LocalDirectDownloadAttestation
+            {
+                SchemaVersion = LocalAttestationSchemaVersion,
+                Purpose = "TURBORAMA_SUITE_DIRECT_DOWNLOAD",
+                ItemId = IsSafeIdentity(item.Id, 128) ? item.Id : artifact.ArtifactId,
+                ProductId = artifact.ProductId,
+                ArtifactId = artifact.ArtifactId,
+                ArtifactVersion = artifact.ArtifactVersion,
+                Sha256 = artifact.Sha256,
+                ContentLength = artifact.ContentLength,
+                ManifestIdentity = artifact.ManifestIdentity,
+                ExtractPolicy = artifact.ExtractPolicy,
+                SafeFileName = artifact.SafeFileName,
+                FileExtension = artifact.FileExtension,
+                PathBindingSha256 = ComputePathBinding(destinationPath),
+                IssuedUtc = DateTimeOffset.UtcNow
+            };
+            clearText = JsonSerializer.SerializeToUtf8Bytes(
+                attestation,
+                LocalAttestationJsonOptions);
+            protectedBytes = ProtectedData.Protect(
+                clearText,
+                LocalAttestationEntropy,
+                DataProtectionScope.CurrentUser);
+            if (protectedBytes.Length is <= 0 or > MaximumAttestationBytes)
+                return false;
+            return TryWriteBytesAtomically(
+                protectedBytes,
+                attestationPath,
+                installationRoot,
+                pathLease);
+        }
+        catch (Exception exception) when (exception is IOException
+                                           or UnauthorizedAccessException
+                                           or InvalidDataException
+                                           or JsonException
+                                           or CryptographicException
+                                           or PlatformNotSupportedException)
+        {
+            return false;
+        }
+        finally
+        {
+            if (clearText is not null) CryptographicOperations.ZeroMemory(clearText);
+            if (protectedBytes is not null) CryptographicOperations.ZeroMemory(protectedBytes);
+        }
+    }
+
+    private static bool TryWriteBytesAtomically(
+        ReadOnlySpan<byte> bytes,
+        string destinationPath,
+        string installationRoot,
+        PathIdentity.DirectoryTreeLease pathLease)
+    {
+        string? temporaryPath = null;
+        try
+        {
+            temporaryPath = destinationPath + ".tmp-" + Guid.NewGuid().ToString("N");
+            pathLease.Revalidate();
+            using (var temporary = pathLease.OpenFile(
+                       temporaryPath,
+                       FileMode.CreateNew,
+                       FileAccess.ReadWrite,
+                       FileShare.None,
+                       BufferSize,
+                       FileOptions.WriteThrough,
+                       deleteAccess: true))
+            {
+                var identity = PathIdentity.CaptureFileIdentity(
+                    temporary.SafeFileHandle,
+                    temporaryPath);
+                temporary.Write(bytes);
+                temporary.Flush(flushToDisk: true);
+                _ = PathIdentity.RevalidateFile(
+                    temporary.SafeFileHandle,
+                    temporaryPath,
+                    identity);
+                pathLease.Revalidate();
+                _ = PathIdentity.RenameByHandle(
+                    temporary.SafeFileHandle,
+                    identity,
+                    pathLease.AnchorHandle,
+                    Path.GetDirectoryName(destinationPath)!,
+                    Path.GetFileName(destinationPath),
+                    replaceIfExists: true);
+            }
+            temporaryPath = null;
+            pathLease.Revalidate();
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException
+                                           or UnauthorizedAccessException
+                                           or InvalidDataException)
+        {
+            return false;
+        }
+        finally
+        {
+            if (temporaryPath is not null)
+            {
+                try { _ = PathIdentity.DeleteFileExact(temporaryPath, installationRoot); }
+                catch (Exception exception) when (exception is IOException
+                                                   or UnauthorizedAccessException
+                                                   or InvalidDataException)
+                {
+                }
+            }
+        }
+    }
+
+    private static string ComputePathBinding(string path)
+    {
+        var canonical = Path.GetFullPath(path)
+            .Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar)
+            .ToUpperInvariant();
+        var bytes = Encoding.UTF8.GetBytes(canonical);
+        try
+        {
+            return Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(bytes);
         }
     }
 
@@ -1702,6 +2484,37 @@ public sealed class CatalogDownloadService : IDisposable
             Convert.FromHexString(artifact.Sha256));
     }
 
+    private static bool ValidateOpenFile(
+        FileStream stream,
+        CatalogArtifactDescriptor artifact,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (stream.Length != artifact.ContentLength) return false;
+        stream.Position = 0;
+        var buffer = GC.AllocateUninitializedArray<byte>(BufferSize);
+        try
+        {
+            using var hasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+            int bytesRead;
+            while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                hasher.AppendData(buffer, 0, bytesRead);
+            }
+            cancellationToken.ThrowIfCancellationRequested();
+            var hash = hasher.GetHashAndReset();
+            stream.Position = 0;
+            return CryptographicOperations.FixedTimeEquals(
+                hash,
+                Convert.FromHexString(artifact.Sha256));
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(buffer);
+        }
+    }
+
     private static bool ValidateFile(
         string path,
         CatalogArtifactDescriptor artifact,
@@ -1717,27 +2530,7 @@ public sealed class CatalogDownloadService : IDisposable
                 FileAccess.Read,
                 FileShare.Read,
                 asynchronous: false);
-            if (stream.Length != artifact.ContentLength) return false;
-            var buffer = GC.AllocateUninitializedArray<byte>(BufferSize);
-            try
-            {
-                using var hasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-                int bytesRead;
-                while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    hasher.AppendData(buffer, 0, bytesRead);
-                }
-                cancellationToken.ThrowIfCancellationRequested();
-                var hash = hasher.GetHashAndReset();
-                return CryptographicOperations.FixedTimeEquals(
-                    hash,
-                    Convert.FromHexString(artifact.Sha256));
-            }
-            finally
-            {
-                CryptographicOperations.ZeroMemory(buffer);
-            }
+            return ValidateOpenFile(stream, artifact, cancellationToken);
         }
         catch (Exception exception) when (exception is IOException
                                            or UnauthorizedAccessException
@@ -2340,6 +3133,7 @@ public sealed class CatalogDownloadService : IDisposable
     {
         EnsureNoReparsePoints(installationRoot, saved.PartialPath);
         EnsureNoReparsePoints(installationRoot, saved.MetadataPath);
+        EnsureNoReparsePoints(installationRoot, saved.AttestationPath);
         EnsureNoReparsePoints(installationRoot, saved.DestinationPath);
         if (!TryDeleteFileStrict(saved.PartialPath, installationRoot, out failure)) return false;
         if (!TryDeletePreservedPartialsStrict(
@@ -2347,6 +3141,7 @@ public sealed class CatalogDownloadService : IDisposable
                 installationRoot,
                 out failure)) return false;
         if (!TryDeleteFileStrict(saved.DestinationPath, installationRoot, out failure)) return false;
+        if (!TryDeleteFileStrict(saved.AttestationPath, installationRoot, out failure)) return false;
         return TryDeleteFileStrict(saved.MetadataPath, installationRoot, out failure);
     }
 
@@ -2578,8 +3373,27 @@ public sealed class CatalogDownloadService : IDisposable
         public DateTimeOffset UpdatedUtc { get; set; }
     }
 
+    private sealed class LocalDirectDownloadAttestation
+    {
+        public int SchemaVersion { get; set; }
+        public string Purpose { get; set; } = string.Empty;
+        public string ItemId { get; set; } = string.Empty;
+        public string ProductId { get; set; } = string.Empty;
+        public string ArtifactId { get; set; } = string.Empty;
+        public int ArtifactVersion { get; set; }
+        public string Sha256 { get; set; } = string.Empty;
+        public long ContentLength { get; set; }
+        public string ManifestIdentity { get; set; } = string.Empty;
+        public CatalogExtractPolicy ExtractPolicy { get; set; }
+        public string SafeFileName { get; set; } = string.Empty;
+        public string FileExtension { get; set; } = string.Empty;
+        public string PathBindingSha256 { get; set; } = string.Empty;
+        public DateTimeOffset IssuedUtc { get; set; }
+    }
+
     private sealed record ResumeFileSet(
         string MetadataPath,
+        string AttestationPath,
         string PartialPath,
         string DestinationPath,
         DownloadResumeMetadata Metadata);

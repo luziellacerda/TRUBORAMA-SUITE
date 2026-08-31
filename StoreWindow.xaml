@@ -15,11 +15,23 @@
       <SolidColorBrush x:Key="CurrentSystemAccentBrush" Color="#2389FF" />
       <SolidColorBrush x:Key="CurrentSystemBrightBrush" Color="#63ADFF" />
       <SolidColorBrush x:Key="CurrentSystemContrastBrush" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="CurrentSystemBrightContrastBrush" Color="#071007" />
       <SolidColorBrush x:Key="CurrentSystemSurfaceBrush" Color="#161B5C96" />
       <SolidColorBrush x:Key="CurrentSystemPanelBrush" Color="#2B2389FF" />
       <SolidColorBrush x:Key="CurrentSystemLineBrush" Color="#A02389FF" />
       <SolidColorBrush x:Key="CurrentSystemHeaderBrush" Color="#F20D172B" />
-      <SolidColorBrush x:Key="CurrentSystemSidebarBrush" Color="#FF080E18" />
+      <LinearGradientBrush x:Key="CurrentSystemSidebarBrush" StartPoint="0,.5" EndPoint="1,.5">
+        <GradientStop Color="#FF2389FF" Offset="0" />
+        <GradientStop Color="#4A16243A" Offset=".16" />
+        <GradientStop Color="#FF080A08" Offset=".62" />
+        <GradientStop Color="#FF050705" Offset="1" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="CurrentSystemSidebarSelectionBrush" StartPoint="0,.5" EndPoint="1,.5">
+        <GradientStop Color="#FF2389FF" Offset="0" />
+        <GradientStop Color="#B02389FF" Offset=".12" />
+        <GradientStop Color="#3E2389FF" Offset=".48" />
+        <GradientStop Color="#00000000" Offset="1" />
+      </LinearGradientBrush>
       <LinearGradientBrush x:Key="CurrentSystemVideoOverlayBrush" StartPoint="0,.5" EndPoint="1,.5">
         <GradientStop Color="#FF000000" Offset="0" />
         <GradientStop Color="#D2000000" Offset=".30" />
@@ -27,10 +39,140 @@
         <GradientStop Color="#00000000" Offset="1" />
       </LinearGradientBrush>
       <BitmapImage x:Key="CatalogFallbackArtwork" UriSource="Assets/f15-turborama-user-original-v13.png" DecodePixelWidth="512" CacheOption="OnLoad" CreateOptions="DelayCreation" />
+      <Style x:Key="TechScrollThumbStyle" TargetType="{x:Type Thumb}">
+        <Setter Property="Opacity" Value=".72" />
+        <Setter Property="Template">
+          <Setter.Value>
+            <ControlTemplate TargetType="{x:Type Thumb}">
+              <Grid Margin="1" ClipToBounds="False">
+                <Border x:Name="ThumbGlow"
+                        CornerRadius="4"
+                        BorderBrush="{DynamicResource CurrentSystemAccentBrush}"
+                        BorderThickness="1"
+                        Opacity=".42">
+                  <Border.Effect>
+                    <DropShadowEffect Color="{DynamicResource CurrentSystemAccentColor}"
+                                      BlurRadius="8"
+                                      ShadowDepth="0"
+                                      Opacity=".72" />
+                  </Border.Effect>
+                </Border>
+                <Border x:Name="ThumbCore"
+                        CornerRadius="4"
+                        Background="{DynamicResource CurrentSystemAccentBrush}"
+                        BorderBrush="{DynamicResource CurrentSystemBrightBrush}"
+                        BorderThickness="1">
+                  <Rectangle Margin="2" RadiusX="2" RadiusY="2" IsHitTestVisible="False">
+                    <Rectangle.Fill>
+                      <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                        <GradientStop Color="#00FFFFFF" Offset="0" />
+                        <GradientStop Color="#88FFFFFF" Offset=".48" />
+                        <GradientStop Color="#00FFFFFF" Offset="1" />
+                      </LinearGradientBrush>
+                    </Rectangle.Fill>
+                  </Rectangle>
+                </Border>
+              </Grid>
+              <ControlTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                  <Setter Property="Opacity" Value="1" />
+                  <Setter TargetName="ThumbGlow" Property="Opacity" Value=".88" />
+                </Trigger>
+                <Trigger Property="IsDragging" Value="True">
+                  <Setter Property="Opacity" Value="1" />
+                  <Setter TargetName="ThumbGlow" Property="Opacity" Value="1" />
+                  <Setter TargetName="ThumbCore" Property="BorderThickness" Value="2" />
+                </Trigger>
+              </ControlTemplate.Triggers>
+            </ControlTemplate>
+          </Setter.Value>
+        </Setter>
+      </Style>
       <Style x:Key="{x:Type ScrollBar}" TargetType="{x:Type ScrollBar}">
-        <Setter Property="Width" Value="7" />
-        <Setter Property="Background" Value="#0B0E0B" />
-        <Setter Property="Foreground" Value="#34402E" />
+        <Setter Property="Width" Value="10" />
+        <Setter Property="MinWidth" Value="10" />
+        <Setter Property="Background" Value="#090C09" />
+        <Setter Property="Foreground" Value="{DynamicResource CurrentSystemAccentBrush}" />
+        <Setter Property="Template">
+          <Setter.Value>
+            <ControlTemplate TargetType="{x:Type ScrollBar}">
+              <Grid Width="{TemplateBinding Width}" Background="Transparent">
+                <Border Width="3"
+                        HorizontalAlignment="Center"
+                        Background="#172017"
+                        BorderBrush="{DynamicResource CurrentSystemLineBrush}"
+                        BorderThickness="1"
+                        CornerRadius="2" />
+                <Track x:Name="PART_Track"
+                       Orientation="Vertical"
+                       IsDirectionReversed="True"
+                       Focusable="False">
+                  <Track.DecreaseRepeatButton>
+                    <RepeatButton Command="{x:Static ScrollBar.PageUpCommand}"
+                                  Background="Transparent"
+                                  BorderThickness="0"
+                                  Focusable="False"
+                                  Opacity="0" />
+                  </Track.DecreaseRepeatButton>
+                  <Track.Thumb>
+                    <Thumb MinHeight="34" Style="{StaticResource TechScrollThumbStyle}" />
+                  </Track.Thumb>
+                  <Track.IncreaseRepeatButton>
+                    <RepeatButton Command="{x:Static ScrollBar.PageDownCommand}"
+                                  Background="Transparent"
+                                  BorderThickness="0"
+                                  Focusable="False"
+                                  Opacity="0" />
+                  </Track.IncreaseRepeatButton>
+                </Track>
+              </Grid>
+            </ControlTemplate>
+          </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+          <Trigger Property="Orientation" Value="Horizontal">
+            <Setter Property="Width" Value="Auto" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="Height" Value="10" />
+            <Setter Property="MinHeight" Value="10" />
+            <Setter Property="Template">
+              <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ScrollBar}">
+                  <Grid Height="{TemplateBinding Height}" Background="Transparent">
+                    <Border Height="3"
+                            VerticalAlignment="Center"
+                            Background="#172017"
+                            BorderBrush="{DynamicResource CurrentSystemLineBrush}"
+                            BorderThickness="1"
+                            CornerRadius="2" />
+                    <Track x:Name="PART_Track"
+                           Orientation="Horizontal"
+                           IsDirectionReversed="False"
+                           Focusable="False">
+                      <Track.DecreaseRepeatButton>
+                        <RepeatButton Command="{x:Static ScrollBar.PageLeftCommand}"
+                                      Background="Transparent"
+                                      BorderThickness="0"
+                                      Focusable="False"
+                                      Opacity="0" />
+                      </Track.DecreaseRepeatButton>
+                      <Track.Thumb>
+                        <Thumb MinWidth="34" Style="{StaticResource TechScrollThumbStyle}" />
+                      </Track.Thumb>
+                      <Track.IncreaseRepeatButton>
+                        <RepeatButton Command="{x:Static ScrollBar.PageRightCommand}"
+                                      Background="Transparent"
+                                      BorderThickness="0"
+                                      Focusable="False"
+                                      Opacity="0" />
+                      </Track.IncreaseRepeatButton>
+                    </Track>
+                  </Grid>
+                </ControlTemplate>
+              </Setter.Value>
+            </Setter>
+          </Trigger>
+        </Style.Triggers>
       </Style>
       <Style x:Key="WindowButtonStyle" TargetType="{x:Type Button}">
         <Setter Property="Width" Value="46" />
@@ -80,6 +222,7 @@
               <ControlTemplate.Triggers>
                 <Trigger Property="UIElement.IsMouseOver" Value="True">
                   <Setter TargetName="Surface" Property="Border.Background" Value="{DynamicResource CurrentSystemBrightBrush}" />
+                  <Setter Property="Foreground" Value="{DynamicResource CurrentSystemBrightContrastBrush}" />
                 </Trigger>
                 <Trigger Property="IsPressed" Value="True">
                   <Setter TargetName="Surface" Property="UIElement.Opacity" Value=".76" />
@@ -173,6 +316,7 @@
                 </Trigger>
                 <Trigger Property="UIElement.IsMouseOver" Value="True">
                   <Setter TargetName="Surface" Property="Border.Background" Value="{DynamicResource CurrentSystemBrightBrush}" />
+                  <Setter Property="Foreground" Value="{DynamicResource CurrentSystemBrightContrastBrush}" />
                   <Setter TargetName="NeonAura" Property="Opacity" Value=".92" />
                 </Trigger>
                 <Trigger Property="IsPressed" Value="True">
@@ -249,7 +393,7 @@
                </Border>
               <ControlTemplate.Triggers>
                 <Trigger Property="UIElement.IsMouseOver" Value="True">
-                  <Setter TargetName="Surface" Property="Border.Background" Value="#151B14" />
+                  <Setter TargetName="Surface" Property="Border.Background" Value="{DynamicResource CurrentSystemSidebarSelectionBrush}" />
                   <Setter Property="Foreground" Value="#FFFFFFFF" />
                   <Setter TargetName="Marker" Property="UIElement.Opacity" Value="1" />
                 </Trigger>
@@ -313,7 +457,7 @@
                           Grid.ColumnSpan="3"
                           Margin="-8,-6"
                           CornerRadius="7"
-                          Background="{DynamicResource CurrentSystemAccentBrush}"
+                          Background="{DynamicResource CurrentSystemSidebarSelectionBrush}"
                           Opacity="0"
                           IsHitTestVisible="False" />
                   <Rectangle x:Name="CategoryActiveRail"
@@ -328,20 +472,28 @@
                              Fill="{DynamicResource CurrentSystemAccentBrush}"
                              Opacity="0"
                              IsHitTestVisible="False" />
-                  <Grid Width="25" Height="25">
+                  <Grid Width="29" Height="25">
                     <Border x:Name="CategoryIconGlow"
                             CornerRadius="7"
                             Background="{DynamicResource CurrentSystemAccentBrush}"
                             Opacity="0" />
                     <Image Source="{Binding MenuIconSource}"
-                           Width="21"
-                           Height="21"
+                           Width="29"
+                           Height="25"
                            Stretch="Uniform"
                            SnapsToDevicePixels="True"
                            RenderOptions.BitmapScalingMode="HighQuality" />
                   </Grid>
                   <TextBlock x:Name="CategoryTitle" Grid.Column="1" Foreground="#AAB3A6" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Text="{Binding DisplayName}" />
-                  <TextBlock x:Name="CategoryCode" Grid.Column="2" Foreground="#596354" FontSize="9" FontWeight="Bold" VerticalAlignment="Center" Margin="8,0,0,0" Text="{Binding ShortCode}" />
+                  <TextBlock x:Name="CategoryCode"
+                             Grid.Column="2"
+                             Foreground="#596354"
+                             FontSize="9"
+                             FontWeight="Bold"
+                             VerticalAlignment="Center"
+                             Margin="8,0,0,0"
+                             Text="{Binding SourceItemCount}"
+                             AutomationProperties.Name="{Binding CountLabel}" />
                   <Rectangle Grid.ColumnSpan="3"
                              Height="1"
                              Margin="0,0,0,-7"
@@ -368,8 +520,8 @@
                   <Setter TargetName="CategoryTitle" Property="TextBlock.Foreground" Value="White" />
                 </Trigger>
                 <DataTrigger Value="True" Binding="{Binding IsSelected}">
-                  <Setter TargetName="CategorySurface" Property="Border.Background" Value="#101710" />
-                  <Setter TargetName="CategorySelectedTint" Property="Opacity" Value=".16" />
+                  <Setter TargetName="CategorySurface" Property="Border.Background" Value="#090C09" />
+                  <Setter TargetName="CategorySelectedTint" Property="Opacity" Value="1" />
                   <Setter TargetName="CategoryActiveRail" Property="Opacity" Value="1" />
                   <Setter TargetName="CategoryIconGlow" Property="Opacity" Value=".23" />
                   <Setter TargetName="CategoryTitle" Property="TextBlock.Foreground" Value="White" />
@@ -414,29 +566,10 @@
           <Button.Template>
             <ControlTemplate TargetType="{x:Type Button}">
               <Grid Background="Transparent">
-                <Rectangle x:Name="LibraryOrbitLine"
-                           Margin="1"
-                           RadiusX="14"
-                           RadiusY="14"
-                           Fill="Transparent"
-                           Stroke="{Binding AccentBrush}"
-                           StrokeThickness="2.4"
-                           StrokeDashArray="58 800"
-                           StrokeDashCap="Square"
-                           Opacity="0"
-                           IsHitTestVisible="False">
-                  <Rectangle.Effect>
-                    <DropShadowEffect Color="{Binding AccentColor}"
-                                      BlurRadius="9"
-                                      ShadowDepth="0"
-                                      Opacity=".82" />
-                  </Rectangle.Effect>
-                </Rectangle>
                 <Border x:Name="LibraryCardSurface"
                         Margin="3"
                         Background="#F5090D0B"
-                        BorderBrush="#39463C"
-                        BorderThickness="1"
+                        BorderThickness="0"
                         CornerRadius="11"
                         ClipToBounds="True">
                   <Grid>
@@ -501,28 +634,12 @@
               </Grid>
               <ControlTemplate.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                  <Setter TargetName="LibraryCardSurface" Property="BorderBrush" Value="{DynamicResource CurrentSystemAccentBrush}" />
                   <Setter TargetName="LibraryCardSurface" Property="Background" Value="#FF0C130F" />
                   <Setter TargetName="LibraryCardAccent" Property="Opacity" Value="1" />
-                  <Setter TargetName="LibraryOrbitLine" Property="Opacity" Value="1" />
-                  <Trigger.EnterActions>
-                    <BeginStoryboard x:Name="LibraryOrbitStoryboard">
-                      <Storyboard RepeatBehavior="Forever">
-                        <DoubleAnimation Storyboard.TargetName="LibraryOrbitLine"
-                                         Storyboard.TargetProperty="StrokeDashOffset"
-                                         From="0"
-                                         To="-858"
-                                         Duration="0:0:1.7" />
-                      </Storyboard>
-                    </BeginStoryboard>
-                  </Trigger.EnterActions>
-                  <Trigger.ExitActions>
-                    <RemoveStoryboard BeginStoryboardName="LibraryOrbitStoryboard" />
-                  </Trigger.ExitActions>
                 </Trigger>
                 <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                  <Setter TargetName="LibraryCardSurface" Property="BorderBrush" Value="{DynamicResource CurrentSystemAccentBrush}" />
-                  <Setter TargetName="LibraryOrbitLine" Property="Opacity" Value="1" />
+                  <Setter TargetName="LibraryCardSurface" Property="Background" Value="#FF0C130F" />
+                  <Setter TargetName="LibraryCardAccent" Property="Opacity" Value="1" />
                 </Trigger>
                 <Trigger Property="IsPressed" Value="True">
                   <Setter TargetName="LibraryCardSurface" Property="Opacity" Value=".78" />
@@ -531,6 +648,55 @@
             </ControlTemplate>
           </Button.Template>
         </Button>
+      </DataTemplate>
+      <DataTemplate x:Key="ManagedGameRowTemplate">
+        <Border Margin="0,0,0,8"
+                Padding="10"
+                MinHeight="104"
+                Background="#E90A0E0B"
+                BorderBrush="#2D372B"
+                BorderThickness="1"
+                CornerRadius="10">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="58" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Border Width="52" Height="78" CornerRadius="6" ClipToBounds="True" Background="#050705" BorderBrush="#34402E" BorderThickness="1">
+              <Image Source="{Binding Thumbnail160, IsAsync=True}"
+                     Stretch="UniformToFill"
+                     RenderOptions.BitmapScalingMode="HighQuality"
+                     AutomationProperties.Name="{Binding ImageAltText}" />
+            </Border>
+            <StackPanel Grid.Column="1" Margin="12,2,12,0" VerticalAlignment="Center">
+              <TextBlock Text="{Binding Title}" Foreground="White" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+              <TextBlock Text="{Binding Subtitle}" Foreground="{StaticResource MutedBrush}" FontSize="10" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" />
+              <StackPanel Orientation="Horizontal" Margin="0,9,0,0">
+                <Ellipse Width="7" Height="7" Fill="{Binding StatusBrush}" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding StatusLabel}" Foreground="{Binding StatusBrush}" FontSize="9" FontWeight="Bold" Margin="7,0,0,0" VerticalAlignment="Center" />
+              </StackPanel>
+              <TextBlock Text="{Binding StatusDetail}" Foreground="#707A6D" FontSize="9" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" />
+              <TextBlock Text="{Binding LocalPath}"
+                         ToolTip="{Binding LocalPath}"
+                         AutomationProperties.Name="{Binding LocalPath}"
+                         Foreground="#596356"
+                         FontSize="8"
+                         Margin="0,3,0,0"
+                         TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+            <Button Grid.Column="2"
+                    Content="{Binding DeleteLabel}"
+                    AutomationProperties.Name="{Binding DeleteLabel}"
+                    Style="{StaticResource SecondaryButtonStyle}"
+                    MinHeight="34"
+                    Height="34"
+                    Padding="12,0"
+                    VerticalAlignment="Center"
+                    IsEnabled="{Binding CanDelete}"
+                    Click="DeleteManagedGame_Click" />
+          </Grid>
+        </Border>
       </DataTemplate>
       <DataTemplate x:Key="CatalogCardTemplate">
         <Grid AutomationProperties.Name="{Binding Title}" AutomationProperties.HelpText="{Binding DownloadStatus}">
@@ -1144,6 +1310,7 @@
               <TextBlock Text="NAVEGAÇÃO" Foreground="#596254" FontSize="9" FontWeight="Bold" Margin="14,0,0,7" />
               <Button Content="⌂    Início" Tag="Home" AutomationProperties.Name="Início" Style="{StaticResource SidebarNavStyle}" Click="Nav_Click" />
               <Button Content="▦    Biblioteca" Tag="Library" AutomationProperties.Name="Biblioteca" Style="{StaticResource SidebarNavStyle}" Click="Nav_Click" />
+              <Button Content="☷    Jogos locais" Tag="GameManager" AutomationProperties.Name="Jogos locais" Style="{StaticResource SidebarNavStyle}" Click="Nav_Click" />
               <Button Content="⇩    Downloads" Tag="Downloads" AutomationProperties.Name="Downloads" Style="{StaticResource SidebarNavStyle}" Click="Nav_Click" />
             </StackPanel>
             <Grid Row="2" Margin="14,17,7,8">
@@ -1170,8 +1337,18 @@
                   <TextBlock Text="T" Foreground="{DynamicResource CurrentSystemBrightBrush}" FontWeight="Black" HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
                 <StackPanel Grid.Column="1" Margin="9,1,0,0">
-                  <TextBlock Text="Piloto Turborama" FontSize="11" FontWeight="SemiBold" />
-                  <TextBlock Text="Licença ativa" Foreground="#68CA3B" FontSize="9" Margin="0,3,0,0" />
+                  <TextBlock Name="LicenseConsumerText"
+                             Text="Cliente autorizado"
+                             FontSize="11"
+                             FontWeight="SemiBold"
+                             TextTrimming="CharacterEllipsis"
+                             AutomationProperties.Name="Identificador de licença mascarado" />
+                  <TextBlock Name="LicenseConsumerStatusText"
+                             Text="Licença ativa"
+                             Foreground="#68CA3B"
+                             FontSize="9"
+                             Margin="0,3,0,0"
+                             AutomationProperties.Name="Estado da licença" />
                 </StackPanel>
                 <Ellipse Grid.Column="2" Width="6" Height="6" Fill="{StaticResource RedBrush}" VerticalAlignment="Center" />
               </Grid>
@@ -1334,6 +1511,206 @@
               </ItemsControl>
             </StackPanel>
           </ScrollViewer>
+          <Grid Name="GameManagerPage" Visibility="Collapsed" Margin="28,22,24,26" AutomationProperties.Name="Página Jogos locais">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <StackPanel Orientation="Horizontal">
+                <Rectangle Width="4" Height="38" RadiusX="2" Fill="{DynamicResource CurrentSystemAccentBrush}" Margin="0,1,12,0" />
+                <StackPanel>
+                  <TextBlock Text="Jogos locais" FontSize="27" FontWeight="Bold" />
+                  <TextBlock Text="Analise os jogos da pasta de ROMs por sistema" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,3,0,0" />
+                </StackPanel>
+              </StackPanel>
+              <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button Content="ABRIR PASTA" AutomationProperties.Name="Abrir pasta de ROMs" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0" Click="OpenManagedGameFolder_Click" />
+                <Button Content="ALTERAR PASTA" AutomationProperties.Name="Alterar pasta de ROMs" Style="{StaticResource PrimaryButtonStyle}" Click="ChooseManagedGameFolder_Click" />
+              </StackPanel>
+            </Grid>
+
+            <Grid Grid.Row="1" Margin="0,17,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="210" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <Border Style="{StaticResource PanelBorderStyle}" Padding="10" Margin="0,0,12,0">
+                <Grid>
+                  <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                  </Grid.RowDefinitions>
+                  <TextBlock Text="SISTEMAS" Foreground="#687363" FontSize="9" FontWeight="Bold" Margin="7,3,0,9" />
+                  <ListBox Grid.Row="1"
+                           ItemsSource="{Binding ManagedGameSystems}"
+                           SelectedItem="{Binding SelectedManagedGameSystem, Mode=TwoWay}"
+                           Background="Transparent"
+                           BorderThickness="0"
+                           ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                           ScrollViewer.VerticalScrollBarVisibility="Auto"
+                           VirtualizingPanel.IsVirtualizing="True"
+                           VirtualizingPanel.VirtualizationMode="Recycling"
+                           AutomationProperties.Name="Sistemas dos jogos locais">
+                    <ListBox.ItemTemplate>
+                      <DataTemplate>
+                        <Grid Margin="8,0">
+                          <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="27" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                          </Grid.ColumnDefinitions>
+                          <Image Source="{Binding MenuIconSource}" Width="17" Height="17" Stretch="Uniform" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="1" Text="{Binding DisplayName}" Foreground="#DCE3D9" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Grid.Column="2" Text="{Binding ItemCount}" Foreground="{Binding AccentBrush}" FontSize="9" VerticalAlignment="Center" Margin="7,0,0,0" />
+                        </Grid>
+                      </DataTemplate>
+                    </ListBox.ItemTemplate>
+                    <ListBox.ItemContainerStyle>
+                      <Style TargetType="{x:Type ListBoxItem}">
+                        <Setter Property="Height" Value="39" />
+                        <Setter Property="Margin" Value="0,1" />
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="BorderThickness" Value="0" />
+                        <Setter Property="Cursor" Value="Hand" />
+                        <Setter Property="Template">
+                          <Setter.Value>
+                            <ControlTemplate TargetType="{x:Type ListBoxItem}">
+                              <Border x:Name="SystemSurface" Background="{TemplateBinding Background}" CornerRadius="7">
+                                <ContentPresenter VerticalAlignment="Center" />
+                              </Border>
+                              <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                  <Setter TargetName="SystemSurface" Property="Background" Value="#151B14" />
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                  <Setter TargetName="SystemSurface" Property="Background" Value="{DynamicResource CurrentSystemPanelBrush}" />
+                                </Trigger>
+                              </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                          </Setter.Value>
+                        </Setter>
+                      </Style>
+                    </ListBox.ItemContainerStyle>
+                  </ListBox>
+                </Grid>
+              </Border>
+
+              <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="*" />
+                  <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Border Style="{StaticResource PanelBorderStyle}" Padding="12,9">
+                  <Grid>
+                    <Grid.RowDefinitions>
+                      <RowDefinition Height="Auto" />
+                      <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="Auto" />
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                      <Button Content="◀" AutomationProperties.Name="Música anterior" Style="{StaticResource SecondaryButtonStyle}" Width="34" MinHeight="32" Height="32" Padding="0" Click="MusicPrevious_Click" />
+                      <Button AutomationProperties.Name="Tocar ou pausar música" Style="{StaticResource PrimaryButtonStyle}" Width="38" MinHeight="32" Height="32" Padding="0" Margin="6,0" Click="MusicPlayPause_Click">
+                        <TextBlock Name="MusicPlayPauseGlyph" Text="▶" />
+                      </Button>
+                      <Button Content="▶" AutomationProperties.Name="Próxima música" Style="{StaticResource SecondaryButtonStyle}" Width="34" MinHeight="32" Height="32" Padding="0" Click="MusicNext_Click" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
+                      <TextBlock Name="MusicTrackTitle" Text="Escolha uma pasta de músicas" FontSize="11" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Name="MusicPlaybackStatus" Text="PAUSADO" Foreground="#687363" FontSize="8" FontWeight="Bold" Margin="0,2,0,0" />
+                    </StackPanel>
+                    <Button Grid.Column="2" Content="PASTA DE MÚSICAS" AutomationProperties.Name="Escolher pasta de músicas" Style="{StaticResource SecondaryButtonStyle}" MinHeight="32" Height="32" Padding="10,0" Click="ChooseMusicFolder_Click" />
+                    <Grid Grid.Row="1" Grid.ColumnSpan="3" Margin="0,8,0,0">
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                      </Grid.ColumnDefinitions>
+                      <TextBlock Text="VOLUME" Foreground="#687363" FontSize="8" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,9,0" />
+                      <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="35" VerticalAlignment="Center" ValueChanged="MusicVolume_ValueChanged" AutomationProperties.Name="Volume da música" />
+                    </Grid>
+                  </Grid>
+                </Border>
+
+                <Border Grid.Row="1" Style="{StaticResource PanelBorderStyle}" Padding="13,8" Margin="0,9,0,0">
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                      <TextBlock Name="ManagedGameSystemTitle" Text="Jogos locais" FontSize="15" FontWeight="Bold" />
+                      <TextBlock Text="  •  " Foreground="#596254" />
+                      <TextBlock Name="ManagedGameDownloadedCount" Text="0" Foreground="{StaticResource LimeBrush}" FontSize="13" FontWeight="Bold" />
+                      <TextBlock Text=" baixados" Foreground="#AAB3A7" FontSize="10" VerticalAlignment="Center" />
+                      <TextBlock Text="  •  " Foreground="#596254" />
+                      <TextBlock Name="ManagedGameMissingCount" Text="0" Foreground="#AAB3A7" FontSize="13" FontWeight="Bold" />
+                      <TextBlock Text=" não baixados" Foreground="#7E887B" FontSize="10" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="ATUALIZAR" AutomationProperties.Name="Atualizar análise dos jogos locais" Style="{StaticResource SecondaryButtonStyle}" MinHeight="30" Height="30" Padding="11,0" Click="RefreshManagedGames_Click" />
+                  </Grid>
+                </Border>
+
+                <Grid Grid.Row="2" Margin="0,9,0,9">
+                  <TextBox AutomationProperties.Name="Buscar nos jogos locais" Style="{StaticResource SearchBoxStyle}" TextChanged="ManagedGameSearch_TextChanged" />
+                  <TextBlock Text="⌕" Foreground="{DynamicResource CurrentSystemAccentBrush}" FontSize="19" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="15,0,0,1" IsHitTestVisible="False" />
+                  <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,15,0" IsHitTestVisible="False">
+                    <TextBlock Name="ManagedGameVisibleCount" Text="0" Foreground="{DynamicResource CurrentSystemAccentBrush}" FontWeight="Bold" />
+                    <TextBlock Text=" itens" Foreground="#687363" FontSize="9" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Grid>
+
+                <Grid Grid.Row="3">
+                  <Border Name="ManagedGamesEmptyPanel" Style="{StaticResource PanelBorderStyle}">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                      <TextBlock Text="Nenhum jogo nesta seleção" FontSize="17" FontWeight="Bold" />
+                      <TextBlock Text="Altere o sistema ou limpe a busca." Foreground="{StaticResource MutedBrush}" FontSize="10" Margin="0,5,0,0" />
+                    </StackPanel>
+                  </Border>
+                  <ListBox Name="ManagedGamesList"
+                           ItemsSource="{Binding ManagedGames}"
+                           ItemTemplate="{StaticResource ManagedGameRowTemplate}"
+                           Background="Transparent"
+                           BorderThickness="0"
+                           ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                           ScrollViewer.VerticalScrollBarVisibility="Auto"
+                           VirtualizingPanel.IsVirtualizing="True"
+                           VirtualizingPanel.VirtualizationMode="Recycling"
+                           AutomationProperties.Name="Jogos locais do sistema">
+                    <ListBox.ItemContainerStyle>
+                      <Style TargetType="{x:Type ListBoxItem}">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="BorderThickness" Value="0" />
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="Focusable" Value="False" />
+                        <Setter Property="Template">
+                          <Setter.Value>
+                            <ControlTemplate TargetType="{x:Type ListBoxItem}">
+                              <ContentPresenter />
+                            </ControlTemplate>
+                          </Setter.Value>
+                        </Setter>
+                      </Style>
+                    </ListBox.ItemContainerStyle>
+                  </ListBox>
+                </Grid>
+                <TextBlock Name="ManagedGameManagerStatus" Grid.Row="4" Text="Selecione um sistema para analisar a pasta de ROMs." Foreground="#7F897C" FontSize="9" TextWrapping="Wrap" Margin="3,7,3,0" />
+              </Grid>
+            </Grid>
+          </Grid>
           <Grid Name="DownloadsPage" Visibility="Collapsed" Margin="32,28,28,32" AutomationProperties.Name="Página Downloads">
             <Grid.RowDefinitions>
               <RowDefinition Height="Auto" />

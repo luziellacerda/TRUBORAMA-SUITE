@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -85,6 +86,7 @@ internal static class WpfTemplateVerifier
             try
             {
                 VerifyExplorerStartInfo();
+                VerifyLicenseMasking();
                 VerifyWindowBoundsClamp();
                 VerifyPathIdentityLeaseAdversaries();
                 VerifyArtifactPolicyDivergenceFailsClosed();
@@ -109,18 +111,67 @@ internal static class WpfTemplateVerifier
                                   "OpenCatalog");
                 if (window.LibrarySystems.Count != 22 || window.LibraryTotalItemCount != 902)
                     throw new InvalidDataException("A Biblioteca precisa contabilizar 22 sistemas e 902 jogos.");
+                if (window.ManagedGameSystems.Count != 21
+                    || window.FindName("GameManagerPage") is not Grid
+                    || window.FindName("ManagedGamesList") is not ListBox
+                    || window.FindName("MusicTrackTitle") is not TextBlock
+                    || window.FindName("MusicPlayPauseGlyph") is not TextBlock)
+                    throw new InvalidDataException(
+                        "Jogos locais precisa ser uma página separada, por sistema e com player de música.");
+                if (window.FindName("LicenseConsumerText") is not TextBlock licenseConsumer
+                    || licenseConsumer.Text != "Cliente ••••FIER"
+                    || licenseConsumer.Text.Contains("TR-WPF-VERIFIER", StringComparison.Ordinal)
+                    || window.FindName("LicenseConsumerStatusText") is not TextBlock licenseStatus
+                    || licenseStatus.Text != "Licença ativa")
+                    throw new InvalidDataException(
+                        "O cartão da licença precisa mostrar somente o identificador mascarado e o estado autenticado.");
 
                 var ps3 = window.CatalogCategories.Single(item =>
                     item.Id.Equals("playstation-3", StringComparison.OrdinalIgnoreCase));
                 openCatalog.Invoke(window, [ps3]);
-                if (window.Resources["CurrentSystemSidebarBrush"] is not SolidColorBrush ps3Sidebar
-                    || ps3Sidebar.Color.R > 8 || ps3Sidebar.Color.G > 8 || ps3Sidebar.Color.B > 8)
-                    throw new InvalidDataException("O menu lateral do PlayStation 3 precisa permanecer preto.");
+                if (window.Resources["CurrentSystemSidebarBrush"] is not LinearGradientBrush ps3Sidebar
+                    || ps3Sidebar.GradientStops.Count < 4
+                    || ps3Sidebar.GradientStops[0].Color != Color.FromRgb(15, 164, 222)
+                    || ps3Sidebar.GradientStops[0].Offset != 0
+                    || ps3Sidebar.GradientStops[^1].Color.R > 8
+                    || ps3Sidebar.GradientStops[^1].Color.G > 8
+                    || ps3Sidebar.GradientStops[^1].Color.B > 8
+                    || ps3Sidebar.GradientStops[^1].Offset != 1)
+                    throw new InvalidDataException(
+                        "O menu lateral precisa começar na cor ativa e terminar em preto.");
+                if (window.Resources["CurrentSystemSidebarSelectionBrush"] is not LinearGradientBrush selection
+                    || selection.GradientStops.Count < 4
+                    || selection.GradientStops[0].Color != Color.FromRgb(15, 164, 222)
+                    || selection.GradientStops[^1].Color.A != 0)
+                    throw new InvalidDataException(
+                        "A seleção lateral precisa usar o degradê tecnológico da cor ativa.");
+                if (window.Resources["TechScrollThumbStyle"] is not Style scrollThumbStyle
+                    || scrollThumbStyle.TargetType != typeof(Thumb))
+                    throw new InvalidDataException(
+                        "A barra de rolagem tecnológica precisa manter o estilo de destaque dinâmico.");
                 if (window.Resources["CurrentSystemVideoOverlayBrush"] is not LinearGradientBrush overlay
                     || overlay.GradientStops.Count < 2
                     || overlay.GradientStops[0].Color.A != 255
                     || overlay.GradientStops[^1].Color.A != 0)
                     throw new InvalidDataException("O vídeo precisa do degradê preto para transparente.");
+
+                var requestedThemeColors = new Dictionary<string, Color>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["playstation-1"] = Color.FromRgb(229, 231, 235),
+                    ["playstation-2"] = Color.FromRgb(59, 130, 246),
+                    ["playstation-2-br"] = Color.FromRgb(59, 130, 246),
+                    ["sega-saturn"] = Color.FromRgb(37, 99, 235)
+                };
+                foreach (var requestedTheme in requestedThemeColors)
+                {
+                    var requestedCategory = window.CatalogCategories.Single(item =>
+                        item.Id.Equals(requestedTheme.Key, StringComparison.OrdinalIgnoreCase));
+                    openCatalog.Invoke(window, [requestedCategory]);
+                    if (window.Resources["CurrentSystemAccentColor"] is not Color actualAccent
+                        || actualAccent != requestedTheme.Value)
+                        throw new InvalidDataException(
+                            $"A paleta de {requestedTheme.Key} não corresponde à capa aprovada.");
+                }
 
                 openCatalog.Invoke(window, [category]);
                 window.Show();
@@ -1414,12 +1465,6 @@ internal static class WpfTemplateVerifier
                                 ?? throw new MissingMethodException(
                                     nameof(StoreWindow),
                                     "CreateResponsiveBackgroundVideoPlayer");
-            var releasePlayer = typeof(StoreWindow).GetMethod(
-                                    "ReleaseResponsiveBackgroundVideoPlayer",
-                                    BindingFlags.Static | BindingFlags.NonPublic)
-                                ?? throw new MissingMethodException(
-                                    nameof(StoreWindow),
-                                    "ReleaseResponsiveBackgroundVideoPlayer");
             var player = playerFactory.Invoke(null, [host]) as MediaElement
                          ?? throw new InvalidDataException(
                              "O teste não conseguiu criar o player responsivo.");
@@ -1482,12 +1527,11 @@ internal static class WpfTemplateVerifier
                 }
                 if (player.NaturalVideoWidth <= 0
                     || player.NaturalVideoHeight <= 0
-                    || player.RenderTransform is not ScaleTransform coverTransform
-                    || !double.IsFinite(coverTransform.ScaleX)
-                    || coverTransform.ScaleX < 1
-                    || Math.Abs(coverTransform.ScaleX - coverTransform.ScaleY) > 0.000001)
+                    || player.Stretch != Stretch.Uniform
+                    || player.StretchDirection != StretchDirection.Both
+                    || player.RenderTransform is not null and not MatrixTransform { Matrix.IsIdentity: true })
                     throw new InvalidDataException(
-                        "O vídeo real não recebeu um recorte central proporcional após MediaOpened.");
+                        "O vídeo real não permaneceu inteiro e proporcional após MediaOpened.");
             }
             finally
             {
@@ -1495,7 +1539,6 @@ internal static class WpfTemplateVerifier
                 timeout.Tick -= HandleTimeout;
                 player.MediaOpened -= HandleOpened;
                 player.MediaFailed -= HandleFailed;
-                releasePlayer.Invoke(null, [player]);
                 try { player.Stop(); } catch (InvalidOperationException) { }
                 var playerClosed = false;
                 try { player.Close(); playerClosed = true; }
@@ -1608,7 +1651,7 @@ internal static class WpfTemplateVerifier
             || systemHost.VerticalAlignment != VerticalAlignment.Stretch
             || scaleHost.Stretch != Stretch.Uniform
             || scaleHost.StretchDirection != StretchDirection.DownOnly)
-            throw new InvalidDataException("O vídeo de fundo precisa preencher e recortar a área disponível.");
+            throw new InvalidDataException("O host do vídeo de fundo não acompanha a área disponível.");
 
         var factory = typeof(StoreWindow).GetMethod(
                           "CreateResponsiveBackgroundVideoPlayer",
@@ -1619,13 +1662,14 @@ internal static class WpfTemplateVerifier
         var player = factory.Invoke(null, [host]) as MediaElement
                      ?? throw new InvalidDataException("O player responsivo não pôde ser criado.");
         if (player.Stretch != Stretch.Uniform
-            || player.HorizontalAlignment != HorizontalAlignment.Center
-            || player.VerticalAlignment != VerticalAlignment.Center
-            || player.RenderTransformOrigin != new Point(0.5, 0.5)
-            || player.RenderTransform is not ScaleTransform)
+            || player.StretchDirection != StretchDirection.Both
+            || player.HorizontalAlignment != HorizontalAlignment.Stretch
+            || player.VerticalAlignment != VerticalAlignment.Stretch
+            || !player.IsMuted
+            || Math.Abs(player.Volume) > double.Epsilon
+            || player.RenderTransform is not null and not MatrixTransform { Matrix.IsIdentity: true })
             throw new InvalidDataException(
-                "O player precisa preservar a proporção e centralizar o recorte do vídeo.");
-        VerifyBackgroundVideoCoverScale();
+                "O player precisa mostrar o quadro inteiro, proporcional, centralizado e sem áudio.");
         host.Children.Add(player);
         var originalCarouselVisibility = carouselHost.Visibility;
         carouselHost.Visibility = Visibility.Visible;
@@ -1729,45 +1773,14 @@ internal static class WpfTemplateVerifier
         }
     }
 
-    private static void VerifyBackgroundVideoCoverScale()
+    private static void VerifyLicenseMasking()
     {
-        var calculator = typeof(StoreWindow).GetMethod(
-                             "CalculateBackgroundVideoCoverScale",
-                             BindingFlags.Static | BindingFlags.NonPublic)
-                         ?? throw new MissingMethodException(
-                             nameof(StoreWindow),
-                             "CalculateBackgroundVideoCoverScale");
-
-        foreach (var (viewportWidth, viewportHeight, videoWidth, videoHeight) in new[]
-                 {
-                     (1600d, 900d, 1920d, 1080d),
-                     (1600d, 900d, 1728d, 1080d),
-                     (1600d, 900d, 468d, 360d),
-                     (900d, 1600d, 1920d, 1080d),
-                     (1920d, 500d, 1080d, 1920d)
-                 })
-        {
-            var value = calculator.Invoke(
-                null,
-                [viewportWidth, viewportHeight, videoWidth, videoHeight]);
-            if (value is not double renderScale
-                || !double.IsFinite(renderScale)
-                || renderScale < 1)
-                throw new InvalidDataException(
-                    "O cálculo de cover retornou uma escala inválida.");
-
-            var containedScale = Math.Min(
-                viewportWidth / videoWidth,
-                viewportHeight / videoHeight);
-            var displayedWidth = videoWidth * containedScale * renderScale;
-            var displayedHeight = videoHeight * containedScale * renderScale;
-            if (displayedWidth + 0.001 < viewportWidth
-                || displayedHeight + 0.001 < viewportHeight
-                || Math.Abs(displayedWidth / displayedHeight - videoWidth / videoHeight) > 0.000001)
-                throw new InvalidDataException(
-                    $"O vídeo {videoWidth:0}×{videoHeight:0} não cobriu " +
-                    $"{viewportWidth:0}×{viewportHeight:0} sem distorção.");
-        }
+        if (StoreWindow.FormatMaskedLicenseId("ABCDEF") != "Cliente ••••CDEF"
+            || StoreWindow.FormatMaskedLicenseId("ABCD") != "Cliente ••••"
+            || StoreWindow.FormatMaskedLicenseId(new string('X', 60) + "1234")
+            != "Cliente ••••1234")
+            throw new InvalidDataException(
+                "O mascaramento da licença não protegeu os limites esperados.");
     }
 
     private static void AssertElementWithinAncestor(

@@ -58,7 +58,7 @@
       "shortCode": "PS1",
       "glyph": "◈",
       "description": "Catálogo dedicado ao PlayStation 1.",
-      "accent": "#60A5FA",
+      "accent": "#E5E7EB",
       "order": 6,
       "sourceItemCount": 119
     },
@@ -78,7 +78,7 @@
       "shortCode": "P2BR",
       "glyph": "◈",
       "description": "Seleção brasileira para PlayStation 2.",
-      "accent": "#22C55E",
+      "accent": "#3B82F6",
       "order": 8,
       "sourceItemCount": 51
     },
@@ -138,7 +138,7 @@
       "shortCode": "SAT",
       "glyph": "◉",
       "description": "Catálogo dedicado ao Sega Saturn.",
-      "accent": "#F59E0B",
+      "accent": "#2563EB",
       "order": 14,
       "sourceItemCount": 32
     },

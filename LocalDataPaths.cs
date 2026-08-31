@@ -13,7 +13,7 @@ internal static class LocalDataPaths
         WriteIndented = true
     };
     private static readonly string[] ConfigurationPropertyNames =
-        ["InstallFolder", "GameLibraryFolder"];
+        ["InstallFolder", "GameLibraryFolder", "MusicFolder"];
     private static readonly HashSet<string> AllowedProperties =
         new(ConfigurationPropertyNames, StringComparer.Ordinal);
 
@@ -35,6 +35,12 @@ internal static class LocalDataPaths
     }
 
     public static string? ReadGameLibraryFolder() => ReadFolderSetting("GameLibraryFolder");
+
+    public static string? ReadMusicFolder()
+    {
+        var folder = ReadFolderSetting("MusicFolder");
+        return folder is not null && Directory.Exists(folder) ? folder : null;
+    }
 
     private static string? ReadFolderSetting(string propertyName)
     {
@@ -71,6 +77,9 @@ internal static class LocalDataPaths
     public static bool WriteGameLibraryFolder(string gameLibraryFolder) =>
         Catalog.CatalogArchiveExtractor.IsGameLibraryRoot(gameLibraryFolder)
             && WriteFolderSetting("GameLibraryFolder", gameLibraryFolder);
+
+    public static bool WriteMusicFolder(string musicFolder) =>
+        WriteFolderSetting("MusicFolder", musicFolder);
 
     private static bool WriteFolderSetting(
         string propertyName,
