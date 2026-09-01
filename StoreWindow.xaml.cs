@@ -36,6 +36,9 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     private const string RetroGamesCategoryId = "retro-games";
     private const string LibraryBackgroundVideoContextId = "library";
     private const string CatalogBackgroundVideoContextPrefix = "catalog:";
+    private const double RetroCarouselLogicalWidth = 1060d;
+    private const double RetroCarouselPrimaryPosterWidth = 336d;
+    private const double RetroCarouselVideoFadeLogicalWidth = 190.8d;
     private const int MaximumRetroSystemVideoManifestBytes = 256 * 1024;
     private const int MaximumRetroPlatformDescriptionsBytes = 512 * 1024;
     private const int MaximumQuarantinedVideoPlaybacks = 8;
@@ -195,6 +198,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     private int _pendingRetroCarouselSteps;
     private int _remainingRetroCarouselClickSteps;
     private bool _isRetroCarouselAnimating;
+    private bool _retroCarouselGeometryScheduled;
     private int _retroSystemVideoRequestVersion;
     private int _retroUniversalVideoRequestVersion;
     private int _activeRetroSystemVideoGeneration;
@@ -498,6 +502,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             ThrowIfOperationUnauthorized();
             UpdateFolderLabels();
             Loaded += StoreWindow_Loaded;
+            SizeChanged += StoreWindow_SizeChanged;
             StateChanged += StoreWindow_StateChanged;
             SessionStatusText.Text = "SESSÃO ATIVA";
             SessionStatusText.Foreground = Brushes.LawnGreen;
@@ -1762,6 +1767,108 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             contentPanel.Margin = isRetroCarousel
                 ? new Thickness(32, 0, 28, 8)
                 : new Thickness(32, 0, 28, 22);
+
+        if (isRetroCarousel && hasItems)
+            ScheduleRetroCarouselResponsiveGeometry();
+    }
+
+    private void StoreWindow_SizeChanged(object sender, SizeChangedEventArgs e) =>
+        ScheduleRetroCarouselResponsiveGeometry();
+
+    private void ScheduleRetroCarouselResponsiveGeometry()
+    {
+        if (_retroCarouselGeometryScheduled
+            || Dispatcher.HasShutdownStarted
+            || Dispatcher.HasShutdownFinished)
+            return;
+
+        _retroCarouselGeometryScheduled = true;
+        _ = Dispatcher.BeginInvoke(
+            new Action(() =>
+            {
+                _retroCarouselGeometryScheduled = false;
+                UpdateRetroCarouselResponsiveGeometry();
+            }),
+            DispatcherPriority.Loaded);
+    }
+
+    private void UpdateRetroCarouselResponsiveGeometry()
+    {
+        if (FindNamed<Grid>("RetroCarouselHost") is not { IsVisible: true }
+            || FindNamed<Grid>("RetroCarouselViewport") is not { } viewport
+            || FindNamed<Canvas>("RetroCarouselFooterRoot") is not { } footerRoot
+            || FindNamed<Grid>("RetroCarouselFooterContent") is not { } footerContent
+            || FindNamed<ScaleTransform>("RetroCarouselFooterTransform") is not { } footerTransform
+            || FindNamed<ContentControl>("RetroCarouselActionBar") is not { } actionBar
+            || FindNamed<Border>("RetroSystemVideoOverlay") is not { } videoOverlay
+            || viewport.RenderSize.Width <= 0
+            || footerRoot.ActualHeight <= 0
+            || footerContent.Height <= 0
+            || actionBar.Width <= 0
+            || actionBar.Height <= 0
+            || videoOverlay.ActualWidth <= 0)
+            return;
+
+        try
+        {
+            var viewportBounds = viewport
+                .TransformToVisual(footerRoot)
+                .TransformBounds(new Rect(viewport.RenderSize));
+            var viewportScale = viewportBounds.Width / RetroCarouselLogicalWidth;
+            if (!double.IsFinite(viewportScale) || viewportScale <= 0)
+                return;
+
+            var primaryPosterCenter = viewportBounds.Left
+                                      + RetroCarouselPrimaryPosterWidth * viewportScale / 2;
+            var useCompactNavigation = viewportScale < .8;
+            SetVisibility("RetroCarouselMouseHint", !useCompactNavigation);
+            SetVisibility("RetroCarouselEnterHint", !useCompactNavigation);
+            var maximumFooterScale = Math.Min(1, footerRoot.ActualHeight / footerContent.Height);
+            var footerScale = useCompactNavigation
+                ? maximumFooterScale
+                : Math.Min(viewportScale, maximumFooterScale);
+            footerTransform.ScaleX = footerScale;
+            footerTransform.ScaleY = footerScale;
+            Canvas.SetLeft(
+                footerContent,
+                primaryPosterCenter - RetroCarouselPrimaryPosterWidth * footerScale / 2);
+            Canvas.SetTop(
+                footerContent,
+                Math.Max(0, (footerRoot.ActualHeight - footerContent.Height * footerScale) / 2));
+            Canvas.SetLeft(actionBar, primaryPosterCenter - actionBar.Width / 2);
+            Canvas.SetTop(actionBar, Math.Max(0, (footerRoot.ActualHeight - actionBar.Height) / 2));
+
+            var videoViewportBounds = viewport
+                .TransformToVisual(videoOverlay)
+                .TransformBounds(new Rect(viewport.RenderSize));
+            var videoViewportScale = videoViewportBounds.Width / RetroCarouselLogicalWidth;
+            var primaryPosterRight = videoViewportBounds.Left
+                                     + RetroCarouselPrimaryPosterWidth * videoViewportScale;
+            var solidOffset = Math.Clamp(primaryPosterRight / videoOverlay.ActualWidth, 0, 1);
+            var transparentOffset = Math.Clamp(
+                (primaryPosterRight + RetroCarouselVideoFadeLogicalWidth * videoViewportScale)
+                / videoOverlay.ActualWidth,
+                solidOffset,
+                1);
+
+            if (videoOverlay.Background is not LinearGradientBrush overlayBrush
+                || overlayBrush.GradientStops.Count != 3)
+                return;
+            if (overlayBrush.IsFrozen)
+            {
+                overlayBrush = overlayBrush.CloneCurrentValue();
+                Resources["CurrentSystemVideoOverlayBrush"] = overlayBrush;
+                videoOverlay.Background = overlayBrush;
+            }
+
+            overlayBrush.GradientStops[1].Offset = solidOffset;
+            overlayBrush.GradientStops[2].Offset = transparentOffset;
+        }
+        catch (InvalidOperationException)
+        {
+            // The controls can temporarily leave the same visual tree while a page
+            // is being changed. The next layout/size event recalculates the geometry.
+        }
     }
 
     private void UpdateRetroCarouselBindings()
@@ -1944,6 +2051,8 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             previousButton.IsEnabled = _retroCarouselItems.Count > 1;
         if (FindNamed<Button>("RetroCarouselNextButton") is { } nextButton)
             nextButton.IsEnabled = _retroCarouselItems.Count > 1;
+
+        ScheduleRetroCarouselResponsiveGeometry();
 
         // The selected cover no longer replaces the category background. The
         // responsive family video remains stable while covers move.
@@ -3494,12 +3603,12 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
     private static RetroCarouselSlot GetRetroCarouselSlot(int offset)
     {
-        var selectedHeight = UsesPortraitCarouselCovers ? 480 : 240;
+        var selectedHeight = UsesPortraitCarouselCovers ? 504 : 252;
         var compactHeight = UsesPortraitCarouselCovers ? 204 : 102;
         return offset switch
         {
-            -1 => new RetroCarouselSlot(-330, 0, 320, selectedHeight, 1, 35),
-            0 => new RetroCarouselSlot(10, 0, 320, selectedHeight, 1, 40),
+            -1 => new RetroCarouselSlot(-346, 0, 336, selectedHeight, 1, 35),
+            0 => new RetroCarouselSlot(0, 0, 336, selectedHeight, 1, 40),
             1 => new RetroCarouselSlot(344, 0, 136, compactHeight, .95, 25),
             2 => new RetroCarouselSlot(489, 0, 136, compactHeight, .90, 24),
             3 => new RetroCarouselSlot(634, 0, 136, compactHeight, .85, 23),
@@ -4037,6 +4146,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     private async void StoreWindow_Loaded(object sender, RoutedEventArgs e)
     {
         Loaded -= StoreWindow_Loaded;
+        ScheduleRetroCarouselResponsiveGeometry();
         _ = InitializeMusicPlayerAsync();
         if (_catalogRepository is null) return;
 
@@ -5363,6 +5473,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     {
         base.OnDpiChanged(oldDpi, newDpi);
         ScheduleWorkAreaClamp();
+        ScheduleRetroCarouselResponsiveGeometry();
     }
 
     private IntPtr WindowMessageHook(
@@ -5373,7 +5484,10 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         ref bool handled)
     {
         if (message == NativeWmDpiChanged)
+        {
             ScheduleWorkAreaClamp();
+            ScheduleRetroCarouselResponsiveGeometry();
+        }
         return IntPtr.Zero;
     }
 
@@ -5606,6 +5720,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         CancelStoreOperations();
         CancelManagedGameScan();
         CancelMusicPlaylistLoad();
+        SizeChanged -= StoreWindow_SizeChanged;
         StateChanged -= StoreWindow_StateChanged;
         _windowSource?.RemoveHook(WindowMessageHook);
         _windowSource = null;

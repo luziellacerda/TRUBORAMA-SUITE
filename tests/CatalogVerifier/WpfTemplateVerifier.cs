@@ -96,6 +96,7 @@ internal static class WpfTemplateVerifier
                 VerifyEmbeddedMusicResources();
                 VerifyLocalGamesOnlyShowsPhysicalContent();
                 application = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+                VerifyPremiumLoginNeonLighting();
                 window = CreateAuthorizedWindowForRendering();
                 window.ShowActivated = false;
                 window.ShowInTaskbar = false;
@@ -191,8 +192,10 @@ internal static class WpfTemplateVerifier
                     || window.FindName("RetroCarouselInfoAccentRail") is not System.Windows.Shapes.Rectangle retroCarouselInfoAccentRail
                     || retroCarouselInfoAccentRail.Effect is not System.Windows.Media.Effects.DropShadowEffect retroCarouselInfoAccentGlow
                     || window.FindName("RetroCarouselFooter") is not Border retroCarouselFooter
-                    || window.FindName("RetroCarouselFooterScale") is not Viewbox retroCarouselFooterScale
-                    || window.FindName("RetroCarouselFooterContent") is not StackPanel retroCarouselFooterContent
+                    || window.FindName("RetroCarouselFooterRoot") is not Canvas retroCarouselFooterRoot
+                    || window.FindName("RetroCarouselFooterContent") is not Grid retroCarouselFooterContent
+                    || window.FindName("RetroCarouselFooterTransform") is not ScaleTransform retroCarouselFooterTransform
+                    || window.FindName("RetroSystemVideoOverlay") is not Border retroSystemVideoOverlay
                     || window.FindName("RetroFooterSeparatorLed") is not System.Windows.Shapes.Rectangle retroFooterSeparatorLed
                     || retroFooterSeparatorLed.Effect is not System.Windows.Media.Effects.DropShadowEffect retroFooterSeparatorGlow
                     || !ReferenceEquals(hudOpenFolder.Style, hudButtonStyle)
@@ -241,16 +244,24 @@ internal static class WpfTemplateVerifier
                     || catalogMetalFrameOverlay.Children.Count != 1
                     || !ReferenceEquals(catalogMetalFrameOverlay.Children[0], catalogMetalOuterFrame)
                     || !ReferenceEquals(catalogHudHeader.Child, catalogHudFieldsGrid)
-                    || !ReferenceEquals(retroCarouselFooter.Child, retroCarouselFooterScale)
-                    || !ReferenceEquals(retroCarouselFooterScale.Child, retroCarouselFooterContent)
-                    || retroCarouselFooterScale.Stretch != Stretch.Uniform
-                    || retroCarouselFooterScale.StretchDirection != StretchDirection.DownOnly
+                    || !ReferenceEquals(retroCarouselFooter.Child, retroCarouselFooterRoot)
+                    || retroCarouselFooterRoot.ClipToBounds
+                    || retroCarouselFooterRoot.Children.Count != 2
+                    || !ReferenceEquals(retroCarouselFooterRoot.Children[0], retroCarouselFooterContent)
+                    || !ReferenceEquals(retroCarouselFooterContent.RenderTransform, retroCarouselFooterTransform)
                     || FindVisualDescendants<System.Windows.Shapes.Shape>(catalogMetalFrameOverlay).Any()
                     || FindVisualDescendants<System.Windows.Shapes.Path>(catalogHudHeader).Any()
                     || FindVisualDescendants<System.Windows.Shapes.Rectangle>(catalogHudHeader).Any()
                     || catalogHudFieldsGrid.ColumnDefinitions.Count != 3
                     || Grid.GetColumn(hudSearchPanel) != 2
-                    || retroCarouselInfoPanel.Background is not null
+                    || retroCarouselInfoPanel.Background is not LinearGradientBrush textOverlayBackground
+                    || !ReferenceEquals(
+                        textOverlayBackground,
+                        window.Resources["CurrentSystemTextOverlayBrush"])
+                    || retroSystemVideoOverlay.Background is not LinearGradientBrush videoOverlayBackground
+                    || !ReferenceEquals(
+                        videoOverlayBackground,
+                        window.Resources["CurrentSystemVideoOverlayBrush"])
                     || FindVisualDescendants<Border>(retroCarouselInfoPanel).Any()
                     || Math.Abs(retroCarouselInfoPanel.Height - 196) > double.Epsilon
                     || Math.Abs(retroCarouselInfoAccentRail.Width - 2) > double.Epsilon
@@ -339,12 +350,22 @@ internal static class WpfTemplateVerifier
                     || overlay.GradientStops[0].Color != Color.FromArgb(255, 0, 0, 0)
                     || overlay.GradientStops[0].Offset != 0
                     || overlay.GradientStops[1].Color != Color.FromArgb(255, 0, 0, 0)
-                    || overlay.GradientStops[1].Offset != .18
+                    || overlay.GradientStops[1].Offset != .32
                     || overlay.GradientStops[2].Color != Color.FromArgb(0, 0, 0, 0)
-                    || overlay.GradientStops[2].Offset != .28
-                    || window.Resources.Values.OfType<GradientBrush>().Count() != 1)
+                    || overlay.GradientStops[2].Offset != .50
+                    || window.Resources["CurrentSystemTextOverlayBrush"] is not LinearGradientBrush textOverlay
+                    || textOverlay.StartPoint != new Point(0, .5)
+                    || textOverlay.EndPoint != new Point(1, .5)
+                    || textOverlay.GradientStops.Count != 3
+                    || textOverlay.GradientStops[0].Color != Color.FromArgb(255, 0, 0, 0)
+                    || textOverlay.GradientStops[0].Offset != 0
+                    || textOverlay.GradientStops[1].Color != Color.FromArgb(255, 0, 0, 0)
+                    || textOverlay.GradientStops[1].Offset != .50
+                    || textOverlay.GradientStops[2].Color != Color.FromArgb(0, 0, 0, 0)
+                    || textOverlay.GradientStops[2].Offset != 1
+                    || window.Resources.Values.OfType<GradientBrush>().Count() != 2)
                     throw new InvalidDataException(
-                        "Somente o vídeo pode manter degradê: preto até 18% e transparente aos 28%.");
+                        "O catálogo precisa manter dois fades: um sobre o vídeo a partir do fim da capa e outro preto até metade da descrição.");
                 if (window.Resources.Contains("CurrentSystemVideoTintBrush")
                     || window.FindName("RetroSystemVideoTint") is not null
                     || window.Resources["NintendoVideoRedTintBrush"] is not SolidColorBrush videoTint
@@ -476,6 +497,111 @@ internal static class WpfTemplateVerifier
             throw new InvalidOperationException(
                 "O catálogo WPF falhou ao criar os templates reais.",
                 failure);
+    }
+
+    private static void VerifyPremiumLoginNeonLighting()
+    {
+        PremiumLoginWindow? login = null;
+        try
+        {
+            login = new PremiumLoginWindow
+            {
+                ShowActivated = false,
+                ShowInTaskbar = false,
+                Left = -12000,
+                Top = -12000,
+                Opacity = 0
+            };
+            login.Show();
+            login.UpdateLayout();
+
+            if (login.FindName("AccessCard") is not Border accessCard
+                || login.FindName("LoginCardLedLayer") is not Grid ledLayer
+                || login.FindName("LoginCardLedRail") is not System.Windows.Shapes.Rectangle ledRail
+                || ledRail.Effect is not System.Windows.Media.Effects.DropShadowEffect ledGlow
+                || login.FindName("LicenseInput") is not TextBox
+                || login.FindName("ActivationCodeInput") is not PasswordBox
+                || login.FindName("EnterButton") is not Button)
+                throw new InvalidDataException(
+                    "O login perdeu o card, seus campos ou a iluminação LED aprovada.");
+
+            if (Math.Abs(accessCard.Width - 450) > double.Epsilon
+                || Math.Abs(accessCard.Margin.Left - 68) > double.Epsilon
+                || ledLayer.IsHitTestVisible
+                || ledLayer.Focusable
+                || ledLayer.Children.Count != 1
+                || !ReferenceEquals(ledLayer.Children[0], ledRail)
+                || FindVisualDescendants<Control>(ledLayer).Any()
+                || Math.Abs(ledRail.Width - 2) > double.Epsilon
+                || ledRail.Margin != new Thickness(20, 72, 0, 30)
+                || ledRail.HorizontalAlignment != HorizontalAlignment.Left
+                || ledRail.VerticalAlignment != VerticalAlignment.Stretch
+                || ledRail.CacheMode is not BitmapCache
+                || ledRail.Fill is not SolidColorBrush railBrush
+                || railBrush.Color != Color.FromRgb(0x73, 0xFF, 0x68)
+                || ledGlow.Color != Color.FromRgb(0x73, 0xFF, 0x68)
+                || Math.Abs(ledGlow.ShadowDepth) > double.Epsilon
+                || Math.Abs(ledGlow.Direction) > double.Epsilon
+                || ledGlow.BlurRadius < 8
+                || ledGlow.Opacity < .28)
+                throw new InvalidDataException(
+                    "O login precisa preservar seu layout e manter um único LED verde fino com halo próprio.");
+
+            var loaded = ledLayer.Triggers.OfType<EventTrigger>().SingleOrDefault(trigger =>
+                trigger.RoutedEvent == FrameworkElement.LoadedEvent);
+            var unloaded = ledLayer.Triggers.OfType<EventTrigger>().SingleOrDefault(trigger =>
+                trigger.RoutedEvent == FrameworkElement.UnloadedEvent);
+            if (loaded?.Actions.Count != 1
+                || loaded.Actions[0] is not BeginStoryboard
+                {
+                    Name: "LoginCardLedPulse",
+                    Storyboard: { } pulse
+                }
+                || unloaded?.Actions.Count != 1
+                || unloaded.Actions[0] is not RemoveStoryboard
+                {
+                    BeginStoryboardName: "LoginCardLedPulse"
+                }
+                || !pulse.AutoReverse
+                || !pulse.RepeatBehavior.Equals(RepeatBehavior.Forever))
+                throw new InvalidDataException(
+                    "O LED do login precisa iniciar e encerrar um pulso contínuo.");
+
+            var animations = pulse.Children.OfType<DoubleAnimation>().ToArray();
+            var coreOpacity = animations.SingleOrDefault(animation =>
+                Storyboard.GetTargetName(animation).Equals("LoginCardLedRail", StringComparison.Ordinal)
+                && Storyboard.GetTargetProperty(animation)?.Path.Equals("Opacity", StringComparison.Ordinal) == true);
+            var glowOpacity = animations.SingleOrDefault(animation =>
+                Storyboard.GetTargetName(animation).Equals("LoginCardLedGlow", StringComparison.Ordinal)
+                && Storyboard.GetTargetProperty(animation)?.Path.Equals("Opacity", StringComparison.Ordinal) == true);
+            var glowRadius = animations.SingleOrDefault(animation =>
+                Storyboard.GetTargetName(animation).Equals("LoginCardLedGlow", StringComparison.Ordinal)
+                && Storyboard.GetTargetProperty(animation)?.Path.Equals("BlurRadius", StringComparison.Ordinal) == true);
+            if (animations.Length != 3
+                || animations.Any(animation =>
+                    !animation.Duration.HasTimeSpan
+                    || animation.Duration.TimeSpan < TimeSpan.FromSeconds(.65)
+                    || animation.Duration.TimeSpan > TimeSpan.FromSeconds(1.35))
+                || coreOpacity?.From is not { } coreFrom
+                || coreOpacity.To is not { } coreTo
+                || glowOpacity?.From is not { } glowFrom
+                || glowOpacity.To is not { } glowTo
+                || glowRadius?.From is not { } radiusFrom
+                || glowRadius.To is not { } radiusTo
+                || coreTo - coreFrom < .4
+                || glowTo - glowFrom < .5
+                || radiusTo - radiusFrom < 10)
+                throw new InvalidDataException(
+                    "A iluminação do login precisa pulsar no núcleo, na opacidade e no alcance do halo.");
+
+            if (!ledRail.HasAnimatedProperties || !ledGlow.HasAnimatedProperties)
+                throw new InvalidDataException(
+                    "O pulso LED do login não entrou em execução durante a renderização real.");
+        }
+        finally
+        {
+            try { login?.Close(); } catch { }
+        }
     }
 
     private static void VerifySidebarLedPulse(
@@ -651,7 +777,16 @@ internal static class WpfTemplateVerifier
         var template = probe.Template
                        ?? throw new InvalidDataException(
                            "O estilo das ações do rodapé não materializou um template.");
-        if (template.FindName("FooterActionSurface", probe) is not Border footerActionSurface
+        if (Math.Abs(probe.Width - 220) > double.Epsilon
+            || Math.Abs(probe.Height - 36) > double.Epsilon
+            || Math.Abs(probe.MinHeight - 36) > double.Epsilon
+            || probe.Foreground is not SolidColorBrush foreground
+            || foreground.Color != Colors.White
+            || probe.Background is not SolidColorBrush background
+            || background.Color != Color.FromRgb(0xFF, 0x20, 0x40)
+            || probe.BorderBrush is not SolidColorBrush border
+            || border.Color != Color.FromRgb(0xFF, 0x71, 0x85)
+            || template.FindName("FooterActionSurface", probe) is not Border footerActionSurface
             || footerActionSurface.Effect is not null
             || template.FindName("FooterActionLed", probe)
                 is not System.Windows.Shapes.Rectangle footerActionLed
@@ -765,6 +900,12 @@ internal static class WpfTemplateVerifier
         if (!UsesStyle(button.Style, expectedStyle)
             || !ReferenceEquals(button.Template, expectedTemplate)
             || button.Effect is not null
+            || Math.Abs(button.Width - 220) > double.Epsilon
+            || Math.Abs(button.Height - 36) > double.Epsilon
+            || button.Foreground is not SolidColorBrush buttonForeground
+            || buttonForeground.Color != Colors.White
+            || button.Background is not SolidColorBrush buttonBackground
+            || buttonBackground.Color != Color.FromRgb(0xFF, 0x20, 0x40)
             || expectedTemplate.FindName("FooterActionSurface", button)
                 is not Border
                 {
@@ -782,6 +923,13 @@ internal static class WpfTemplateVerifier
             throw new InvalidDataException(
                 $"A ação '{AutomationProperties.GetName(button)}' sobrescreveu o template sólido ou deixou de resolver o FooterActionLed comum.");
 
+        if (surface.Background is not SolidColorBrush surfaceBackground
+            || surfaceBackground.Color != Color.FromRgb(0xFF, 0x20, 0x40)
+            || surface.BorderBrush is not SolidColorBrush surfaceBorder
+            || surfaceBorder.Color != Color.FromRgb(0xFF, 0x71, 0x85))
+            throw new InvalidDataException(
+                $"A ação '{AutomationProperties.GetName(button)}' precisa manter vermelho vivo, borda clara e texto branco em todos os estados.");
+
         if (FindVisualDescendants<UIElement>(button).Any(element =>
                 !ReferenceEquals(element, led)
                 && element.Effect is System.Windows.Media.Effects.DropShadowEffect))
@@ -792,7 +940,7 @@ internal static class WpfTemplateVerifier
     }
 
     private static void VerifyFooterSeparatorLedPulse(
-        StackPanel footerContent,
+        Grid footerContent,
         System.Windows.Shapes.Rectangle led,
         System.Windows.Media.Effects.DropShadowEffect glow)
     {
@@ -2683,13 +2831,19 @@ internal static class WpfTemplateVerifier
             || window.FindName("RetroUniversalVideoPlayerHost") is not Grid host
             || window.FindName("RetroSystemVideoPlayerHost") is not Grid systemHost
             || window.FindName("RetroNintendoVideoTint") is not Border nintendoVideoTint
+            || window.FindName("RetroSystemVideoOverlay") is not Border videoOverlay
             || window.FindName("RetroCarouselHost") is not Grid carouselHost
             || window.FindName("RetroCarouselScaleHost") is not Viewbox scaleHost
             || window.FindName("RetroCarouselViewport") is not Grid carouselViewport
             || window.FindName("RetroCarouselCurrent") is not ContentControl carouselCurrent
             || window.FindName("RetroCarouselActionBar") is not ContentControl carouselActionBar
-            || window.FindName("RetroCarouselFooterScale") is not Viewbox retroCarouselFooterScale
-            || window.FindName("RetroCarouselFooterContent") is not StackPanel retroCarouselFooterContent
+            || window.FindName("RetroCarouselFooterRoot") is not Canvas retroCarouselFooterRoot
+            || window.FindName("RetroCarouselFooterContent") is not Grid retroCarouselFooterContent
+            || window.FindName("RetroCarouselFooterTransform") is not ScaleTransform retroCarouselFooterTransform
+            || window.FindName("RetroCarouselNavigationLegend") is not StackPanel retroCarouselNavigationLegend
+            || window.FindName("RetroCarouselNavigationHint") is not TextBlock retroCarouselNavigationHint
+            || window.FindName("RetroCarouselMouseHint") is not TextBlock retroCarouselMouseHint
+            || window.FindName("RetroCarouselEnterHint") is not TextBlock retroCarouselEnterHint
             || window.FindName("RetroFooterSeparatorLed") is not System.Windows.Shapes.Rectangle retroFooterSeparatorLed
             || retroFooterSeparatorLed.Effect is not System.Windows.Media.Effects.DropShadowEffect retroFooterSeparatorGlow
             || window.Resources["RetroFooterActionButtonStyle"] is not Style retroFooterActionStyle
@@ -2726,7 +2880,7 @@ internal static class WpfTemplateVerifier
             || !ReferenceEquals(background.Children[0], host)
             || !ReferenceEquals(background.Children[1], systemHost)
             || !ReferenceEquals(background.Children[2], nintendoVideoTint)
-            || background.Children[3] is not Border videoOverlay
+            || !ReferenceEquals(background.Children[3], videoOverlay)
             || nintendoVideoTint.Background is not SolidColorBrush
             || !ReferenceEquals(
                 nintendoVideoTint.Background,
@@ -2754,19 +2908,38 @@ internal static class WpfTemplateVerifier
             || scaleHost.StretchDirection != StretchDirection.Both
             || Math.Abs(carouselViewport.Width - 1060) > double.Epsilon
             || Math.Abs(carouselViewport.Height - 504) > double.Epsilon
-            || Math.Abs(carouselActionBar.Width - 196) > double.Epsilon
-            || Math.Abs(carouselActionBar.Height - 32) > double.Epsilon
-            || !ReferenceEquals(retroCarouselFooter.Child, retroCarouselFooterScale)
-            || !ReferenceEquals(retroCarouselFooterScale.Child, retroCarouselFooterContent)
-            || !ReferenceEquals(carouselActionBar.Parent, retroCarouselFooterContent)
-            || retroCarouselFooterContent.Orientation != Orientation.Horizontal
-            || !retroCarouselFooterContent.Children.Contains(carouselActionBar)
-            || !retroCarouselFooterContent.Children.OfType<TextBlock>().Any(text =>
+            || Math.Abs(carouselActionBar.Width - 220) > double.Epsilon
+            || Math.Abs(carouselActionBar.Height - 36) > double.Epsilon
+            || Math.Abs(retroCarouselFooterContent.Width - 1060) > double.Epsilon
+            || Math.Abs(retroCarouselFooterContent.Height - 40) > double.Epsilon
+            || retroCarouselFooterContent.ColumnDefinitions.Count != 2
+            || retroCarouselFooterContent.ColumnDefinitions[0].Width != new GridLength(336)
+            || retroCarouselFooterContent.ColumnDefinitions[1].Width != new GridLength(724)
+            || !ReferenceEquals(retroCarouselFooter.Child, retroCarouselFooterRoot)
+            || retroCarouselFooterRoot.ClipToBounds
+            || retroCarouselFooterRoot.Children.Count != 2
+            || !ReferenceEquals(retroCarouselFooterRoot.Children[0], retroCarouselFooterContent)
+            || !ReferenceEquals(retroCarouselFooterRoot.Children[1], carouselActionBar)
+            || !ReferenceEquals(retroCarouselFooterContent.RenderTransform, retroCarouselFooterTransform)
+            || !ReferenceEquals(carouselActionBar.Parent, retroCarouselFooterRoot)
+            || retroCarouselFooterContent.Children.Contains(carouselActionBar)
+            || Panel.GetZIndex(carouselActionBar) != 2
+            || !ReferenceEquals(retroCarouselNavigationLegend.Parent, retroCarouselFooterContent)
+            || Grid.GetColumn(retroCarouselNavigationLegend) != 1
+            || retroCarouselNavigationLegend.Orientation != Orientation.Horizontal
+            || retroCarouselNavigationLegend.HorizontalAlignment != HorizontalAlignment.Left
+            || Math.Abs(retroCarouselNavigationLegend.Margin.Left - 24) > double.Epsilon
+            || !retroCarouselNavigationLegend.Children.OfType<TextBlock>().Any(text =>
                 text.Text.Contains("NAVEGAR", StringComparison.Ordinal))
+            || Grid.GetColumnSpan(retroCarouselFooter) != 2
+            || retroCarouselInfoPanel.Background is not LinearGradientBrush
+            || !ReferenceEquals(
+                retroCarouselInfoPanel.Background,
+                window.Resources["CurrentSystemTextOverlayBrush"])
             || carouselCurrent.RenderTransform is not TransformGroup currentTransforms
             || currentTransforms.Children.OfType<ScaleTransform>().SingleOrDefault() is not { } currentScale
-            || currentScale.ScaleX < 1.27
-            || currentScale.ScaleY < 1.27)
+            || currentScale.ScaleX < 1.343
+            || currentScale.ScaleY < 1.343)
             throw new InvalidDataException(
                 "O vídeo precisa preencher a área e o carrossel deve aproveitar o espaço liberado com capas ampliadas.");
 
@@ -2777,6 +2950,31 @@ internal static class WpfTemplateVerifier
                                             ?.Value as ControlTemplate
                                         ?? throw new InvalidDataException(
                                             "O estilo comum das ações do rodapé perdeu seu template.");
+
+        var updateResponsiveGeometry = typeof(StoreWindow).GetMethod(
+                                           "UpdateRetroCarouselResponsiveGeometry",
+                                           BindingFlags.Instance | BindingFlags.NonPublic)
+                                       ?? throw new MissingMethodException(
+                                           nameof(StoreWindow),
+                                           "UpdateRetroCarouselResponsiveGeometry");
+        var queueRetroCarouselMove = typeof(StoreWindow).GetMethod(
+                                         "QueueRetroCarouselMove",
+                                         BindingFlags.Instance | BindingFlags.NonPublic)
+                                     ?? throw new MissingMethodException(
+                                         nameof(StoreWindow),
+                                         "QueueRetroCarouselMove");
+        var hasPendingRetroCarouselMotion = typeof(StoreWindow).GetProperty(
+                                                "HasPendingRetroCarouselMotion",
+                                                BindingFlags.Instance | BindingFlags.NonPublic)
+                                            ?? throw new MissingMemberException(
+                                                nameof(StoreWindow),
+                                                "HasPendingRetroCarouselMotion");
+        var retroCarouselControlsByOffset = typeof(StoreWindow).GetField(
+                                                "_retroCarouselControlsByOffset",
+                                                BindingFlags.Instance | BindingFlags.NonPublic)
+                                            ?? throw new MissingFieldException(
+                                                nameof(StoreWindow),
+                                                "_retroCarouselControlsByOffset");
 
         var factory = typeof(StoreWindow).GetMethod(
                           "CreateResponsiveBackgroundVideoPlayer",
@@ -2829,11 +3027,15 @@ internal static class WpfTemplateVerifier
                          (900d, 480d),
                          (960d, 540d),
                          (1080d, 680d),
+                         (1200d, 480d),
+                         (1366d, 480d),
                          (1600d, 900d)
                      })
             {
                 window.Width = width;
                 window.Height = height;
+                window.UpdateLayout();
+                updateResponsiveGeometry.Invoke(window, null);
                 window.UpdateLayout();
 
                 var carouselActions = FindVisualDescendants<Button>(carouselActionBar).ToArray();
@@ -2861,7 +3063,7 @@ internal static class WpfTemplateVerifier
                     || Math.Abs(
                         visibleCarouselAction.ActualWidth
                         - carouselActionBar.ActualWidth) > .5
-                    || visibleCarouselAction.ActualHeight < 31.5
+                    || visibleCarouselAction.ActualHeight < 35.5
                     || visibleCarouselAction.HasAnimatedProperties
                     || renderedFooterSurface is null
                     || renderedFooterLed is null
@@ -2873,7 +3075,120 @@ internal static class WpfTemplateVerifier
                         && (element.Effect is System.Windows.Media.Effects.DropShadowEffect
                             || element.HasAnimatedProperties)))
                     throw new InvalidDataException(
-                        $"A ação sólida do rodapé ou seu único LED interno perdeu a composição 196×32 em {width:0}×{height:0}.");
+                        $"A ação sólida do rodapé ou seu único LED interno perdeu a composição 220×36 em {width:0}×{height:0}.");
+
+                var selectedCardBounds = carouselCurrent
+                    .TransformToAncestor(catalogPage)
+                    .TransformBounds(new Rect(carouselCurrent.RenderSize));
+                var footerActionBounds = carouselActionBar
+                    .TransformToAncestor(catalogPage)
+                    .TransformBounds(new Rect(carouselActionBar.RenderSize));
+                var navigationLegendBounds = retroCarouselNavigationLegend
+                    .TransformToAncestor(catalogPage)
+                    .TransformBounds(new Rect(retroCarouselNavigationLegend.RenderSize));
+                var catalogBottomActionBounds = catalogBottomActions
+                    .TransformToAncestor(catalogPage)
+                    .TransformBounds(new Rect(catalogBottomActions.RenderSize));
+                var cardCenter = selectedCardBounds.Left + selectedCardBounds.Width / 2;
+                var actionCenter = footerActionBounds.Left + footerActionBounds.Width / 2;
+                if (Math.Abs(cardCenter - actionCenter) > 2
+                    || Math.Abs(footerActionBounds.Width - 220) > .75
+                    || Math.Abs(footerActionBounds.Height - 36) > .75
+                    || footerActionBounds.Top < selectedCardBounds.Bottom - .5
+                    || navigationLegendBounds.IntersectsWith(footerActionBounds)
+                    || navigationLegendBounds.IntersectsWith(catalogBottomActionBounds))
+                    throw new InvalidDataException(
+                        $"O rodapé sobrepôs controles ou perdeu o centro da capa em {width:0}×{height:0}: " +
+                        $"capa={selectedCardBounds}, ação={footerActionBounds}, " +
+                        $"legenda={navigationLegendBounds}, ações globais={catalogBottomActionBounds}.");
+
+                var viewportBoundsInFooter = carouselViewport
+                    .TransformToVisual(retroCarouselFooterRoot)
+                    .TransformBounds(new Rect(carouselViewport.RenderSize));
+                var viewportScaleInFooter = viewportBoundsInFooter.Width / 1060d;
+                var useCompactNavigation = viewportScaleInFooter < .8;
+                var maximumFooterScale = Math.Min(
+                    1,
+                    retroCarouselFooterRoot.ActualHeight / retroCarouselFooterContent.Height);
+                var expectedFooterScale = useCompactNavigation
+                    ? maximumFooterScale
+                    : Math.Min(viewportScaleInFooter, maximumFooterScale);
+                var primaryPosterCenterInFooter = viewportBoundsInFooter.Left
+                                                  + 168d * viewportScaleInFooter;
+                var expectedFooterLeft = primaryPosterCenterInFooter
+                                         - 168d * expectedFooterScale;
+                var expectedFooterTop = Math.Max(
+                    0,
+                    (retroCarouselFooterRoot.ActualHeight
+                     - retroCarouselFooterContent.Height * expectedFooterScale) / 2);
+                var expectedActionLeft = primaryPosterCenterInFooter - carouselActionBar.Width / 2;
+                var expectedActionTop = Math.Max(
+                    0,
+                    (retroCarouselFooterRoot.ActualHeight - carouselActionBar.Height) / 2);
+                var footerLeft = Canvas.GetLeft(retroCarouselFooterContent);
+                var footerTop = Canvas.GetTop(retroCarouselFooterContent);
+                var actionLeft = Canvas.GetLeft(carouselActionBar);
+                var actionTop = Canvas.GetTop(carouselActionBar);
+                const double footerScaleTolerance = .002;
+                const double footerGeometryTolerance = 1.25;
+                if (!double.IsFinite(expectedFooterScale)
+                    || !double.IsFinite(retroCarouselFooterTransform.ScaleX)
+                    || !double.IsFinite(retroCarouselFooterTransform.ScaleY)
+                    || !double.IsFinite(footerLeft)
+                    || !double.IsFinite(footerTop)
+                    || !double.IsFinite(actionLeft)
+                    || !double.IsFinite(actionTop)
+                    || retroCarouselNavigationHint.FontSize * expectedFooterScale < 7.2
+                    || retroCarouselMouseHint.Visibility
+                    != (useCompactNavigation ? Visibility.Collapsed : Visibility.Visible)
+                    || retroCarouselEnterHint.Visibility
+                    != (useCompactNavigation ? Visibility.Collapsed : Visibility.Visible)
+                    || Math.Abs(retroCarouselFooterTransform.ScaleX - expectedFooterScale)
+                    > footerScaleTolerance
+                    || Math.Abs(retroCarouselFooterTransform.ScaleY - expectedFooterScale)
+                    > footerScaleTolerance
+                    || Math.Abs(footerLeft - expectedFooterLeft)
+                    > footerGeometryTolerance
+                    || Math.Abs(footerTop - expectedFooterTop) > footerGeometryTolerance
+                    || Math.Abs(actionLeft - expectedActionLeft) > footerGeometryTolerance
+                    || Math.Abs(actionTop - expectedActionTop) > footerGeometryTolerance)
+                    throw new InvalidDataException(
+                        $"A transformação responsiva do rodapé divergiu do viewport em {width:0}×{height:0}: " +
+                        $"viewport={viewportBoundsInFooter}, escala={retroCarouselFooterTransform.ScaleX:0.####}, " +
+                        $"posição={footerLeft:0.##},{footerTop:0.##}, " +
+                        $"ação={actionLeft:0.##},{actionTop:0.##}.");
+
+                var viewportBoundsInVideo = carouselViewport
+                    .TransformToVisual(videoOverlay)
+                    .TransformBounds(new Rect(carouselViewport.RenderSize));
+                if (videoOverlay.Background is not LinearGradientBrush renderedVideoOverlay
+                    || renderedVideoOverlay.GradientStops.Count != 3
+                    || !ReferenceEquals(
+                        renderedVideoOverlay,
+                        window.Resources["CurrentSystemVideoOverlayBrush"]))
+                    throw new InvalidDataException(
+                        "O fade responsivo do vídeo deixou de usar o pincel aprovado.");
+                var solidStop = renderedVideoOverlay.GradientStops[1].Offset;
+                var transparentStop = renderedVideoOverlay.GradientStops[2].Offset;
+                var renderedSolidEnd = solidStop * videoOverlay.ActualWidth;
+                var renderedFadeWidth = (transparentStop - solidStop) * videoOverlay.ActualWidth;
+                var viewportScaleInVideo = viewportBoundsInVideo.Width / 1060d;
+                var expectedSolidEnd = viewportBoundsInVideo.Left + 336d * viewportScaleInVideo;
+                var expectedFadeWidth = 190.8d * viewportScaleInVideo;
+                const double fadeGeometryTolerance = 1.5;
+                if (!double.IsFinite(solidStop)
+                    || !double.IsFinite(transparentStop)
+                    || solidStop < 0
+                    || transparentStop <= solidStop
+                    || transparentStop > 1
+                    || Math.Abs(renderedSolidEnd - expectedSolidEnd)
+                    > fadeGeometryTolerance
+                    || Math.Abs(renderedFadeWidth - expectedFadeWidth)
+                    > fadeGeometryTolerance)
+                    throw new InvalidDataException(
+                        $"O fade do vídeo perdeu o fim da capa ou a largura proporcional em {width:0}×{height:0}: " +
+                        $"viewport={viewportBoundsInVideo}, sólido={renderedSolidEnd:0.##}/{expectedSolidEnd:0.##}, " +
+                        $"fade={renderedFadeWidth:0.##}/{expectedFadeWidth:0.##}.");
                 if (!retroCarouselInfoAccentRail.HasAnimatedProperties
                     || !retroCarouselInfoAccentGlow.HasAnimatedProperties)
                     throw new InvalidDataException(
@@ -3135,28 +3450,34 @@ internal static class WpfTemplateVerifier
                     "descrição livre do jogo");
                 AssertElementWithinAncestor(
                     retroCarouselFooter,
-                    catalogContentPanel,
+                    catalogPage,
                     width,
                     height,
                     "rodapé limpo do carrossel");
                 AssertElementWithinAncestor(
-                    retroCarouselFooterScale,
+                    retroCarouselFooterRoot,
                     retroCarouselFooter,
                     width,
                     height,
-                    "escala responsiva do rodapé");
-                AssertElementWithinAncestor(
-                    retroCarouselFooterContent,
-                    retroCarouselFooterScale,
-                    width,
-                    height,
-                    "conteúdo horizontal do rodapé");
+                    "raiz responsiva do rodapé");
                 AssertElementWithinAncestor(
                     carouselActionBar,
+                    window,
+                    width,
+                    height,
+                    "ação centralizada abaixo da capa principal");
+                AssertElementWithinAncestor(
+                    retroCarouselNavigationLegend,
                     retroCarouselFooterContent,
                     width,
                     height,
-                    "ação ao lado da navegação no rodapé");
+                    "legenda de navegação ao lado da ação");
+                AssertElementWithinAncestor(
+                    retroCarouselNavigationLegend,
+                    window,
+                    width,
+                    height,
+                    "legenda visível e legível do rodapé");
 
                 foreach (var button in FindVisualDescendants<Button>(carouselViewport)
                              .Where(candidate => candidate.IsVisible
@@ -3173,6 +3494,75 @@ internal static class WpfTemplateVerifier
                         $"botão '{AutomationProperties.GetName(button)}'");
                 }
             }
+
+            window.Width = 1200;
+            window.Height = 480;
+            window.UpdateLayout();
+
+            void VerifyRecycledCarouselGeometry(int steps, bool selectedMustDifferFromNamedControl)
+            {
+                queueRetroCarouselMove.Invoke(window, [steps]);
+                WaitForDispatcherCondition(
+                    window,
+                    () => hasPendingRetroCarouselMotion.GetValue(window) is false,
+                    $"movimento real do carrossel ({steps:+#;-#})");
+                updateResponsiveGeometry.Invoke(window, null);
+                window.UpdateLayout();
+
+                if (retroCarouselControlsByOffset.GetValue(window)
+                        is not IReadOnlyDictionary<int, ContentControl> controlsByOffset
+                    || !controlsByOffset.TryGetValue(0, out var selectedControl))
+                    throw new InvalidDataException(
+                        "O carrossel não registrou o controle realmente selecionado no slot zero.");
+                if (selectedMustDifferFromNamedControl
+                    && ReferenceEquals(selectedControl, carouselCurrent))
+                    throw new InvalidDataException(
+                        "O teste não exerceu a reciclagem real do controle originalmente selecionado.");
+
+                var selectedBounds = selectedControl
+                    .TransformToAncestor(catalogPage)
+                    .TransformBounds(new Rect(selectedControl.RenderSize));
+                var actionBounds = carouselActionBar
+                    .TransformToAncestor(catalogPage)
+                    .TransformBounds(new Rect(carouselActionBar.RenderSize));
+                var selectedCenter = selectedBounds.Left + selectedBounds.Width / 2;
+                var actionCenter = actionBounds.Left + actionBounds.Width / 2;
+                if (Math.Abs(selectedCenter - actionCenter) > 2
+                    || Math.Abs(actionBounds.Width - 220) > .75
+                    || Math.Abs(actionBounds.Height - 36) > .75)
+                    throw new InvalidDataException(
+                        $"O botão perdeu tamanho ou centro depois de reciclar a capa: " +
+                        $"selecionada={selectedBounds}, ação={actionBounds}.");
+
+                var selectedVideoBounds = selectedControl
+                    .TransformToVisual(videoOverlay)
+                    .TransformBounds(new Rect(selectedControl.RenderSize));
+                var viewportVideoBounds = carouselViewport
+                    .TransformToVisual(videoOverlay)
+                    .TransformBounds(new Rect(carouselViewport.RenderSize));
+                var viewportVideoScale = viewportVideoBounds.Width / 1060d;
+                var expectedSolidEnd = viewportVideoBounds.Left + 336d * viewportVideoScale;
+                var expectedFadeWidth = 190.8d * viewportVideoScale;
+                if (videoOverlay.Background is not LinearGradientBrush recycledOverlay
+                    || recycledOverlay.GradientStops.Count != 3)
+                    throw new InvalidDataException(
+                        "O fade desapareceu depois da navegação real do carrossel.");
+                var actualSolidEnd = recycledOverlay.GradientStops[1].Offset
+                                     * videoOverlay.ActualWidth;
+                var actualFadeWidth = (recycledOverlay.GradientStops[2].Offset
+                                       - recycledOverlay.GradientStops[1].Offset)
+                                      * videoOverlay.ActualWidth;
+                if (Math.Abs(actualSolidEnd - selectedVideoBounds.Right) > 1.5
+                    || Math.Abs(actualSolidEnd - expectedSolidEnd) > 1.5
+                    || Math.Abs(actualFadeWidth - expectedFadeWidth) > 1.5)
+                    throw new InvalidDataException(
+                        $"O fade seguiu o controle reciclado errado: selecionada={selectedVideoBounds}, " +
+                        $"sólido={actualSolidEnd:0.##}/{expectedSolidEnd:0.##}, " +
+                        $"fade={actualFadeWidth:0.##}/{expectedFadeWidth:0.##}.");
+            }
+
+            VerifyRecycledCarouselGeometry(1, selectedMustDifferFromNamedControl: true);
+            VerifyRecycledCarouselGeometry(-1, selectedMustDifferFromNamedControl: false);
 
             var clamp = typeof(StoreWindow).GetMethod(
                             "ClampWindowToCurrentMonitor",

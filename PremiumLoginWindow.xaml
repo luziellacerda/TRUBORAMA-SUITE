@@ -241,6 +241,66 @@
                                 <Rectangle Canvas.Left="392" Canvas.Top="18" Width="12" Height="2" Fill="{StaticResource Red}"/>
                             </Canvas>
 
+                            <Grid x:Name="LoginCardLedLayer"
+                                  IsHitTestVisible="False"
+                                  Focusable="False"
+                                  SnapsToDevicePixels="True">
+                                <Grid.Triggers>
+                                    <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                        <BeginStoryboard x:Name="LoginCardLedPulse">
+                                            <Storyboard Timeline.DesiredFrameRate="30"
+                                                        RepeatBehavior="Forever"
+                                                        AutoReverse="True">
+                                                <DoubleAnimation Storyboard.TargetName="LoginCardLedRail"
+                                                                 Storyboard.TargetProperty="Opacity"
+                                                                 From=".48" To="1" Duration="0:0:1.05">
+                                                    <DoubleAnimation.EasingFunction>
+                                                        <SineEase EasingMode="EaseInOut"/>
+                                                    </DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                                <DoubleAnimation Storyboard.TargetName="LoginCardLedGlow"
+                                                                 Storyboard.TargetProperty="Opacity"
+                                                                 From=".28" To=".95" Duration="0:0:1.05">
+                                                    <DoubleAnimation.EasingFunction>
+                                                        <SineEase EasingMode="EaseInOut"/>
+                                                    </DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                                <DoubleAnimation Storyboard.TargetName="LoginCardLedGlow"
+                                                                 Storyboard.TargetProperty="BlurRadius"
+                                                                 From="8" To="20" Duration="0:0:1.05">
+                                                    <DoubleAnimation.EasingFunction>
+                                                        <SineEase EasingMode="EaseInOut"/>
+                                                    </DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                    <EventTrigger RoutedEvent="FrameworkElement.Unloaded">
+                                        <RemoveStoryboard BeginStoryboardName="LoginCardLedPulse"/>
+                                    </EventTrigger>
+                                </Grid.Triggers>
+                                <Rectangle x:Name="LoginCardLedRail"
+                                           Width="2"
+                                           Margin="20,72,0,30"
+                                           HorizontalAlignment="Left"
+                                           VerticalAlignment="Stretch"
+                                           RadiusX="1"
+                                           RadiusY="1"
+                                           Fill="{StaticResource Lime}"
+                                           Opacity=".48"
+                                           CacheMode="BitmapCache">
+                                    <Rectangle.Effect>
+                                        <DropShadowEffect x:Name="LoginCardLedGlow"
+                                                          Color="#73FF68"
+                                                          BlurRadius="8"
+                                                          ShadowDepth="0"
+                                                          Direction="0"
+                                                          Opacity=".28"
+                                                          RenderingBias="Quality"/>
+                                    </Rectangle.Effect>
+                                </Rectangle>
+                            </Grid>
+
                             <StackPanel Margin="36,30,36,30">
                                 <Grid>
                                     <TextBlock Text="MEMBER ACCESS" FontSize="10" FontWeight="Bold" Foreground="#76FF8A"/>

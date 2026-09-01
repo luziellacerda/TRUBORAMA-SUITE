@@ -30,8 +30,13 @@
       <SolidColorBrush x:Key="CurrentSystemSidebarSelectionBrush" Color="#1C5FA5F5" />
       <LinearGradientBrush x:Key="CurrentSystemVideoOverlayBrush" StartPoint="0,.5" EndPoint="1,.5">
         <GradientStop Color="#FF000000" Offset="0" />
-        <GradientStop Color="#FF000000" Offset=".18" />
-        <GradientStop Color="#00000000" Offset=".28" />
+        <GradientStop Color="#FF000000" Offset=".32" />
+        <GradientStop Color="#00000000" Offset=".50" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="CurrentSystemTextOverlayBrush" StartPoint="0,.5" EndPoint="1,.5">
+        <GradientStop Color="#FF000000" Offset="0" />
+        <GradientStop Color="#FF000000" Offset=".50" />
+        <GradientStop Color="#00000000" Offset="1" />
       </LinearGradientBrush>
       <SolidColorBrush x:Key="NintendoVideoRedTintBrush" Color="#00000000" />
       <BitmapImage x:Key="CatalogFallbackArtwork" UriSource="Assets/f15-turborama-user-original-v13.png" DecodePixelWidth="512" CacheOption="OnLoad" CreateOptions="DelayCreation" />
@@ -294,13 +299,13 @@
         </Setter>
       </Style>
       <Style x:Key="RetroFooterActionButtonStyle" TargetType="{x:Type Button}">
-        <Setter Property="Width" Value="196" />
-        <Setter Property="Height" Value="32" />
-        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="Width" Value="220" />
+        <Setter Property="Height" Value="36" />
+        <Setter Property="MinHeight" Value="36" />
         <Setter Property="Padding" Value="12,0" />
-        <Setter Property="Foreground" Value="{DynamicResource CurrentSystemContrastBrush}" />
-        <Setter Property="Background" Value="{DynamicResource CurrentSystemAccentBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource CurrentSystemBrightBrush}" />
+        <Setter Property="Foreground" Value="#FFFFFFFF" />
+        <Setter Property="Background" Value="#FFFF2040" />
+        <Setter Property="BorderBrush" Value="#FFFF7185" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="FontFamily" Value="Bahnschrift SemiCondensed" />
         <Setter Property="FontSize" Value="11" />
@@ -365,8 +370,8 @@
                   </Trigger.ExitActions>
                 </Trigger>
                 <Trigger Property="UIElement.IsMouseOver" Value="True">
-                  <Setter TargetName="FooterActionSurface" Property="Border.Background" Value="{DynamicResource CurrentSystemBrightBrush}" />
-                  <Setter Property="Foreground" Value="{DynamicResource CurrentSystemBrightContrastBrush}" />
+                  <Setter TargetName="FooterActionSurface" Property="Border.Background" Value="#FFFF3B58" />
+                  <Setter Property="Foreground" Value="#FFFFFFFF" />
                 </Trigger>
                 <Trigger Property="UIElement.IsKeyboardFocused" Value="True">
                   <Setter TargetName="FooterActionSurface" Property="Border.BorderBrush" Value="#FFFFFFFF" />
@@ -1242,7 +1247,7 @@
 
       <!-- Download/pause/open remains fixed in the footer while covers move. -->
       <DataTemplate x:Key="RetroCarouselActionTemplate">
-        <Grid Height="32"
+        <Grid Height="36"
               HorizontalAlignment="Stretch"
               AutomationProperties.HelpText="{Binding DownloadStatus}">
           <Button IsEnabled="{Binding CanDownload}"
@@ -1264,7 +1269,7 @@
                          VerticalAlignment="Center" />
               <TextBlock Grid.Column="1"
                          Text="{Binding DownloadActionLabel}"
-                         FontSize="10"
+                         FontSize="11"
                          FontWeight="Bold"
                          TextAlignment="Center"
                          TextTrimming="CharacterEllipsis"
@@ -1294,9 +1299,6 @@
             <Button.Style>
               <Style TargetType="{x:Type Button}" BasedOn="{StaticResource RetroFooterActionButtonStyle}">
                 <Setter Property="FontSize" Value="9" />
-                <Setter Property="Foreground" Value="#FFD36B" />
-                <Setter Property="Background" Value="#FF271C08" />
-                <Setter Property="BorderBrush" Value="#806423" />
                 <Setter Property="Visibility" Value="Collapsed" />
                 <Style.Triggers>
                   <DataTrigger Binding="{Binding CanPause}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
@@ -2359,7 +2361,8 @@
                             VerticalAlignment="Stretch"
                             IsHitTestVisible="False"
                             Panel.ZIndex="2" />
-                    <Border Background="{DynamicResource CurrentSystemVideoOverlayBrush}"
+                    <Border x:Name="RetroSystemVideoOverlay"
+                            Background="{DynamicResource CurrentSystemVideoOverlayBrush}"
                             Panel.ZIndex="3" />
                   </Grid>
                   <Viewbox x:Name="RetroCarouselScaleHost"
@@ -2375,9 +2378,10 @@
                           VerticalAlignment="Center"
                           ClipToBounds="True">
                     <Grid x:Name="RetroCarouselInfoPanel"
-                          Width="710"
-                          Height="196"
-                          HorizontalAlignment="Right"
+                           Width="710"
+                           Height="196"
+                           Background="{DynamicResource CurrentSystemTextOverlayBrush}"
+                           HorizontalAlignment="Right"
                           VerticalAlignment="Bottom"
                           Margin="0,0,0,26"
                           IsHitTestVisible="False"
@@ -2472,10 +2476,10 @@
                     </Grid>
                     <Canvas x:Name="RetroCarouselTrack" Width="1060" Height="504" Panel.ZIndex="10">
                       <ContentControl x:Name="RetroCarouselCurrent"
-                                      Canvas.Left="10"
+                                      Canvas.Left="0"
                                       Canvas.Top="0"
-                                      Width="320"
-                                      Height="480"
+                                      Width="336"
+                                      Height="504"
                                       Opacity="1"
                                       Panel.ZIndex="40"
                                       ContentTemplate="{StaticResource RetroCarouselPosterTemplate}" />
@@ -2584,25 +2588,33 @@
                 </StackPanel>
                 <Border Name="RetroCarouselFooter"
                         Grid.Column="0"
+                        Grid.ColumnSpan="2"
                         Visibility="Collapsed"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        MaxWidth="960"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch"
+                        Margin="-22,0,-22,0"
                         Background="#FF080B08"
                         BorderThickness="0"
                         CornerRadius="0"
-                        Padding="9,4">
-                    <Viewbox x:Name="RetroCarouselFooterScale"
-                             Stretch="Uniform"
-                             StretchDirection="DownOnly"
-                             HorizontalAlignment="Center"
-                             VerticalAlignment="Center">
-                      <StackPanel x:Name="RetroCarouselFooterContent"
-                                  Orientation="Horizontal"
-                                  HorizontalAlignment="Center"
-                                  VerticalAlignment="Center"
-                                  Margin="7,1">
-                        <StackPanel.Triggers>
+                        Padding="0">
+                    <Canvas x:Name="RetroCarouselFooterRoot"
+                            ClipToBounds="False">
+                      <Grid x:Name="RetroCarouselFooterContent"
+                            Width="1060"
+                            Height="40"
+                            Canvas.Left="0"
+                            Canvas.Top="0"
+                            RenderTransformOrigin="0,0">
+                        <Grid.RenderTransform>
+                          <ScaleTransform x:Name="RetroCarouselFooterTransform"
+                                          ScaleX="1"
+                                          ScaleY="1" />
+                        </Grid.RenderTransform>
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="336" />
+                          <ColumnDefinition Width="724" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.Triggers>
                           <EventTrigger RoutedEvent="FrameworkElement.Loaded">
                             <BeginStoryboard x:Name="RetroFooterSeparatorPulse">
                               <Storyboard RepeatBehavior="Forever" AutoReverse="True">
@@ -2621,40 +2633,49 @@
                           <EventTrigger RoutedEvent="FrameworkElement.Unloaded">
                             <RemoveStoryboard BeginStoryboardName="RetroFooterSeparatorPulse" />
                           </EventTrigger>
-                        </StackPanel.Triggers>
-                        <ContentControl x:Name="RetroCarouselActionBar"
-                                        Width="196"
-                                        Height="32"
-                                        Margin="0,0,12,0"
-                                        Focusable="False"
-                                        KeyboardNavigation.IsTabStop="False"
-                                        HorizontalContentAlignment="Stretch"
-                                        VerticalContentAlignment="Stretch"
-                                        ContentTemplate="{StaticResource RetroCarouselActionTemplate}" />
-                        <Rectangle x:Name="RetroFooterSeparatorLed"
-                                   Width="2"
-                                   Height="18"
-                                   Margin="0,0,12,0"
-                                   RadiusX="1"
-                                   RadiusY="1"
-                                   Fill="{DynamicResource CurrentSystemBrightBrush}"
-                                   Opacity=".38">
-                          <Rectangle.Effect>
-                            <DropShadowEffect x:Name="RetroFooterSeparatorGlow"
-                                              Color="{DynamicResource CurrentSystemAccentColor}"
-                                              BlurRadius="6"
-                                              ShadowDepth="0"
-                                              Opacity=".22"
-                                              RenderingBias="Quality" />
-                          </Rectangle.Effect>
-                        </Rectangle>
-                        <TextBlock Text="← →  NAVEGAR" Foreground="#FFFFFFFF" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        <TextBlock Text="   •   RODA DO MOUSE  ALTERNAR" Foreground="#FFFFFFFF" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        <TextBlock Text="   •   ENTER  SELECIONAR" Foreground="#FFFFFFFF" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        <TextBlock Text="   •   " Foreground="#FFFFFFFF" FontSize="9" VerticalAlignment="Center" />
-                        <TextBlock Name="RetroCarouselPosition" Text="1 / 45" Foreground="{DynamicResource CurrentSystemAccentBrush}" FontSize="10" FontWeight="Bold" VerticalAlignment="Center" />
-                      </StackPanel>
-                    </Viewbox>
+                        </Grid.Triggers>
+                        <StackPanel x:Name="RetroCarouselNavigationLegend"
+                                    Grid.Column="1"
+                                    Orientation="Horizontal"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center"
+                                    Margin="24,0,0,0">
+                          <Rectangle x:Name="RetroFooterSeparatorLed"
+                                     Width="2"
+                                     Height="18"
+                                     Margin="0,0,12,0"
+                                     RadiusX="1"
+                                     RadiusY="1"
+                                     Fill="{DynamicResource CurrentSystemBrightBrush}"
+                                     Opacity=".38">
+                            <Rectangle.Effect>
+                              <DropShadowEffect x:Name="RetroFooterSeparatorGlow"
+                                                Color="{DynamicResource CurrentSystemAccentColor}"
+                                                BlurRadius="6"
+                                                ShadowDepth="0"
+                                                Opacity=".22"
+                                                RenderingBias="Quality" />
+                            </Rectangle.Effect>
+                          </Rectangle>
+                          <TextBlock x:Name="RetroCarouselNavigationHint" Text="← →  NAVEGAR" Foreground="#FFFFFFFF" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center" />
+                          <TextBlock x:Name="RetroCarouselMouseHint" Text="   •   RODA DO MOUSE  ALTERNAR" Foreground="#FFFFFFFF" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center" />
+                          <TextBlock x:Name="RetroCarouselEnterHint" Text="   •   ENTER  SELECIONAR" Foreground="#FFFFFFFF" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center" />
+                          <TextBlock Text="   •   " Foreground="#FFFFFFFF" FontSize="9" VerticalAlignment="Center" />
+                          <TextBlock Name="RetroCarouselPosition" Text="1 / 45" Foreground="{DynamicResource CurrentSystemAccentBrush}" FontSize="10" FontWeight="Bold" VerticalAlignment="Center" />
+                        </StackPanel>
+                      </Grid>
+                      <ContentControl x:Name="RetroCarouselActionBar"
+                                      Width="220"
+                                      Height="36"
+                                      Canvas.Left="0"
+                                      Canvas.Top="0"
+                                      Panel.ZIndex="2"
+                                      Focusable="False"
+                                      KeyboardNavigation.IsTabStop="False"
+                                      HorizontalContentAlignment="Stretch"
+                                      VerticalContentAlignment="Stretch"
+                                      ContentTemplate="{StaticResource RetroCarouselActionTemplate}" />
+                    </Canvas>
                 </Border>
                 <StackPanel Name="CatalogManifestPanel" Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0">
                   <Ellipse Width="6" Height="6" Fill="{DynamicResource CurrentSystemAccentBrush}" Margin="0,0,8,0" />
@@ -2662,6 +2683,7 @@
                 </StackPanel>
                 <StackPanel x:Name="CatalogBottomActions"
                             Grid.Column="1"
+                            Panel.ZIndex="2"
                             Orientation="Horizontal"
                             HorizontalAlignment="Right"
                             VerticalAlignment="Center"
