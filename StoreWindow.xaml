@@ -30,13 +30,13 @@
       <SolidColorBrush x:Key="CurrentSystemSidebarSelectionBrush" Color="#1C5FA5F5" />
       <LinearGradientBrush x:Key="CurrentSystemVideoOverlayBrush" StartPoint="0,.5" EndPoint="1,.5">
         <GradientStop Color="#FF000000" Offset="0" />
-        <GradientStop Color="#FF000000" Offset=".32" />
-        <GradientStop Color="#00000000" Offset=".50" />
+        <GradientStop Color="#FF000000" Offset=".16" />
+        <GradientStop Color="#00000000" Offset=".34" />
       </LinearGradientBrush>
       <LinearGradientBrush x:Key="CurrentSystemTextOverlayBrush" StartPoint="0,.5" EndPoint="1,.5">
-        <GradientStop Color="#FF000000" Offset="0" />
-        <GradientStop Color="#FF000000" Offset=".50" />
-        <GradientStop Color="#00000000" Offset="1" />
+        <GradientStop Color="#F2000000" Offset="0" />
+        <GradientStop Color="#E8000000" Offset=".44" />
+        <GradientStop Color="#00000000" Offset=".74" />
       </LinearGradientBrush>
       <SolidColorBrush x:Key="NintendoVideoRedTintBrush" Color="#00000000" />
       <BitmapImage x:Key="CatalogFallbackArtwork" UriSource="Assets/f15-turborama-user-original-v13.png" DecodePixelWidth="512" CacheOption="OnLoad" CreateOptions="DelayCreation" />
@@ -302,10 +302,10 @@
         <Setter Property="Width" Value="220" />
         <Setter Property="Height" Value="36" />
         <Setter Property="MinHeight" Value="36" />
-        <Setter Property="Padding" Value="12,0" />
+        <Setter Property="Padding" Value="18,0" />
         <Setter Property="Foreground" Value="#FFFFFFFF" />
-        <Setter Property="Background" Value="#FFFF2040" />
-        <Setter Property="BorderBrush" Value="#FFFF7185" />
+        <Setter Property="Background" Value="#FF090B0E" />
+        <Setter Property="BorderBrush" Value="#FFFF304F" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="FontFamily" Value="Bahnschrift SemiCondensed" />
         <Setter Property="FontSize" Value="11" />
@@ -318,28 +318,34 @@
           <Setter.Value>
             <ControlTemplate TargetType="{x:Type Button}">
               <Border x:Name="FooterActionSurface"
-                      Background="{TemplateBinding Control.Background}"
-                      BorderBrush="{TemplateBinding Control.BorderBrush}"
-                      BorderThickness="{TemplateBinding Control.BorderThickness}"
-                      CornerRadius="7"
-                      ClipToBounds="True">
-                <Grid>
+                      Background="Transparent"
+                      BorderThickness="0"
+                      ClipToBounds="False">
+                <Grid ClipToBounds="False">
+                  <Polygon x:Name="FooterActionShell"
+                           Points="8,0.75 212,0.75 219.25,8 219.25,28 212,35.25 8,35.25 0.75,28 0.75,8"
+                           Stretch="Fill"
+                           Fill="{TemplateBinding Control.Background}"
+                           Stroke="{TemplateBinding Control.BorderBrush}"
+                           StrokeThickness="1.5"
+                           StrokeLineJoin="Miter"
+                           IsHitTestVisible="False" />
                   <Rectangle x:Name="FooterActionLed"
-                             Width="2"
+                             Width="3"
                              HorizontalAlignment="Left"
                              VerticalAlignment="Stretch"
-                             Margin="3,5,0,5"
-                             RadiusX="1"
-                             RadiusY="1"
-                             Fill="{DynamicResource CurrentSystemBrightBrush}"
-                             Opacity=".62"
+                             Margin="8,8,0,8"
+                             RadiusX="1.5"
+                             RadiusY="1.5"
+                             Fill="#FFFF4964"
+                             Opacity=".72"
                              IsHitTestVisible="False">
                     <Rectangle.Effect>
                       <DropShadowEffect x:Name="FooterActionLedGlow"
-                                        Color="{DynamicResource CurrentSystemAccentColor}"
+                                        Color="#FFFF183B"
                                         BlurRadius="8"
                                         ShadowDepth="0"
-                                        Opacity=".35"
+                                        Opacity=".70"
                                         RenderingBias="Quality" />
                     </Rectangle.Effect>
                   </Rectangle>
@@ -355,13 +361,13 @@
                       <Storyboard RepeatBehavior="Forever" AutoReverse="True">
                         <DoubleAnimation Storyboard.TargetName="FooterActionLed"
                                          Storyboard.TargetProperty="Opacity"
-                                         From=".45" To="1" Duration="0:0:1.05" />
+                                         From=".72" To="1" Duration="0:0:1.05" />
                         <DoubleAnimation Storyboard.TargetName="FooterActionLedGlow"
                                          Storyboard.TargetProperty="BlurRadius"
                                          From="7" To="18" Duration="0:0:1.05" />
                         <DoubleAnimation Storyboard.TargetName="FooterActionLedGlow"
                                          Storyboard.TargetProperty="Opacity"
-                                         From=".28" To="1" Duration="0:0:1.05" />
+                                         From=".56" To="1" Duration="0:0:1.05" />
                       </Storyboard>
                     </BeginStoryboard>
                   </Trigger.EnterActions>
@@ -370,14 +376,15 @@
                   </Trigger.ExitActions>
                 </Trigger>
                 <Trigger Property="UIElement.IsMouseOver" Value="True">
-                  <Setter TargetName="FooterActionSurface" Property="Border.Background" Value="#FFFF3B58" />
+                  <Setter TargetName="FooterActionShell" Property="Shape.Fill" Value="#FF1A0A10" />
+                  <Setter TargetName="FooterActionShell" Property="Shape.Stroke" Value="#FFFF7185" />
                   <Setter Property="Foreground" Value="#FFFFFFFF" />
                 </Trigger>
                 <Trigger Property="UIElement.IsKeyboardFocused" Value="True">
-                  <Setter TargetName="FooterActionSurface" Property="Border.BorderBrush" Value="#FFFFFFFF" />
+                  <Setter TargetName="FooterActionShell" Property="Shape.Stroke" Value="#FFFFFFFF" />
                 </Trigger>
                 <Trigger Property="IsPressed" Value="True">
-                  <Setter TargetName="FooterActionSurface" Property="UIElement.Opacity" Value=".68" />
+                  <Setter TargetName="FooterActionSurface" Property="UIElement.Opacity" Value=".82" />
                 </Trigger>
                 <Trigger Property="IsEnabled" Value="False">
                   <Setter TargetName="FooterActionSurface" Property="UIElement.Opacity" Value=".38" />
@@ -706,13 +713,13 @@
                           IsHitTestVisible="False" />
                   <Rectangle x:Name="CategoryActiveRail"
                              Grid.Column="0"
-                             Width="2"
+                             Width="2.6"
                              Height="20"
                              HorizontalAlignment="Left"
                              VerticalAlignment="Center"
                              Margin="-8,0,0,0"
-                             RadiusX="1"
-                             RadiusY="1"
+                             RadiusX="1.3"
+                             RadiusY="1.3"
                              Fill="{DynamicResource CurrentSystemBrightBrush}"
                              Opacity="0"
                              IsHitTestVisible="False">
@@ -721,7 +728,7 @@
                                         Color="{DynamicResource CurrentSystemAccentColor}"
                                         BlurRadius="8"
                                         ShadowDepth="0"
-                                        Opacity=".35"
+                                        Opacity=".70"
                                         RenderingBias="Quality" />
                     </Rectangle.Effect>
                   </Rectangle>
@@ -780,25 +787,25 @@
                   <Setter TargetName="CategoryTitle" Property="TextBlock.Foreground" Value="White" />
                   <Setter TargetName="CategoryTitle" Property="TextBlock.FontWeight" Value="Bold" />
                   <Setter TargetName="CategoryCode" Property="TextBlock.Foreground" Value="{DynamicResource CurrentSystemAccentBrush}" />
-                  <Setter TargetName="CategoryEnergyLine" Property="Opacity" Value=".82" />
+                  <Setter TargetName="CategoryEnergyLine" Property="Opacity" Value="1" />
                   <DataTrigger.EnterActions>
                     <BeginStoryboard x:Name="SelectedCategoryEnergy">
                       <Storyboard RepeatBehavior="Forever" AutoReverse="True">
                         <DoubleAnimation Storyboard.TargetName="CategoryActiveRail"
                                          Storyboard.TargetProperty="Opacity"
-                                         From=".44" To="1" Duration="0:0:1.05" />
+                                         From=".72" To="1" Duration="0:0:1.05" />
                         <DoubleAnimation Storyboard.TargetName="CategoryActiveRailGlow"
                                          Storyboard.TargetProperty="BlurRadius"
                                          From="7" To="18" Duration="0:0:1.05" />
                         <DoubleAnimation Storyboard.TargetName="CategoryActiveRailGlow"
                                          Storyboard.TargetProperty="Opacity"
-                                         From=".25" To="1" Duration="0:0:1.05" />
+                                         From=".50" To="1" Duration="0:0:1.05" />
                         <DoubleAnimation Storyboard.TargetName="CategoryEnergyLine"
                                          Storyboard.TargetProperty="Width"
                                          From="36" To="126" Duration="0:0:1.05" />
                         <DoubleAnimation Storyboard.TargetName="CategoryEnergyLine"
                                          Storyboard.TargetProperty="Opacity"
-                                         From=".28" To=".92" Duration="0:0:1.05" />
+                                         From=".56" To="1" Duration="0:0:1.05" />
                       </Storyboard>
                     </BeginStoryboard>
                   </DataTrigger.EnterActions>
@@ -1594,14 +1601,14 @@
                     <Storyboard RepeatBehavior="Forever" AutoReverse="True">
                       <DoubleAnimation Storyboard.TargetName="SidebarLedBar"
                                        Storyboard.TargetProperty="Opacity"
-                                       From=".34" To="1" Duration="0:0:1.05">
+                                       From=".68" To="1" Duration="0:0:1.05">
                         <DoubleAnimation.EasingFunction>
                           <SineEase EasingMode="EaseInOut" />
                         </DoubleAnimation.EasingFunction>
                       </DoubleAnimation>
                       <DoubleAnimation Storyboard.TargetName="SidebarLedGlow"
                                        Storyboard.TargetProperty="Opacity"
-                                       From=".22" To="1" Duration="0:0:1.05">
+                                       From=".44" To="1" Duration="0:0:1.05">
                         <DoubleAnimation.EasingFunction>
                           <SineEase EasingMode="EaseInOut" />
                         </DoubleAnimation.EasingFunction>
@@ -1621,14 +1628,14 @@
                 </EventTrigger>
               </Grid.Triggers>
               <Rectangle x:Name="SidebarLedBar"
-                         Width="2"
+                         Width="2.6"
                          Margin="5,16,0,16"
                          HorizontalAlignment="Left"
                          VerticalAlignment="Stretch"
-                         RadiusX="1"
-                         RadiusY="1"
+                         RadiusX="1.3"
+                         RadiusY="1.3"
                          Fill="{StaticResource GlobalBrightBrush}"
-                         Opacity=".94"
+                         Opacity="1"
                          CacheMode="BitmapCache">
                 <Rectangle.Effect>
                   <DropShadowEffect x:Name="SidebarLedGlow"
@@ -1636,7 +1643,7 @@
                                     BlurRadius="7"
                                     ShadowDepth="0"
                                     Direction="0"
-                                    Opacity=".22"
+                                    Opacity=".44"
                                     RenderingBias="Quality" />
                 </Rectangle.Effect>
               </Rectangle>
@@ -1845,13 +1852,13 @@
                       <Storyboard RepeatBehavior="Forever" AutoReverse="True">
                         <DoubleAnimation Storyboard.TargetName="LibraryHeaderLed"
                                          Storyboard.TargetProperty="Opacity"
-                                         From=".38" To="1" Duration="0:0:1.05" />
+                                         From=".70" To="1" Duration="0:0:1.05" />
                         <DoubleAnimation Storyboard.TargetName="LibraryHeaderLedGlow"
                                          Storyboard.TargetProperty="BlurRadius"
                                          From="7" To="19" Duration="0:0:1.05" />
                         <DoubleAnimation Storyboard.TargetName="LibraryHeaderLedGlow"
                                          Storyboard.TargetProperty="Opacity"
-                                         From=".24" To="1" Duration="0:0:1.05" />
+                                         From=".48" To="1" Duration="0:0:1.05" />
                       </Storyboard>
                     </BeginStoryboard>
                   </EventTrigger>
@@ -1865,19 +1872,19 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal">
                   <Rectangle x:Name="LibraryHeaderLed"
-                             Width="2"
+                             Width="2.6"
                              Height="24"
-                             RadiusX="1"
-                             RadiusY="1"
+                             RadiusX="1.3"
+                             RadiusY="1.3"
                              Fill="{StaticResource GlobalBrightBrush}"
                              Margin="0,7,12,0"
-                             Opacity=".38">
+                             Opacity=".70">
                     <Rectangle.Effect>
                       <DropShadowEffect x:Name="LibraryHeaderLedGlow"
                                         Color="{StaticResource GlobalAccentColor}"
                                         BlurRadius="7"
                                         ShadowDepth="0"
-                                        Opacity=".24"
+                                        Opacity=".48"
                                         RenderingBias="Quality" />
                     </Rectangle.Effect>
                   </Rectangle>
@@ -2379,7 +2386,6 @@
                           ClipToBounds="True">
                     <Grid x:Name="RetroCarouselInfoPanel"
                            Width="710"
-                           Height="196"
                            Background="{DynamicResource CurrentSystemTextOverlayBrush}"
                            HorizontalAlignment="Right"
                           VerticalAlignment="Bottom"
@@ -2389,17 +2395,19 @@
                       <Grid.Triggers>
                         <EventTrigger RoutedEvent="FrameworkElement.Loaded">
                           <BeginStoryboard x:Name="RetroInfoLedPulse">
-                            <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                            <Storyboard Timeline.DesiredFrameRate="30"
+                                        RepeatBehavior="Forever"
+                                        AutoReverse="True">
                               <DoubleAnimation Storyboard.TargetName="RetroCarouselInfoAccentRail"
                                                Storyboard.TargetProperty="Opacity"
-                                               From=".34" To="1" Duration="0:0:1.05">
+                                               From=".68" To="1" Duration="0:0:1.05">
                                 <DoubleAnimation.EasingFunction>
                                   <SineEase EasingMode="EaseInOut" />
                                 </DoubleAnimation.EasingFunction>
                               </DoubleAnimation>
                               <DoubleAnimation Storyboard.TargetName="RetroCarouselInfoAccentGlow"
                                                Storyboard.TargetProperty="Opacity"
-                                               From=".22" To="1" Duration="0:0:1.05">
+                                               From=".50" To="1" Duration="0:0:1.05">
                                 <DoubleAnimation.EasingFunction>
                                   <SineEase EasingMode="EaseInOut" />
                                 </DoubleAnimation.EasingFunction>
@@ -2419,20 +2427,19 @@
                         </EventTrigger>
                       </Grid.Triggers>
                       <Rectangle x:Name="RetroCarouselInfoAccentRail"
-                                 Width="2"
-                                 Height="116"
+                                 Width="3"
                                  HorizontalAlignment="Left"
-                                 VerticalAlignment="Center"
-                                 Margin="0,0,0,0"
+                                 VerticalAlignment="Stretch"
+                                 Margin="0,10,0,10"
                                  Fill="{DynamicResource CurrentSystemBrightBrush}"
-                                 Opacity=".45"
+                                 Opacity=".90"
                                  CacheMode="BitmapCache">
                         <UIElement.Effect>
                           <DropShadowEffect x:Name="RetroCarouselInfoAccentGlow"
                                             Color="{DynamicResource CurrentSystemAccentColor}"
                                             BlurRadius="7"
                                             ShadowDepth="0"
-                                            Opacity=".25"
+                                            Opacity=".50"
                                             RenderingBias="Quality" />
                         </UIElement.Effect>
                       </Rectangle>
@@ -2620,13 +2627,13 @@
                               <Storyboard RepeatBehavior="Forever" AutoReverse="True">
                                 <DoubleAnimation Storyboard.TargetName="RetroFooterSeparatorLed"
                                                  Storyboard.TargetProperty="Opacity"
-                                                 From=".38" To="1" Duration="0:0:1.05" />
+                                                 From=".74" To="1" Duration="0:0:1.05" />
                                 <DoubleAnimation Storyboard.TargetName="RetroFooterSeparatorGlow"
                                                  Storyboard.TargetProperty="BlurRadius"
                                                  From="6" To="16" Duration="0:0:1.05" />
                                 <DoubleAnimation Storyboard.TargetName="RetroFooterSeparatorGlow"
                                                  Storyboard.TargetProperty="Opacity"
-                                                 From=".22" To="1" Duration="0:0:1.05" />
+                                                 From=".44" To="1" Duration="0:0:1.05" />
                               </Storyboard>
                             </BeginStoryboard>
                           </EventTrigger>
@@ -2641,19 +2648,19 @@
                                     VerticalAlignment="Center"
                                     Margin="24,0,0,0">
                           <Rectangle x:Name="RetroFooterSeparatorLed"
-                                     Width="2"
+                                     Width="2.6"
                                      Height="18"
                                      Margin="0,0,12,0"
-                                     RadiusX="1"
-                                     RadiusY="1"
+                                     RadiusX="1.3"
+                                     RadiusY="1.3"
                                      Fill="{DynamicResource CurrentSystemBrightBrush}"
-                                     Opacity=".38">
+                                     Opacity=".74">
                             <Rectangle.Effect>
                               <DropShadowEffect x:Name="RetroFooterSeparatorGlow"
                                                 Color="{DynamicResource CurrentSystemAccentColor}"
                                                 BlurRadius="6"
                                                 ShadowDepth="0"
-                                                Opacity=".22"
+                                                Opacity=".44"
                                                 RenderingBias="Quality" />
                             </Rectangle.Effect>
                           </Rectangle>

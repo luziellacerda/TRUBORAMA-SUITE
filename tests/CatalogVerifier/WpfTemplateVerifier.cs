@@ -263,17 +263,19 @@ internal static class WpfTemplateVerifier
                         videoOverlayBackground,
                         window.Resources["CurrentSystemVideoOverlayBrush"])
                     || FindVisualDescendants<Border>(retroCarouselInfoPanel).Any()
-                    || Math.Abs(retroCarouselInfoPanel.Height - 196) > double.Epsilon
-                    || Math.Abs(retroCarouselInfoAccentRail.Width - 2) > double.Epsilon
-                    || Math.Abs(retroCarouselInfoAccentRail.Height - 116) > double.Epsilon
+                    || !double.IsNaN(retroCarouselInfoPanel.Height)
+                    || Math.Abs(retroCarouselInfoAccentRail.Width - 3) > double.Epsilon
+                    || !double.IsNaN(retroCarouselInfoAccentRail.Height)
+                    || retroCarouselInfoAccentRail.VerticalAlignment != VerticalAlignment.Stretch
+                    || retroCarouselInfoAccentRail.Margin != new Thickness(0, 10, 0, 10)
                     || Math.Abs(retroCarouselInfoAccentGlow.ShadowDepth) > double.Epsilon
                     || retroCarouselInfoAccentGlow.BlurRadius < 6
-                    || retroCarouselInfoAccentGlow.Opacity < .2
+                    || retroCarouselInfoAccentGlow.Opacity < .5
                     || titleCurrentPlatform.TextTrimming != TextTrimming.CharacterEllipsis
                     || installPath.Visibility != Visibility.Visible
                     || tempPath.Visibility != Visibility.Visible)
                     throw new InvalidDataException(
-                        "O catálogo deve usar uma composição limpa: contorno único, topo sem molduras sobrepostas e descrição livre sobre o vídeo.");
+                        "O catálogo deve usar composição limpa, descrição ajustada ao texto e LED forte sem molduras sobrepostas.");
                 VerifyCatalogHudStyles(hudButtonStyle, hudSearchStyle);
                 VerifyDownloadNeonButtonStyle(downloadNeonStyle);
                 VerifyRetroInfoLedPulse(
@@ -296,7 +298,7 @@ internal static class WpfTemplateVerifier
                     || sidebarLedLayer.Children.Count != 1
                     || FindVisualDescendants<Control>(sidebarLedLayer).Any()
                     || window.FindName("SidebarLedBar") is not System.Windows.Shapes.Rectangle sidebarLed
-                    || Math.Abs(sidebarLed.Width - 2) > double.Epsilon
+                    || Math.Abs(sidebarLed.Width - 2.6) > double.Epsilon
                     || sidebarLed.Margin.Top < 12
                     || sidebarLed.Margin.Bottom < 12
                     || sidebarLed.HorizontalAlignment != HorizontalAlignment.Left
@@ -309,7 +311,7 @@ internal static class WpfTemplateVerifier
                     || ledGlow.BlurRadius < 6
                     || Math.Abs(ledGlow.ShadowDepth) > double.Epsilon
                     || Math.Abs(ledGlow.Direction) > double.Epsilon
-                    || ledGlow.Opacity < .2
+                    || ledGlow.Opacity < .44
                     || window.FindName("SidebarCoverFrame") is not null
                     || window.FindName("SidebarMetalTopRail") is not null
                     || window.FindName("SidebarTopLedBar") is not null
@@ -350,22 +352,22 @@ internal static class WpfTemplateVerifier
                     || overlay.GradientStops[0].Color != Color.FromArgb(255, 0, 0, 0)
                     || overlay.GradientStops[0].Offset != 0
                     || overlay.GradientStops[1].Color != Color.FromArgb(255, 0, 0, 0)
-                    || overlay.GradientStops[1].Offset != .32
+                    || overlay.GradientStops[1].Offset != .16
                     || overlay.GradientStops[2].Color != Color.FromArgb(0, 0, 0, 0)
-                    || overlay.GradientStops[2].Offset != .50
+                    || overlay.GradientStops[2].Offset != .34
                     || window.Resources["CurrentSystemTextOverlayBrush"] is not LinearGradientBrush textOverlay
                     || textOverlay.StartPoint != new Point(0, .5)
                     || textOverlay.EndPoint != new Point(1, .5)
                     || textOverlay.GradientStops.Count != 3
-                    || textOverlay.GradientStops[0].Color != Color.FromArgb(255, 0, 0, 0)
+                    || textOverlay.GradientStops[0].Color != Color.FromArgb(242, 0, 0, 0)
                     || textOverlay.GradientStops[0].Offset != 0
-                    || textOverlay.GradientStops[1].Color != Color.FromArgb(255, 0, 0, 0)
-                    || textOverlay.GradientStops[1].Offset != .50
+                    || textOverlay.GradientStops[1].Color != Color.FromArgb(232, 0, 0, 0)
+                    || textOverlay.GradientStops[1].Offset != .44
                     || textOverlay.GradientStops[2].Color != Color.FromArgb(0, 0, 0, 0)
-                    || textOverlay.GradientStops[2].Offset != 1
+                    || textOverlay.GradientStops[2].Offset != .74
                     || window.Resources.Values.OfType<GradientBrush>().Count() != 2)
                     throw new InvalidDataException(
-                        "O catálogo precisa manter dois fades: um sobre o vídeo a partir do fim da capa e outro preto até metade da descrição.");
+                        "O catálogo precisa manter dois fades curtos: vídeo clareando desde o centro da capa e texto transparente antes da borda.");
                 if (window.Resources.Contains("CurrentSystemVideoTintBrush")
                     || window.FindName("RetroSystemVideoTint") is not null
                     || window.Resources["NintendoVideoRedTintBrush"] is not SolidColorBrush videoTint
@@ -532,7 +534,7 @@ internal static class WpfTemplateVerifier
                 || ledLayer.Children.Count != 1
                 || !ReferenceEquals(ledLayer.Children[0], ledRail)
                 || FindVisualDescendants<Control>(ledLayer).Any()
-                || Math.Abs(ledRail.Width - 2) > double.Epsilon
+                || Math.Abs(ledRail.Width - 2.6) > double.Epsilon
                 || ledRail.Margin != new Thickness(20, 72, 0, 30)
                 || ledRail.HorizontalAlignment != HorizontalAlignment.Left
                 || ledRail.VerticalAlignment != VerticalAlignment.Stretch
@@ -543,7 +545,7 @@ internal static class WpfTemplateVerifier
                 || Math.Abs(ledGlow.ShadowDepth) > double.Epsilon
                 || Math.Abs(ledGlow.Direction) > double.Epsilon
                 || ledGlow.BlurRadius < 8
-                || ledGlow.Opacity < .28)
+                || ledGlow.Opacity < .56)
                 throw new InvalidDataException(
                     "O login precisa preservar seu layout e manter um único LED verde fino com halo próprio.");
 
@@ -588,8 +590,10 @@ internal static class WpfTemplateVerifier
                 || glowOpacity.To is not { } glowTo
                 || glowRadius?.From is not { } radiusFrom
                 || glowRadius.To is not { } radiusTo
-                || coreTo - coreFrom < .4
-                || glowTo - glowFrom < .5
+                || coreFrom < .7
+                || coreTo - coreFrom < .2
+                || glowFrom < .55
+                || glowTo - glowFrom < .35
                 || radiusTo - radiusFrom < 10)
                 throw new InvalidDataException(
                     "A iluminação do login precisa pulsar no núcleo, na opacidade e no alcance do halo.");
@@ -682,7 +686,9 @@ internal static class WpfTemplateVerifier
             || glowOpacity.To is not { } glowTo
             || glowRadius.From is not { } radiusFrom
             || glowRadius.To is not { } radiusTo
+            || coreFrom < .67
             || coreTo - coreFrom < .25
+            || glowFrom < .43
             || glowTo - glowFrom < .25
             || radiusTo - radiusFrom < 8)
             throw new InvalidDataException(
@@ -780,22 +786,38 @@ internal static class WpfTemplateVerifier
         if (Math.Abs(probe.Width - 220) > double.Epsilon
             || Math.Abs(probe.Height - 36) > double.Epsilon
             || Math.Abs(probe.MinHeight - 36) > double.Epsilon
+            || probe.Padding != new Thickness(18, 0, 18, 0)
             || probe.Foreground is not SolidColorBrush foreground
             || foreground.Color != Colors.White
             || probe.Background is not SolidColorBrush background
-            || background.Color != Color.FromRgb(0xFF, 0x20, 0x40)
+            || background.Color != Color.FromRgb(0x09, 0x0B, 0x0E)
             || probe.BorderBrush is not SolidColorBrush border
-            || border.Color != Color.FromRgb(0xFF, 0x71, 0x85)
+            || border.Color != Color.FromRgb(0xFF, 0x30, 0x4F)
             || template.FindName("FooterActionSurface", probe) is not Border footerActionSurface
             || footerActionSurface.Effect is not null
+            || footerActionSurface.Background is not SolidColorBrush hitSurface
+            || hitSurface.Color.A != 0
+            || template.FindName("FooterActionShell", probe)
+                is not System.Windows.Shapes.Polygon footerActionShell
+            || footerActionShell.Points.Count != 8
+            || footerActionShell.Fill is not SolidColorBrush shellFill
+            || shellFill.Color != Color.FromRgb(0x09, 0x0B, 0x0E)
+            || footerActionShell.Stroke is not SolidColorBrush shellStroke
+            || shellStroke.Color != Color.FromRgb(0xFF, 0x30, 0x4F)
+            || Math.Abs(footerActionShell.StrokeThickness - 1.5) > double.Epsilon
+            || footerActionShell.Effect is not null
             || template.FindName("FooterActionLed", probe)
                 is not System.Windows.Shapes.Rectangle footerActionLed
-            || Math.Abs(footerActionLed.Width - 2) > double.Epsilon
+            || Math.Abs(footerActionLed.Width - 3) > double.Epsilon
+            || footerActionLed.Fill is not SolidColorBrush footerActionLedFill
+            || footerActionLedFill.Color != Color.FromRgb(0xFF, 0x49, 0x64)
             || footerActionLed.Effect
                 is not System.Windows.Media.Effects.DropShadowEffect footerActionLedGlow
-            || Math.Abs(footerActionLedGlow.ShadowDepth) > double.Epsilon)
+            || footerActionLedGlow.Color != Color.FromRgb(0xFF, 0x18, 0x3B)
+            || Math.Abs(footerActionLedGlow.ShadowDepth) > double.Epsilon
+            || footerActionLedGlow.Opacity < .7)
             throw new InvalidDataException(
-                "A ação do rodapé precisa manter somente uma barra LED interna de 2 px com halo centralizado.");
+                "A ação do rodapé precisa manter corpo XFX escuro chanfrado, contorno vermelho, texto branco e LED próprio.");
 
         var visualElements = FindVisualDescendants<UIElement>(probe)
             .Prepend(probe)
@@ -805,6 +827,10 @@ internal static class WpfTemplateVerifier
                 && element.Effect is System.Windows.Media.Effects.DropShadowEffect))
             throw new InvalidDataException(
                 "O halo do botão do rodapé deve ficar restrito à barra FooterActionLed, sem aura no quadro inteiro.");
+        if (FindVisualDescendants<System.Windows.Shapes.Shape>(probe)
+            .Any(shape => shape.Fill is GradientBrush || shape.Stroke is GradientBrush))
+            throw new InvalidDataException(
+                "O botão XFX do rodapé precisa usar superfícies sólidas, sem gradiente ornamental.");
 
         var triggers = new List<TriggerBase>();
         for (Style? current = style; current is not null; current = current.BasedOn)
@@ -870,7 +896,9 @@ internal static class WpfTemplateVerifier
             || glowOpacity.To is not { } glowTo
             || glowRadius?.From is not { } radiusFrom
             || glowRadius.To is not { } radiusTo
+            || coreFrom < .7
             || coreTo - coreFrom < .25
+            || glowFrom < .55
             || glowTo - glowFrom < .25
             || radiusTo - radiusFrom < 6)
             throw new InvalidDataException(
@@ -905,17 +933,24 @@ internal static class WpfTemplateVerifier
             || button.Foreground is not SolidColorBrush buttonForeground
             || buttonForeground.Color != Colors.White
             || button.Background is not SolidColorBrush buttonBackground
-            || buttonBackground.Color != Color.FromRgb(0xFF, 0x20, 0x40)
+            || buttonBackground.Color != Color.FromRgb(0x09, 0x0B, 0x0E)
             || expectedTemplate.FindName("FooterActionSurface", button)
                 is not Border
                 {
                     Background: SolidColorBrush,
                     Effect: null
                 } surface
+            || expectedTemplate.FindName("FooterActionShell", button)
+                is not System.Windows.Shapes.Polygon
+                {
+                    Fill: SolidColorBrush,
+                    Stroke: SolidColorBrush,
+                    Effect: null
+                } shell
             || expectedTemplate.FindName("FooterActionLed", button)
                 is not System.Windows.Shapes.Rectangle
                 {
-                    Width: 2,
+                    Width: 3,
                     Fill: SolidColorBrush,
                     Effect: System.Windows.Media.Effects.DropShadowEffect glow
                 } led
@@ -924,11 +959,17 @@ internal static class WpfTemplateVerifier
                 $"A ação '{AutomationProperties.GetName(button)}' sobrescreveu o template sólido ou deixou de resolver o FooterActionLed comum.");
 
         if (surface.Background is not SolidColorBrush surfaceBackground
-            || surfaceBackground.Color != Color.FromRgb(0xFF, 0x20, 0x40)
-            || surface.BorderBrush is not SolidColorBrush surfaceBorder
-            || surfaceBorder.Color != Color.FromRgb(0xFF, 0x71, 0x85))
+            || surfaceBackground.Color.A != 0
+            || shell.Fill is not SolidColorBrush shellBackground
+            || shellBackground.Color != Color.FromRgb(0x09, 0x0B, 0x0E)
+            || shell.Stroke is not SolidColorBrush shellBorder
+            || shellBorder.Color != Color.FromRgb(0xFF, 0x30, 0x4F)
+            || led.Fill is not SolidColorBrush ledFill
+            || ledFill.Color != Color.FromRgb(0xFF, 0x49, 0x64)
+            || glow.Color != Color.FromRgb(0xFF, 0x18, 0x3B)
+            || glow.Opacity < .7)
             throw new InvalidDataException(
-                $"A ação '{AutomationProperties.GetName(button)}' precisa manter vermelho vivo, borda clara e texto branco em todos os estados.");
+                $"A ação '{AutomationProperties.GetName(button)}' precisa manter corpo escuro, contorno vermelho vivo, LED forte e texto branco.");
 
         if (FindVisualDescendants<UIElement>(button).Any(element =>
                 !ReferenceEquals(element, led)
@@ -944,13 +985,13 @@ internal static class WpfTemplateVerifier
         System.Windows.Shapes.Rectangle led,
         System.Windows.Media.Effects.DropShadowEffect glow)
     {
-        if (Math.Abs(led.Width - 2) > double.Epsilon
+        if (Math.Abs(led.Width - 2.6) > double.Epsilon
             || Math.Abs(led.Height - 18) > double.Epsilon
             || led.Fill is not SolidColorBrush
             || !ReferenceEquals(led.Effect, glow)
             || Math.Abs(glow.ShadowDepth) > double.Epsilon)
             throw new InvalidDataException(
-                "O separador do rodapé precisa ser um LED compacto de 2×18 com halo próprio.");
+                "O separador do rodapé precisa ser um LED compacto de 2,6×18 com halo próprio.");
 
         var loaded = footerContent.Triggers.OfType<EventTrigger>().SingleOrDefault(trigger =>
             trigger.RoutedEvent == FrameworkElement.LoadedEvent);
@@ -1005,7 +1046,9 @@ internal static class WpfTemplateVerifier
             || glowOpacity.To is not { } glowTo
             || glowRadius?.From is not { } radiusFrom
             || glowRadius.To is not { } radiusTo
+            || coreFrom < .73
             || coreTo - coreFrom < .25
+            || glowFrom < .43
             || glowTo - glowFrom < .25
             || radiusTo - radiusFrom < 6)
             throw new InvalidDataException(
@@ -1017,13 +1060,13 @@ internal static class WpfTemplateVerifier
         System.Windows.Shapes.Rectangle led,
         System.Windows.Media.Effects.DropShadowEffect glow)
     {
-        if (Math.Abs(led.Width - 2) > double.Epsilon
+        if (Math.Abs(led.Width - 2.6) > double.Epsilon
             || Math.Abs(led.Height - 24) > double.Epsilon
             || led.Fill is not SolidColorBrush
             || !ReferenceEquals(led.Effect, glow)
             || Math.Abs(glow.ShadowDepth) > double.Epsilon)
             throw new InvalidDataException(
-                "O cabeçalho da Biblioteca precisa usar um LED compacto de 2×24 com halo próprio.");
+                "O cabeçalho da Biblioteca precisa usar um LED compacto de 2,6×24 com halo próprio.");
 
         var loaded = header.Triggers.OfType<EventTrigger>().SingleOrDefault(trigger =>
             trigger.RoutedEvent == FrameworkElement.LoadedEvent);
@@ -1066,7 +1109,9 @@ internal static class WpfTemplateVerifier
             || glowOpacity.To is not { } glowTo
             || glowRadius?.From is not { } radiusFrom
             || glowRadius.To is not { } radiusTo
+            || coreFrom < .69
             || coreTo - coreFrom < .25
+            || glowFrom < .47
             || glowTo - glowFrom < .25
             || radiusTo - radiusFrom < 6)
             throw new InvalidDataException(
@@ -1098,6 +1143,7 @@ internal static class WpfTemplateVerifier
             }
             || !storyboard.AutoReverse
             || !storyboard.RepeatBehavior.Equals(RepeatBehavior.Forever)
+            || Timeline.GetDesiredFrameRate(storyboard) != 30
             || storyboard.Children.Count != 3)
             throw new InvalidDataException(
                 "O LED da descrição precisa iniciar e encerrar um pulso suave e infinito.");
@@ -1133,10 +1179,10 @@ internal static class WpfTemplateVerifier
             || glowOpacity.To is not { } glowTo
             || glowRadius.From is not { } radiusFrom
             || glowRadius.To is not { } radiusTo
-            || railFrom < 0
+            || railFrom < .67
             || railTo > 1
             || railTo - railFrom < .25
-            || glowFrom < 0
+            || glowFrom < .49
             || glowTo > 1
             || glowTo - glowFrom < .25
             || radiusFrom < 0
@@ -1679,21 +1725,12 @@ internal static class WpfTemplateVerifier
             ["retro-games"] = "Turborama-background-psp.mp4",
             ["unknown-fallback"] = "Turborama-background-psp.mp4"
         };
-        var mirrorResolver = typeof(StoreWindow).GetMethod(
-                                 "UsesMirroredUniversalBackground",
-                                 BindingFlags.Static | BindingFlags.NonPublic)
-                             ?? throw new MissingMethodException(
-                                 nameof(StoreWindow),
-                                 "UsesMirroredUniversalBackground");
         foreach (var (categoryId, expectedFile) in routes)
         {
             var resolved = resolver.Invoke(null, [categoryId]) as string;
             if (resolved is null || !resolved.Equals(expectedFile, StringComparison.Ordinal))
                 throw new InvalidDataException(
                     $"A categoria '{categoryId}' não resolveu o vídeo aprovado '{expectedFile}'.");
-            if (mirrorResolver.Invoke(null, [categoryId]) as bool? != true)
-                throw new InvalidDataException(
-                    $"O vídeo universal aprovado para '{categoryId}' não foi marcado para espelhamento horizontal.");
         }
 
         var nullFallback = resolver.Invoke(null, [null]) as string;
@@ -1701,10 +1738,6 @@ internal static class WpfTemplateVerifier
                 "Turborama-background-psp.mp4",
                 StringComparison.Ordinal))
             throw new InvalidDataException("O fallback nulo não resolveu o vídeo PSP aprovado.");
-        if (mirrorResolver.Invoke(null, [null]) as bool? != true)
-            throw new InvalidDataException(
-                "O fallback PSP nulo não foi marcado para espelhamento horizontal.");
-
         VerifyBackgroundVideoLeaseRejectsTampering(root);
     }
 
@@ -2172,7 +2205,7 @@ internal static class WpfTemplateVerifier
                 "O lease universal não acompanhou o MediaElement ativo.");
         VerifyHorizontalVideoMirror(
             initialUniversalPlayer,
-            expectedMirrored: true,
+            expectedMirrored: false,
             "vídeo Xbox do catálogo");
         startUniversal.Invoke(window, null);
         if (!ReferenceEquals(initialUniversalLease, universalLeaseField.GetValue(window)))
@@ -2227,7 +2260,7 @@ internal static class WpfTemplateVerifier
                 "O fundo PSP do catálogo não manteve um player ativo.");
         VerifyHorizontalVideoMirror(
             retroUniversalPlayer,
-            expectedMirrored: true,
+            expectedMirrored: false,
             "vídeo PSP do catálogo");
 
         VerifyRapidVideoNavigation(
@@ -2328,7 +2361,7 @@ internal static class WpfTemplateVerifier
                 "A navegação não materializou o player PlayStation aprovado.");
         VerifyHorizontalVideoMirror(
             playstationPlayer,
-            expectedMirrored: true,
+            expectedMirrored: false,
             "vídeo PlayStation real do catálogo");
 
         try
@@ -2364,7 +2397,7 @@ internal static class WpfTemplateVerifier
                 "O Nintendo Switch não manteve seu player e lease universais dedicados.");
         VerifyHorizontalVideoMirror(
             switchPlayer,
-            expectedMirrored: true,
+            expectedMirrored: false,
             "vídeo Nintendo Switch real do catálogo");
     }
 
@@ -2721,15 +2754,13 @@ internal static class WpfTemplateVerifier
             || !player.IsMuted
             || Math.Abs(player.Volume) > double.Epsilon
             || player.IsHitTestVisible
-            || player.Effect is not null
-            || player.RenderTransformOrigin != new Point(.5, .5)
-            || player.RenderTransform is not ScaleTransform
-            {
-                ScaleX: -1,
-                ScaleY: 1
-            })
+            || player.Effect is not null)
             throw new InvalidDataException(
-                "O vídeo PSP da Biblioteca precisa cobrir o fundo integralmente, espelhado a partir do centro, proporcional, mudo e sem filtros.");
+                "O vídeo PSP da Biblioteca precisa cobrir o fundo integralmente, proporcional, mudo e sem filtros.");
+        VerifyHorizontalVideoMirror(
+            player,
+            expectedMirrored: false,
+            "vídeo PSP criado para a Biblioteca");
 
         var originalLibraryVisibility = libraryPage.Visibility;
         var catalogPage = window.FindName("CatalogPage") as Grid
@@ -2810,7 +2841,7 @@ internal static class WpfTemplateVerifier
                     "A Biblioteca iniciou um vídeo diferente do fundo PSP aprovado.");
             VerifyHorizontalVideoMirror(
                 activePlayer!,
-                expectedMirrored: true,
+                expectedMirrored: false,
                 "vídeo PSP da Biblioteca");
             showPage.Invoke(window, ["Catalog"]);
             WaitForDispatcherCondition(
@@ -3173,7 +3204,7 @@ internal static class WpfTemplateVerifier
                 var renderedSolidEnd = solidStop * videoOverlay.ActualWidth;
                 var renderedFadeWidth = (transparentStop - solidStop) * videoOverlay.ActualWidth;
                 var viewportScaleInVideo = viewportBoundsInVideo.Width / 1060d;
-                var expectedSolidEnd = viewportBoundsInVideo.Left + 336d * viewportScaleInVideo;
+                var expectedSolidEnd = viewportBoundsInVideo.Left + 168d * viewportScaleInVideo;
                 var expectedFadeWidth = 190.8d * viewportScaleInVideo;
                 const double fadeGeometryTolerance = 1.5;
                 if (!double.IsFinite(solidStop)
@@ -3186,13 +3217,25 @@ internal static class WpfTemplateVerifier
                     || Math.Abs(renderedFadeWidth - expectedFadeWidth)
                     > fadeGeometryTolerance)
                     throw new InvalidDataException(
-                        $"O fade do vídeo perdeu o fim da capa ou a largura proporcional em {width:0}×{height:0}: " +
+                        $"O fade do vídeo perdeu o centro da capa ou a largura proporcional em {width:0}×{height:0}: " +
                         $"viewport={viewportBoundsInVideo}, sólido={renderedSolidEnd:0.##}/{expectedSolidEnd:0.##}, " +
                         $"fade={renderedFadeWidth:0.##}/{expectedFadeWidth:0.##}.");
                 if (!retroCarouselInfoAccentRail.HasAnimatedProperties
                     || !retroCarouselInfoAccentGlow.HasAnimatedProperties)
                     throw new InvalidDataException(
                         "O LED fino da descrição não animou simultaneamente seu núcleo e seu halo.");
+                var expectedInfoHeight = retroCarouselTitle.ActualHeight
+                                         + retroCarouselPackageType.ActualHeight
+                                         + retroCarouselPackageDescription.ActualHeight
+                                         + 25;
+                if (Math.Abs(retroCarouselInfoPanel.ActualHeight - expectedInfoHeight) > 1.5
+                    || Math.Abs(
+                        retroCarouselInfoAccentRail.ActualHeight
+                        - (retroCarouselInfoPanel.ActualHeight - 20)) > 1.5)
+                    throw new InvalidDataException(
+                        $"A base da descrição não acompanhou a altura real do texto em {width:0}×{height:0}: " +
+                        $"painel={retroCarouselInfoPanel.ActualHeight:0.##}/{expectedInfoHeight:0.##}, " +
+                        $"LED={retroCarouselInfoAccentRail.ActualHeight:0.##}.");
                 if (!retroFooterSeparatorLed.HasAnimatedProperties
                     || !retroFooterSeparatorGlow.HasAnimatedProperties)
                     throw new InvalidDataException(
@@ -3541,7 +3584,7 @@ internal static class WpfTemplateVerifier
                     .TransformToVisual(videoOverlay)
                     .TransformBounds(new Rect(carouselViewport.RenderSize));
                 var viewportVideoScale = viewportVideoBounds.Width / 1060d;
-                var expectedSolidEnd = viewportVideoBounds.Left + 336d * viewportVideoScale;
+                var expectedSolidEnd = viewportVideoBounds.Left + 168d * viewportVideoScale;
                 var expectedFadeWidth = 190.8d * viewportVideoScale;
                 if (videoOverlay.Background is not LinearGradientBrush recycledOverlay
                     || recycledOverlay.GradientStops.Count != 3)
@@ -3552,7 +3595,8 @@ internal static class WpfTemplateVerifier
                 var actualFadeWidth = (recycledOverlay.GradientStops[2].Offset
                                        - recycledOverlay.GradientStops[1].Offset)
                                       * videoOverlay.ActualWidth;
-                if (Math.Abs(actualSolidEnd - selectedVideoBounds.Right) > 1.5
+                var selectedVideoCenter = selectedVideoBounds.Left + selectedVideoBounds.Width / 2;
+                if (Math.Abs(actualSolidEnd - selectedVideoCenter) > 1.5
                     || Math.Abs(actualSolidEnd - expectedSolidEnd) > 1.5
                     || Math.Abs(actualFadeWidth - expectedFadeWidth) > 1.5)
                     throw new InvalidDataException(

@@ -253,14 +253,14 @@
                                                         AutoReverse="True">
                                                 <DoubleAnimation Storyboard.TargetName="LoginCardLedRail"
                                                                  Storyboard.TargetProperty="Opacity"
-                                                                 From=".48" To="1" Duration="0:0:1.05">
+                                                                 From=".72" To="1" Duration="0:0:1.05">
                                                     <DoubleAnimation.EasingFunction>
                                                         <SineEase EasingMode="EaseInOut"/>
                                                     </DoubleAnimation.EasingFunction>
                                                 </DoubleAnimation>
                                                 <DoubleAnimation Storyboard.TargetName="LoginCardLedGlow"
                                                                  Storyboard.TargetProperty="Opacity"
-                                                                 From=".28" To=".95" Duration="0:0:1.05">
+                                                                 From=".56" To="1" Duration="0:0:1.05">
                                                     <DoubleAnimation.EasingFunction>
                                                         <SineEase EasingMode="EaseInOut"/>
                                                     </DoubleAnimation.EasingFunction>
@@ -280,14 +280,14 @@
                                     </EventTrigger>
                                 </Grid.Triggers>
                                 <Rectangle x:Name="LoginCardLedRail"
-                                           Width="2"
+                                           Width="2.6"
                                            Margin="20,72,0,30"
                                            HorizontalAlignment="Left"
                                            VerticalAlignment="Stretch"
-                                           RadiusX="1"
-                                           RadiusY="1"
+                                           RadiusX="1.3"
+                                           RadiusY="1.3"
                                            Fill="{StaticResource Lime}"
-                                           Opacity=".48"
+                                           Opacity=".72"
                                            CacheMode="BitmapCache">
                                     <Rectangle.Effect>
                                         <DropShadowEffect x:Name="LoginCardLedGlow"
@@ -295,7 +295,7 @@
                                                           BlurRadius="8"
                                                           ShadowDepth="0"
                                                           Direction="0"
-                                                          Opacity=".28"
+                                                          Opacity=".56"
                                                           RenderingBias="Quality"/>
                                     </Rectangle.Effect>
                                 </Rectangle>

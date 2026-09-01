@@ -1842,11 +1842,11 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                 .TransformToVisual(videoOverlay)
                 .TransformBounds(new Rect(viewport.RenderSize));
             var videoViewportScale = videoViewportBounds.Width / RetroCarouselLogicalWidth;
-            var primaryPosterRight = videoViewportBounds.Left
-                                     + RetroCarouselPrimaryPosterWidth * videoViewportScale;
-            var solidOffset = Math.Clamp(primaryPosterRight / videoOverlay.ActualWidth, 0, 1);
+            var primaryPosterFadeStart = videoViewportBounds.Left
+                                         + RetroCarouselPrimaryPosterWidth * videoViewportScale / 2;
+            var solidOffset = Math.Clamp(primaryPosterFadeStart / videoOverlay.ActualWidth, 0, 1);
             var transparentOffset = Math.Clamp(
-                (primaryPosterRight + RetroCarouselVideoFadeLogicalWidth * videoViewportScale)
+                (primaryPosterFadeStart + RetroCarouselVideoFadeLogicalWidth * videoViewportScale)
                 / videoOverlay.ActualWidth,
                 solidOffset,
                 1);
@@ -2251,9 +2251,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                 LibraryBackgroundVideoContextId,
                 StringComparison.OrdinalIgnoreCase)
             ? CreateResponsiveLibraryVideoPlayer(host)
-            : UsesMirroredUniversalBackground(categoryId)
-                ? CreateResponsiveMirroredBackgroundVideoPlayer(host)
-                : CreateResponsiveBackgroundVideoPlayer(host);
+            : CreateResponsiveBackgroundVideoPlayer(host);
         player.MediaEnded += RetroUniversalVideo_MediaEnded;
         player.MediaFailed += RetroUniversalVideo_MediaFailed;
         _retroUniversalVideoPlayer = player;
@@ -2579,17 +2577,8 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     private static MediaElement CreateResponsiveBackgroundVideoPlayer(FrameworkElement host)
         => CreateResponsiveVideoPlayer(host, Stretch.UniformToFill);
 
-    private static MediaElement CreateResponsiveMirroredBackgroundVideoPlayer(
-        FrameworkElement host)
-    {
-        var player = CreateResponsiveBackgroundVideoPlayer(host);
-        player.RenderTransformOrigin = new Point(.5, .5);
-        player.RenderTransform = new ScaleTransform(-1, 1);
-        return player;
-    }
-
     private static MediaElement CreateResponsiveLibraryVideoPlayer(FrameworkElement host) =>
-        CreateResponsiveMirroredBackgroundVideoPlayer(host);
+        CreateResponsiveBackgroundVideoPlayer(host);
 
     private static MediaElement CreateResponsiveSystemVideoPlayer(FrameworkElement host)
         => CreateResponsiveVideoPlayer(host, Stretch.UniformToFill);
@@ -2945,23 +2934,6 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             "nintendo-switch" => "Turborama-background-nintendo-switch.mp4",
             _ => "Turborama-background-psp.mp4"
         };
-
-    private static bool UsesMirroredUniversalBackground(string? categoryId)
-    {
-        var fileName = ResolveRetroUniversalVideoFileName(categoryId);
-        return fileName.Equals(
-                   "Turborama-background-playstation.mp4",
-                   StringComparison.OrdinalIgnoreCase)
-               || fileName.Equals(
-                   "Turborama-background-xbox-one-x.mp4",
-                   StringComparison.OrdinalIgnoreCase)
-               || fileName.Equals(
-                   "Turborama-background-nintendo-switch.mp4",
-                   StringComparison.OrdinalIgnoreCase)
-               || fileName.Equals(
-                   "Turborama-background-psp.mp4",
-                   StringComparison.OrdinalIgnoreCase);
-    }
 
     private static string? GetRetroSystemVideoRoot()
     {
