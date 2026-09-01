@@ -393,7 +393,7 @@ public sealed class CatalogItem : INotifyPropertyChanged
             CatalogDownloadState.Failed when BytesReceived > 0 => "CONTINUAR DOWNLOAD",
             CatalogDownloadState.Failed => "REPETIR DOWNLOAD",
             CatalogDownloadState.Canceled => "CONTINUAR DOWNLOAD",
-            _ => "BAIXAR PACOTE  ↓"
+            _ => "BAIXAR PACOTE"
         };
 
     public event PropertyChangedEventHandler? PropertyChanged;

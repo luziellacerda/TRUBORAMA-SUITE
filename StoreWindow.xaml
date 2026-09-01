@@ -33,7 +33,7 @@
         <GradientStop Color="#FF000000" Offset=".18" />
         <GradientStop Color="#00000000" Offset=".28" />
       </LinearGradientBrush>
-      <SolidColorBrush x:Key="CurrentSystemVideoTintBrush" Color="#2E5FA5F5" />
+      <SolidColorBrush x:Key="NintendoVideoRedTintBrush" Color="#00000000" />
       <BitmapImage x:Key="CatalogFallbackArtwork" UriSource="Assets/f15-turborama-user-original-v13.png" DecodePixelWidth="512" CacheOption="OnLoad" CreateOptions="DelayCreation" />
       <Style x:Key="TechScrollThumbStyle" TargetType="{x:Type Thumb}">
         <Setter Property="Opacity" Value=".72" />
@@ -230,29 +230,24 @@
             <ControlTemplate TargetType="{x:Type Button}">
               <Grid Margin="2" ClipToBounds="False">
                 <Border x:Name="NeonAura"
-                        Margin="-2"
+                        Margin="-1"
                         CornerRadius="10"
                         BorderBrush="{DynamicResource CurrentSystemAccentBrush}"
-                        BorderThickness="2"
-                        Opacity=".72"
+                        BorderThickness="1"
+                        Opacity=".44"
                         IsHitTestVisible="False"
-                        CacheMode="BitmapCache"
-                        RenderTransformOrigin=".5,.5">
-                  <Border.RenderTransform>
-                    <ScaleTransform ScaleX="1" ScaleY="1" />
-                  </Border.RenderTransform>
+                        CacheMode="BitmapCache">
                   <Border.Effect>
                     <DropShadowEffect Color="{DynamicResource CurrentSystemAccentColor}"
-                                      BlurRadius="16"
+                                      BlurRadius="9"
                                       ShadowDepth="0"
-                                      Opacity=".86"
-                                      RenderingBias="Quality" />
+                                      Opacity=".62" />
                   </Border.Effect>
                 </Border>
                 <Border x:Name="Surface"
                         Background="{TemplateBinding Control.Background}"
                         BorderBrush="{DynamicResource CurrentSystemBrightBrush}"
-                        BorderThickness="1.5"
+                        BorderThickness="1"
                         CornerRadius="9"
                         Padding="{TemplateBinding Control.Padding}"
                         ClipToBounds="True">
@@ -269,39 +264,7 @@
                       <Storyboard RepeatBehavior="Forever" AutoReverse="True">
                         <DoubleAnimation Storyboard.TargetName="NeonAura"
                                          Storyboard.TargetProperty="Opacity"
-                                         From=".48" To="1" Duration="0:0:.9">
-                          <DoubleAnimation.EasingFunction>
-                            <SineEase EasingMode="EaseInOut" />
-                          </DoubleAnimation.EasingFunction>
-                        </DoubleAnimation>
-                        <DoubleAnimation Storyboard.TargetName="NeonAura"
-                                         Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.Opacity)"
-                                         From=".48" To="1" Duration="0:0:.9">
-                          <DoubleAnimation.EasingFunction>
-                            <SineEase EasingMode="EaseInOut" />
-                          </DoubleAnimation.EasingFunction>
-                        </DoubleAnimation>
-                        <DoubleAnimation Storyboard.TargetName="NeonAura"
-                                         Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.BlurRadius)"
-                                         From="10" To="24" Duration="0:0:.9">
-                          <DoubleAnimation.EasingFunction>
-                            <SineEase EasingMode="EaseInOut" />
-                          </DoubleAnimation.EasingFunction>
-                        </DoubleAnimation>
-                        <DoubleAnimation Storyboard.TargetName="NeonAura"
-                                         Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
-                                         From=".99" To="1.01" Duration="0:0:.9">
-                          <DoubleAnimation.EasingFunction>
-                            <SineEase EasingMode="EaseInOut" />
-                          </DoubleAnimation.EasingFunction>
-                        </DoubleAnimation>
-                        <DoubleAnimation Storyboard.TargetName="NeonAura"
-                                         Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
-                                         From=".99" To="1.01" Duration="0:0:.9">
-                          <DoubleAnimation.EasingFunction>
-                            <SineEase EasingMode="EaseInOut" />
-                          </DoubleAnimation.EasingFunction>
-                        </DoubleAnimation>
+                                         From=".30" To=".72" Duration="0:0:1.15" />
                       </Storyboard>
                     </BeginStoryboard>
                   </Trigger.EnterActions>
@@ -315,9 +278,8 @@
                   <Setter TargetName="NeonAura" Property="Opacity" Value=".92" />
                 </Trigger>
                 <Trigger Property="UIElement.IsKeyboardFocused" Value="True">
-                  <Setter TargetName="Surface" Property="Border.Background" Value="{DynamicResource CurrentSystemBrightBrush}" />
-                  <Setter Property="Foreground" Value="{DynamicResource CurrentSystemBrightContrastBrush}" />
-                  <Setter TargetName="NeonAura" Property="Opacity" Value="1" />
+                  <Setter TargetName="Surface" Property="Border.BorderBrush" Value="#FFFFFFFF" />
+                  <Setter TargetName="NeonAura" Property="Opacity" Value=".92" />
                 </Trigger>
                 <Trigger Property="IsPressed" Value="True">
                   <Setter TargetName="Surface" Property="UIElement.Opacity" Value=".76" />
@@ -325,6 +287,95 @@
                 <Trigger Property="IsEnabled" Value="False">
                   <Setter TargetName="Surface" Property="UIElement.Opacity" Value=".34" />
                   <Setter TargetName="NeonAura" Property="Visibility" Value="Collapsed" />
+                </Trigger>
+              </ControlTemplate.Triggers>
+            </ControlTemplate>
+          </Setter.Value>
+        </Setter>
+      </Style>
+      <Style x:Key="RetroFooterActionButtonStyle" TargetType="{x:Type Button}">
+        <Setter Property="Width" Value="196" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="Padding" Value="12,0" />
+        <Setter Property="Foreground" Value="{DynamicResource CurrentSystemContrastBrush}" />
+        <Setter Property="Background" Value="{DynamicResource CurrentSystemAccentBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource CurrentSystemBrightBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="FontFamily" Value="Bahnschrift SemiCondensed" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="FrameworkElement.Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+          <Setter.Value>
+            <ControlTemplate TargetType="{x:Type Button}">
+              <Border x:Name="FooterActionSurface"
+                      Background="{TemplateBinding Control.Background}"
+                      BorderBrush="{TemplateBinding Control.BorderBrush}"
+                      BorderThickness="{TemplateBinding Control.BorderThickness}"
+                      CornerRadius="7"
+                      ClipToBounds="True">
+                <Grid>
+                  <Rectangle x:Name="FooterActionLed"
+                             Width="2"
+                             HorizontalAlignment="Left"
+                             VerticalAlignment="Stretch"
+                             Margin="3,5,0,5"
+                             RadiusX="1"
+                             RadiusY="1"
+                             Fill="{DynamicResource CurrentSystemBrightBrush}"
+                             Opacity=".62"
+                             IsHitTestVisible="False">
+                    <Rectangle.Effect>
+                      <DropShadowEffect x:Name="FooterActionLedGlow"
+                                        Color="{DynamicResource CurrentSystemAccentColor}"
+                                        BlurRadius="8"
+                                        ShadowDepth="0"
+                                        Opacity=".35"
+                                        RenderingBias="Quality" />
+                    </Rectangle.Effect>
+                  </Rectangle>
+                  <ContentPresenter Margin="{TemplateBinding Control.Padding}"
+                                    HorizontalAlignment="{TemplateBinding Control.HorizontalContentAlignment}"
+                                    VerticalAlignment="Center" />
+                </Grid>
+              </Border>
+              <ControlTemplate.Triggers>
+                <Trigger Property="UIElement.IsVisible" Value="True">
+                  <Trigger.EnterActions>
+                    <BeginStoryboard x:Name="FooterActionLedPulse">
+                      <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                        <DoubleAnimation Storyboard.TargetName="FooterActionLed"
+                                         Storyboard.TargetProperty="Opacity"
+                                         From=".45" To="1" Duration="0:0:1.05" />
+                        <DoubleAnimation Storyboard.TargetName="FooterActionLedGlow"
+                                         Storyboard.TargetProperty="BlurRadius"
+                                         From="7" To="18" Duration="0:0:1.05" />
+                        <DoubleAnimation Storyboard.TargetName="FooterActionLedGlow"
+                                         Storyboard.TargetProperty="Opacity"
+                                         From=".28" To="1" Duration="0:0:1.05" />
+                      </Storyboard>
+                    </BeginStoryboard>
+                  </Trigger.EnterActions>
+                  <Trigger.ExitActions>
+                    <RemoveStoryboard BeginStoryboardName="FooterActionLedPulse" />
+                  </Trigger.ExitActions>
+                </Trigger>
+                <Trigger Property="UIElement.IsMouseOver" Value="True">
+                  <Setter TargetName="FooterActionSurface" Property="Border.Background" Value="{DynamicResource CurrentSystemBrightBrush}" />
+                  <Setter Property="Foreground" Value="{DynamicResource CurrentSystemBrightContrastBrush}" />
+                </Trigger>
+                <Trigger Property="UIElement.IsKeyboardFocused" Value="True">
+                  <Setter TargetName="FooterActionSurface" Property="Border.BorderBrush" Value="#FFFFFFFF" />
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                  <Setter TargetName="FooterActionSurface" Property="UIElement.Opacity" Value=".68" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                  <Setter TargetName="FooterActionSurface" Property="UIElement.Opacity" Value=".38" />
                 </Trigger>
               </ControlTemplate.Triggers>
             </ControlTemplate>
@@ -650,16 +701,25 @@
                           IsHitTestVisible="False" />
                   <Rectangle x:Name="CategoryActiveRail"
                              Grid.Column="0"
-                             Width="3"
-                             Height="27"
+                             Width="2"
+                             Height="20"
                              HorizontalAlignment="Left"
                              VerticalAlignment="Center"
                              Margin="-8,0,0,0"
-                             RadiusX="2"
-                             RadiusY="2"
-                             Fill="{DynamicResource CurrentSystemAccentBrush}"
+                             RadiusX="1"
+                             RadiusY="1"
+                             Fill="{DynamicResource CurrentSystemBrightBrush}"
                              Opacity="0"
-                             IsHitTestVisible="False" />
+                             IsHitTestVisible="False">
+                    <Rectangle.Effect>
+                      <DropShadowEffect x:Name="CategoryActiveRailGlow"
+                                        Color="{DynamicResource CurrentSystemAccentColor}"
+                                        BlurRadius="8"
+                                        ShadowDepth="0"
+                                        Opacity=".35"
+                                        RenderingBias="Quality" />
+                    </Rectangle.Effect>
+                  </Rectangle>
                   <Grid Width="29" Height="25">
                     <Border x:Name="CategoryIconGlow"
                             CornerRadius="7"
@@ -721,13 +781,19 @@
                       <Storyboard RepeatBehavior="Forever" AutoReverse="True">
                         <DoubleAnimation Storyboard.TargetName="CategoryActiveRail"
                                          Storyboard.TargetProperty="Opacity"
-                                         From=".56" To="1" Duration="0:0:1.15" />
+                                         From=".44" To="1" Duration="0:0:1.05" />
+                        <DoubleAnimation Storyboard.TargetName="CategoryActiveRailGlow"
+                                         Storyboard.TargetProperty="BlurRadius"
+                                         From="7" To="18" Duration="0:0:1.05" />
+                        <DoubleAnimation Storyboard.TargetName="CategoryActiveRailGlow"
+                                         Storyboard.TargetProperty="Opacity"
+                                         From=".25" To="1" Duration="0:0:1.05" />
                         <DoubleAnimation Storyboard.TargetName="CategoryEnergyLine"
                                          Storyboard.TargetProperty="Width"
-                                         From="48" To="176" Duration="0:0:1.15" />
+                                         From="36" To="126" Duration="0:0:1.05" />
                         <DoubleAnimation Storyboard.TargetName="CategoryEnergyLine"
                                          Storyboard.TargetProperty="Opacity"
-                                         From=".30" To=".90" Duration="0:0:1.15" />
+                                         From=".28" To=".92" Duration="0:0:1.05" />
                       </Storyboard>
                     </BeginStoryboard>
                   </DataTrigger.EnterActions>
@@ -1174,24 +1240,44 @@
         </Button>
       </DataTemplate>
 
-      <!-- Download/pause/open remains fixed below the selected poster while covers move. -->
+      <!-- Download/pause/open remains fixed in the footer while covers move. -->
       <DataTemplate x:Key="RetroCarouselActionTemplate">
-        <Grid Height="24"
+        <Grid Height="32"
               HorizontalAlignment="Stretch"
               AutomationProperties.HelpText="{Binding DownloadStatus}">
-          <Button Content="{Binding DownloadActionLabel}"
-                  IsEnabled="{Binding CanDownload}"
+          <Button IsEnabled="{Binding CanDownload}"
                   Tag="{Binding Id}"
                   Click="DownloadItem_Click"
                   AutomationProperties.Name="{Binding DownloadActionLabel}"
                   AutomationProperties.HelpText="{Binding Title}">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="22" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="18" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Text="⇩"
+                         FontFamily="Segoe UI Symbol"
+                         FontSize="13"
+                         FontWeight="Bold"
+                         HorizontalAlignment="Left"
+                         VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1"
+                         Text="{Binding DownloadActionLabel}"
+                         FontSize="10"
+                         FontWeight="Bold"
+                         TextAlignment="Center"
+                         TextTrimming="CharacterEllipsis"
+                         VerticalAlignment="Center" />
+              <TextBlock Grid.Column="2"
+                         Text="›"
+                         FontSize="16"
+                         FontWeight="Bold"
+                         HorizontalAlignment="Right"
+                         VerticalAlignment="Center" />
+            </Grid>
             <Button.Style>
-              <Style TargetType="{x:Type Button}" BasedOn="{StaticResource DownloadNeonButtonStyle}">
-                <Setter Property="Height" Value="24" />
-                <Setter Property="MinHeight" Value="24" />
-                <Setter Property="Padding" Value="6,0" />
-                <Setter Property="FontSize" Value="9" />
-                <Setter Property="FontWeight" Value="Bold" />
+              <Style TargetType="{x:Type Button}" BasedOn="{StaticResource RetroFooterActionButtonStyle}">
                 <Setter Property="Visibility" Value="Visible" />
                 <Style.Triggers>
                   <DataTrigger Binding="{Binding CanPause}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
@@ -1206,12 +1292,10 @@
                   AutomationProperties.Name="Pausar download sem apagar o progresso"
                   AutomationProperties.HelpText="{Binding Title}">
             <Button.Style>
-              <Style TargetType="{x:Type Button}" BasedOn="{StaticResource SecondaryButtonStyle}">
-                <Setter Property="Height" Value="24" />
-                <Setter Property="MinHeight" Value="24" />
-                <Setter Property="Padding" Value="6,0" />
-                <Setter Property="FontSize" Value="8" />
+              <Style TargetType="{x:Type Button}" BasedOn="{StaticResource RetroFooterActionButtonStyle}">
+                <Setter Property="FontSize" Value="9" />
                 <Setter Property="Foreground" Value="#FFD36B" />
+                <Setter Property="Background" Value="#FF271C08" />
                 <Setter Property="BorderBrush" Value="#806423" />
                 <Setter Property="Visibility" Value="Collapsed" />
                 <Style.Triggers>
@@ -1226,11 +1310,8 @@
                   AutomationProperties.Name="Abrir pasta do pacote"
                   AutomationProperties.HelpText="{Binding Title}">
             <Button.Style>
-              <Style TargetType="{x:Type Button}" BasedOn="{StaticResource PrimaryButtonStyle}">
-                <Setter Property="Height" Value="24" />
-                <Setter Property="MinHeight" Value="24" />
-                <Setter Property="Padding" Value="6,0" />
-                <Setter Property="FontSize" Value="8" />
+              <Style TargetType="{x:Type Button}" BasedOn="{StaticResource RetroFooterActionButtonStyle}">
+                <Setter Property="FontSize" Value="9" />
                 <Setter Property="Visibility" Value="Collapsed" />
                 <Style.Triggers>
                   <DataTrigger Binding="{Binding CanOpen}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
@@ -1511,21 +1592,21 @@
                     <Storyboard RepeatBehavior="Forever" AutoReverse="True">
                       <DoubleAnimation Storyboard.TargetName="SidebarLedBar"
                                        Storyboard.TargetProperty="Opacity"
-                                       From=".52" To="1" Duration="0:0:1">
+                                       From=".34" To="1" Duration="0:0:1.05">
                         <DoubleAnimation.EasingFunction>
                           <SineEase EasingMode="EaseInOut" />
                         </DoubleAnimation.EasingFunction>
                       </DoubleAnimation>
                       <DoubleAnimation Storyboard.TargetName="SidebarLedGlow"
                                        Storyboard.TargetProperty="Opacity"
-                                       From=".38" To="1" Duration="0:0:1">
+                                       From=".22" To="1" Duration="0:0:1.05">
                         <DoubleAnimation.EasingFunction>
                           <SineEase EasingMode="EaseInOut" />
                         </DoubleAnimation.EasingFunction>
                       </DoubleAnimation>
                       <DoubleAnimation Storyboard.TargetName="SidebarLedGlow"
                                        Storyboard.TargetProperty="BlurRadius"
-                                       From="10" To="32" Duration="0:0:1">
+                                       From="7" To="26" Duration="0:0:1.05">
                         <DoubleAnimation.EasingFunction>
                           <SineEase EasingMode="EaseInOut" />
                         </DoubleAnimation.EasingFunction>
@@ -1550,10 +1631,10 @@
                 <Rectangle.Effect>
                   <DropShadowEffect x:Name="SidebarLedGlow"
                                     Color="{StaticResource GlobalAccentColor}"
-                                    BlurRadius="24"
-                                    ShadowDepth="7"
+                                    BlurRadius="7"
+                                    ShadowDepth="0"
                                     Direction="0"
-                                    Opacity="1"
+                                    Opacity=".22"
                                     RenderingBias="Quality" />
                 </Rectangle.Effect>
               </Rectangle>
@@ -1732,15 +1813,72 @@
               </Grid>
             </StackPanel>
           </ScrollViewer>
-          <ScrollViewer Name="LibraryPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Página Biblioteca">
-            <StackPanel Margin="32,25,28,38">
+          <Grid Name="LibraryPage"
+                Visibility="Collapsed"
+                ClipToBounds="True"
+                Background="#070907"
+                AutomationProperties.Name="Página Biblioteca">
+            <Grid x:Name="LibraryVideoBackground"
+                  HorizontalAlignment="Stretch"
+                  VerticalAlignment="Stretch"
+                  ClipToBounds="True"
+                  IsHitTestVisible="False"
+                  Panel.ZIndex="0">
+              <Grid x:Name="LibraryVideoPlayerHost"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    ClipToBounds="True"
+                    IsHitTestVisible="False" />
+            </Grid>
+            <ScrollViewer x:Name="LibraryContentScrollViewer"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled"
+                          Background="Transparent"
+                          Panel.ZIndex="1">
+              <StackPanel Margin="32,25,28,38">
               <Grid>
+                <Grid.Triggers>
+                  <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                    <BeginStoryboard x:Name="LibraryHeaderLedPulse">
+                      <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                        <DoubleAnimation Storyboard.TargetName="LibraryHeaderLed"
+                                         Storyboard.TargetProperty="Opacity"
+                                         From=".38" To="1" Duration="0:0:1.05" />
+                        <DoubleAnimation Storyboard.TargetName="LibraryHeaderLedGlow"
+                                         Storyboard.TargetProperty="BlurRadius"
+                                         From="7" To="19" Duration="0:0:1.05" />
+                        <DoubleAnimation Storyboard.TargetName="LibraryHeaderLedGlow"
+                                         Storyboard.TargetProperty="Opacity"
+                                         From=".24" To="1" Duration="0:0:1.05" />
+                      </Storyboard>
+                    </BeginStoryboard>
+                  </EventTrigger>
+                  <EventTrigger RoutedEvent="FrameworkElement.Unloaded">
+                    <RemoveStoryboard BeginStoryboardName="LibraryHeaderLedPulse" />
+                  </EventTrigger>
+                </Grid.Triggers>
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition />
                   <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal">
-                  <Rectangle Width="4" Height="38" RadiusX="2" Fill="{StaticResource GlobalAccentBrush}" Margin="0,1,12,0" />
+                  <Rectangle x:Name="LibraryHeaderLed"
+                             Width="2"
+                             Height="24"
+                             RadiusX="1"
+                             RadiusY="1"
+                             Fill="{StaticResource GlobalBrightBrush}"
+                             Margin="0,7,12,0"
+                             Opacity=".38">
+                    <Rectangle.Effect>
+                      <DropShadowEffect x:Name="LibraryHeaderLedGlow"
+                                        Color="{StaticResource GlobalAccentColor}"
+                                        BlurRadius="7"
+                                        ShadowDepth="0"
+                                        Opacity=".24"
+                                        RenderingBias="Quality" />
+                    </Rectangle.Effect>
+                  </Rectangle>
                   <StackPanel>
                     <TextBlock Text="Biblioteca por sistema" FontSize="27" FontWeight="Bold" />
                     <TextBlock Text="Capas, nomes e contagem completa de cada plataforma" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,3,0,0" />
@@ -1761,8 +1899,9 @@
                   </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
               </ItemsControl>
-            </StackPanel>
-          </ScrollViewer>
+              </StackPanel>
+            </ScrollViewer>
+          </Grid>
           <Grid Name="GameManagerPage" Visibility="Collapsed" Margin="28,22,24,26" AutomationProperties.Name="Página Jogos locais">
             <Grid.RowDefinitions>
               <RowDefinition Height="Auto" />
@@ -2214,8 +2353,8 @@
                           VerticalAlignment="Stretch"
                           IsHitTestVisible="False"
                           Panel.ZIndex="1" />
-                    <Border x:Name="RetroSystemVideoTint"
-                            Background="{DynamicResource CurrentSystemVideoTintBrush}"
+                    <Border x:Name="RetroNintendoVideoTint"
+                            Background="{DynamicResource NintendoVideoRedTintBrush}"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
                             IsHitTestVisible="False"
@@ -2249,21 +2388,21 @@
                             <Storyboard RepeatBehavior="Forever" AutoReverse="True">
                               <DoubleAnimation Storyboard.TargetName="RetroCarouselInfoAccentRail"
                                                Storyboard.TargetProperty="Opacity"
-                                               From=".58" To="1" Duration="0:0:1">
+                                               From=".34" To="1" Duration="0:0:1.05">
                                 <DoubleAnimation.EasingFunction>
                                   <SineEase EasingMode="EaseInOut" />
                                 </DoubleAnimation.EasingFunction>
                               </DoubleAnimation>
                               <DoubleAnimation Storyboard.TargetName="RetroCarouselInfoAccentGlow"
                                                Storyboard.TargetProperty="Opacity"
-                                               From=".40" To="1" Duration="0:0:1">
+                                               From=".22" To="1" Duration="0:0:1.05">
                                 <DoubleAnimation.EasingFunction>
                                   <SineEase EasingMode="EaseInOut" />
                                 </DoubleAnimation.EasingFunction>
                               </DoubleAnimation>
                               <DoubleAnimation Storyboard.TargetName="RetroCarouselInfoAccentGlow"
                                                Storyboard.TargetProperty="BlurRadius"
-                                               From="8" To="24" Duration="0:0:1">
+                                               From="7" To="20" Duration="0:0:1.05">
                                 <DoubleAnimation.EasingFunction>
                                   <SineEase EasingMode="EaseInOut" />
                                 </DoubleAnimation.EasingFunction>
@@ -2276,20 +2415,20 @@
                         </EventTrigger>
                       </Grid.Triggers>
                       <Rectangle x:Name="RetroCarouselInfoAccentRail"
-                                 Width="4"
-                                 Height="138"
+                                 Width="2"
+                                 Height="116"
                                  HorizontalAlignment="Left"
                                  VerticalAlignment="Center"
                                  Margin="0,0,0,0"
-                                 Fill="{DynamicResource CurrentSystemAccentBrush}"
-                                 Opacity="1"
+                                 Fill="{DynamicResource CurrentSystemBrightBrush}"
+                                 Opacity=".45"
                                  CacheMode="BitmapCache">
                         <UIElement.Effect>
                           <DropShadowEffect x:Name="RetroCarouselInfoAccentGlow"
                                             Color="{DynamicResource CurrentSystemAccentColor}"
-                                            BlurRadius="16"
+                                            BlurRadius="7"
                                             ShadowDepth="0"
-                                            Opacity=".90"
+                                            Opacity=".25"
                                             RenderingBias="Quality" />
                         </UIElement.Effect>
                       </Rectangle>
@@ -2395,19 +2534,6 @@
                                       ContentTemplate="{StaticResource RetroCarouselPosterTemplate}" />
                     </Canvas>
 
-                    <ContentControl x:Name="RetroCarouselActionBar"
-                                    Width="320"
-                                    Height="24"
-                                    Focusable="False"
-                                    KeyboardNavigation.IsTabStop="False"
-                                    HorizontalContentAlignment="Stretch"
-                                    VerticalContentAlignment="Stretch"
-                                    HorizontalAlignment="Left"
-                                    VerticalAlignment="Bottom"
-                                    Margin="10,0,0,0"
-                                    Panel.ZIndex="60"
-                                    ContentTemplate="{StaticResource RetroCarouselActionTemplate}" />
-
                     </Grid>
                   </Viewbox>
                 </Grid>
@@ -2466,17 +2592,69 @@
                         BorderThickness="0"
                         CornerRadius="0"
                         Padding="9,4">
-                    <StackPanel x:Name="RetroCarouselFooterContent"
-                                Orientation="Horizontal"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                Margin="7,1">
-                      <TextBlock Text="← →  NAVEGAR" Foreground="#DDE6D9" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center" />
-                      <TextBlock Text="   •   RODA DO MOUSE  ALTERNAR" Foreground="#A9B3A5" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center" />
-                      <TextBlock Text="   •   ENTER  SELECIONAR" Foreground="#A9B3A5" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center" />
-                      <TextBlock Text="   •   " Foreground="#596354" FontSize="9" VerticalAlignment="Center" />
-                      <TextBlock Name="RetroCarouselPosition" Text="1 / 45" Foreground="{DynamicResource CurrentSystemAccentBrush}" FontSize="10" FontWeight="Bold" VerticalAlignment="Center" />
-                    </StackPanel>
+                    <Viewbox x:Name="RetroCarouselFooterScale"
+                             Stretch="Uniform"
+                             StretchDirection="DownOnly"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center">
+                      <StackPanel x:Name="RetroCarouselFooterContent"
+                                  Orientation="Horizontal"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  Margin="7,1">
+                        <StackPanel.Triggers>
+                          <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                            <BeginStoryboard x:Name="RetroFooterSeparatorPulse">
+                              <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                <DoubleAnimation Storyboard.TargetName="RetroFooterSeparatorLed"
+                                                 Storyboard.TargetProperty="Opacity"
+                                                 From=".38" To="1" Duration="0:0:1.05" />
+                                <DoubleAnimation Storyboard.TargetName="RetroFooterSeparatorGlow"
+                                                 Storyboard.TargetProperty="BlurRadius"
+                                                 From="6" To="16" Duration="0:0:1.05" />
+                                <DoubleAnimation Storyboard.TargetName="RetroFooterSeparatorGlow"
+                                                 Storyboard.TargetProperty="Opacity"
+                                                 From=".22" To="1" Duration="0:0:1.05" />
+                              </Storyboard>
+                            </BeginStoryboard>
+                          </EventTrigger>
+                          <EventTrigger RoutedEvent="FrameworkElement.Unloaded">
+                            <RemoveStoryboard BeginStoryboardName="RetroFooterSeparatorPulse" />
+                          </EventTrigger>
+                        </StackPanel.Triggers>
+                        <ContentControl x:Name="RetroCarouselActionBar"
+                                        Width="196"
+                                        Height="32"
+                                        Margin="0,0,12,0"
+                                        Focusable="False"
+                                        KeyboardNavigation.IsTabStop="False"
+                                        HorizontalContentAlignment="Stretch"
+                                        VerticalContentAlignment="Stretch"
+                                        ContentTemplate="{StaticResource RetroCarouselActionTemplate}" />
+                        <Rectangle x:Name="RetroFooterSeparatorLed"
+                                   Width="2"
+                                   Height="18"
+                                   Margin="0,0,12,0"
+                                   RadiusX="1"
+                                   RadiusY="1"
+                                   Fill="{DynamicResource CurrentSystemBrightBrush}"
+                                   Opacity=".38">
+                          <Rectangle.Effect>
+                            <DropShadowEffect x:Name="RetroFooterSeparatorGlow"
+                                              Color="{DynamicResource CurrentSystemAccentColor}"
+                                              BlurRadius="6"
+                                              ShadowDepth="0"
+                                              Opacity=".22"
+                                              RenderingBias="Quality" />
+                          </Rectangle.Effect>
+                        </Rectangle>
+                        <TextBlock Text="← →  NAVEGAR" Foreground="#FFFFFFFF" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Text="   •   RODA DO MOUSE  ALTERNAR" Foreground="#FFFFFFFF" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Text="   •   ENTER  SELECIONAR" Foreground="#FFFFFFFF" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Text="   •   " Foreground="#FFFFFFFF" FontSize="9" VerticalAlignment="Center" />
+                        <TextBlock Name="RetroCarouselPosition" Text="1 / 45" Foreground="{DynamicResource CurrentSystemAccentBrush}" FontSize="10" FontWeight="Bold" VerticalAlignment="Center" />
+                      </StackPanel>
+                    </Viewbox>
                 </Border>
                 <StackPanel Name="CatalogManifestPanel" Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0">
                   <Ellipse Width="6" Height="6" Fill="{DynamicResource CurrentSystemAccentBrush}" Margin="0,0,8,0" />

@@ -34,6 +34,8 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 {
     private const int CatalogPageSize = 4;
     private const string RetroGamesCategoryId = "retro-games";
+    private const string LibraryBackgroundVideoContextId = "library";
+    private const string CatalogBackgroundVideoContextPrefix = "catalog:";
     private const int MaximumRetroSystemVideoManifestBytes = 256 * 1024;
     private const int MaximumRetroPlatformDescriptionsBytes = 512 * 1024;
     private const int MaximumQuarantinedVideoPlaybacks = 8;
@@ -201,6 +203,8 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     private string _pendingRetroSystemVideoItemId = string.Empty;
     private string _activeRetroUniversalVideoCategoryId = string.Empty;
     private string _pendingRetroUniversalVideoCategoryId = string.Empty;
+    private string _activeRetroUniversalVideoContextId = string.Empty;
+    private string _pendingRetroUniversalVideoContextId = string.Empty;
     private MediaElement? _retroSystemVideoPlayer;
     private MediaElement? _retroUniversalVideoPlayer;
     private TrustedVideoLease? _retroSystemVideoLease;
@@ -210,7 +214,6 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     private Task _retroSystemVideoLoadTask = Task.CompletedTask;
     private Task _retroUniversalVideoLoadTask = Task.CompletedTask;
     private bool _retroSystemVideoPausedForWindow;
-    private bool _retroSystemVideoRestartOnResume;
     private HwndSource? _windowSource;
     private IntPtr _lastWorkAreaMonitor;
     private bool _workAreaClampScheduled;
@@ -1474,6 +1477,11 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         };
 
         ApplyThemeAccent(accent);
+        SetCategoryThemeBrush(
+            "NintendoVideoRedTintBrush",
+            UsesNintendoVideoRedTint(categoryId)
+                ? Color.FromArgb(64, 220, 20, 32)
+                : Colors.Transparent);
     }
 
     private void ApplyThemeAccent(Color accent)
@@ -1510,10 +1518,15 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         SetCategoryThemeBrush(
             "CurrentSystemSidebarSelectionBrush",
             Color.FromArgb(28, accent.R, accent.G, accent.B));
-        SetCategoryThemeBrush(
-            "CurrentSystemVideoTintBrush",
-            Color.FromArgb(46, accent.R, accent.G, accent.B));
     }
+
+    private static bool UsesNintendoVideoRedTint(string? categoryId) =>
+        categoryId?.ToLowerInvariant() is
+            "nintendo-3ds" or
+            "gamecube" or
+            "nintendo-switch" or
+            "nintendo-wii" or
+            "nintendo-wii-u";
 
     private void SetCategoryThemeBrush(string key, Color color)
     {
@@ -1799,8 +1812,9 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             _retroCarouselControlsByOffset[offset] = control;
         }
 
-        // For 2–6 results one unique item waits outside, so movement stays continuous
-        // without showing the same cover twice. Seven or more keeps five visible minis.
+        // For small collections one unique item waits outside, so movement stays
+        // continuous without showing the same cover twice. System tools is the
+        // intentional two-item exception: both packages remain visible together.
         if (_retroCarouselItems.Count > 1)
         {
             var spare = controls[^1];
@@ -1815,12 +1829,6 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         UpdateRetroCarouselSelection();
         if (FindNamed<ContentControl>("RetroCarouselActionBar") is { } actionBar)
         {
-            actionBar.VerticalAlignment = UsesPortraitCarouselCovers
-                ? VerticalAlignment.Bottom
-                : VerticalAlignment.Top;
-            actionBar.Margin = UsesPortraitCarouselCovers
-                ? new Thickness(10, 0, 0, 0)
-                : new Thickness(10, 247, 0, 0);
             SetRetroCarouselActionInteractive(actionBar, true);
         }
         StartRetroUniversalVideo();
@@ -1854,10 +1862,18 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         return true;
     }
 
+    private bool IsTwoItemSystemToolsCarousel =>
+        _retroCarouselItems.Count == 2
+        && SelectedCategory?.Id.Equals(
+            "system-tools",
+            StringComparison.OrdinalIgnoreCase) == true;
+
     private int GetRetroCarouselLastVisibleOffset() =>
-        _retroCarouselItems.Count <= 1
-            ? 0
-            : Math.Min(5, _retroCarouselItems.Count - 2);
+        IsTwoItemSystemToolsCarousel
+            ? 1
+            : _retroCarouselItems.Count <= 1
+                ? 0
+                : Math.Min(5, _retroCarouselItems.Count - 2);
 
     private int GetExpectedRetroCarouselControlCount() =>
         _retroCarouselItems.Count <= 1
@@ -1929,7 +1945,9 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         if (FindNamed<Button>("RetroCarouselNextButton") is { } nextButton)
             nextButton.IsEnabled = _retroCarouselItems.Count > 1;
 
-        SwitchRetroSystemVideo(current);
+        // The selected cover no longer replaces the category background. The
+        // responsive family video remains stable while covers move.
+        StopRetroSystemVideo(clearFallback: true);
     }
 
     private bool HasPendingRetroCarouselMotion =>
@@ -1939,19 +1957,46 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
     private void StartRetroUniversalVideo()
     {
+        var categoryId = SelectedCategory?.Id ?? string.Empty;
+        StartUniversalBackgroundVideo(
+            categoryId,
+            CatalogBackgroundVideoContextPrefix + categoryId);
+    }
+
+    private void StartLibraryBackgroundVideo() =>
+        StartUniversalBackgroundVideo("library", LibraryBackgroundVideoContextId);
+
+    private void StopLibraryBackgroundVideo()
+    {
+        if (_activeRetroUniversalVideoContextId.Equals(
+                LibraryBackgroundVideoContextId,
+                StringComparison.OrdinalIgnoreCase)
+            || _pendingRetroUniversalVideoContextId.Equals(
+                LibraryBackgroundVideoContextId,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            StopRetroUniversalVideo();
+        }
+    }
+
+    private void StartUniversalBackgroundVideo(string categoryId, string contextId)
+    {
         if (IsVideoPlaybackDisabled)
         {
             StopRetroUniversalVideo();
             return;
         }
-        if (!IsRetroCarouselVisible || WindowState == WindowState.Minimized)
+        if (!IsUniversalVideoContextVisible(contextId, categoryId)
+            || WindowState == WindowState.Minimized)
             return;
 
-        var categoryId = SelectedCategory?.Id ?? string.Empty;
         if (_retroUniversalVideoPlayer is { Source: not null } active
             && _retroUniversalVideoLease is { IsActive: true } activeLease
             && _activeRetroUniversalVideoCategoryId.Equals(
                 categoryId,
+                StringComparison.OrdinalIgnoreCase)
+            && _activeRetroUniversalVideoContextId.Equals(
+                contextId,
                 StringComparison.OrdinalIgnoreCase)
             && IsPlayerUsingLease(active, activeLease))
         {
@@ -1963,6 +2008,9 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         if (_pendingRetroUniversalVideoCategoryId.Equals(
                 categoryId,
                 StringComparison.OrdinalIgnoreCase)
+            && _pendingRetroUniversalVideoContextId.Equals(
+                contextId,
+                StringComparison.OrdinalIgnoreCase)
             && !_retroUniversalVideoLoadTask.IsCompleted)
             return;
 
@@ -1973,15 +2021,43 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         var requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(
             _storeOperationCancellation.Token);
         _pendingRetroUniversalVideoCategoryId = categoryId;
+        _pendingRetroUniversalVideoContextId = contextId;
         Volatile.Write(ref _retroUniversalVideoLoadCancellation, requestCancellation);
         _retroUniversalVideoLoadTask = LoadRetroUniversalVideoAsync(
             categoryId,
+            contextId,
             requestVersion,
             requestCancellation);
     }
 
+    private bool IsUniversalVideoContextVisible(string contextId, string categoryId)
+    {
+        if (contextId.Equals(
+                LibraryBackgroundVideoContextId,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return FindNamed<UIElement>("LibraryPage")?.IsVisible == true;
+        }
+
+        return contextId.Equals(
+                   CatalogBackgroundVideoContextPrefix + categoryId,
+                   StringComparison.OrdinalIgnoreCase)
+               && IsRetroCarouselVisible
+               && (SelectedCategory?.Id ?? string.Empty).Equals(
+                   categoryId,
+                   StringComparison.OrdinalIgnoreCase);
+    }
+
+    private Grid? FindUniversalVideoPlayerHost(string contextId) =>
+        contextId.Equals(
+            LibraryBackgroundVideoContextId,
+            StringComparison.OrdinalIgnoreCase)
+            ? FindNamed<Grid>("LibraryVideoPlayerHost")
+            : FindNamed<Grid>("RetroUniversalVideoPlayerHost");
+
     private async Task LoadRetroUniversalVideoAsync(
         string categoryId,
+        string contextId,
         int requestVersion,
         CancellationTokenSource requestCancellation)
     {
@@ -2000,6 +2076,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             var completion = Dispatcher.InvokeAsync(
                 () => CompleteRetroUniversalVideoLoad(
                     categoryId,
+                    contextId,
                     requestVersion,
                     requestCancellation,
                     videoLease),
@@ -2031,6 +2108,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
     private bool CompleteRetroUniversalVideoLoad(
         string categoryId,
+        string contextId,
         int requestVersion,
         CancellationTokenSource requestCancellation,
         TrustedVideoLease? videoLease)
@@ -2046,26 +2124,33 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         var requestWasCanceled = requestCancellation.IsCancellationRequested;
         requestCancellation.Dispose();
         if (requestVersion == _retroUniversalVideoRequestVersion)
+        {
             _pendingRetroUniversalVideoCategoryId = string.Empty;
+            _pendingRetroUniversalVideoContextId = string.Empty;
+        }
         if (requestWasCanceled
             || requestVersion != _retroUniversalVideoRequestVersion
             || videoLease is null
             || IsVideoPlaybackDisabled
-            || !IsRetroCarouselVisible
+            || !IsUniversalVideoContextVisible(contextId, categoryId)
             || WindowState == WindowState.Minimized
-            || !(SelectedCategory?.Id ?? string.Empty).Equals(
-                categoryId,
-                StringComparison.OrdinalIgnoreCase)
-            || FindNamed<Grid>("RetroUniversalVideoPlayerHost") is not { } host)
+            || FindUniversalVideoPlayerHost(contextId) is not { } host)
             return false;
 
         CloseRetroUniversalVideoCore();
-        var player = CreateResponsiveBackgroundVideoPlayer(host);
+        var player = contextId.Equals(
+                LibraryBackgroundVideoContextId,
+                StringComparison.OrdinalIgnoreCase)
+            ? CreateResponsiveLibraryVideoPlayer(host)
+            : UsesMirroredUniversalBackground(categoryId)
+                ? CreateResponsiveMirroredBackgroundVideoPlayer(host)
+                : CreateResponsiveBackgroundVideoPlayer(host);
         player.MediaEnded += RetroUniversalVideo_MediaEnded;
         player.MediaFailed += RetroUniversalVideo_MediaFailed;
         _retroUniversalVideoPlayer = player;
         _retroUniversalVideoLease = videoLease;
         _activeRetroUniversalVideoCategoryId = categoryId;
+        _activeRetroUniversalVideoContextId = contextId;
         host.Children.Add(player);
         try
         {
@@ -2093,7 +2178,10 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             StopRetroUniversalVideo();
             return;
         }
-        if (!IsRetroCarouselVisible || WindowState == WindowState.Minimized)
+        if (!IsUniversalVideoContextVisible(
+                _activeRetroUniversalVideoContextId,
+                _activeRetroUniversalVideoCategoryId)
+            || WindowState == WindowState.Minimized)
             return;
         try
         {
@@ -2127,9 +2215,13 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             StopRetroUniversalVideo();
             return;
         }
-        if (!IsRetroCarouselVisible || WindowState == WindowState.Minimized) return;
+        if (WindowState == WindowState.Minimized) return;
+        var hasVisibleContext = IsUniversalVideoContextVisible(
+            _activeRetroUniversalVideoContextId,
+            _activeRetroUniversalVideoCategoryId);
         if (_retroUniversalVideoPlayer is { Source: not null } player
             && _retroUniversalVideoLease is { IsActive: true } activeLease
+            && hasVisibleContext
             && IsPlayerUsingLease(player, activeLease))
         {
             try { player.Play(); return; }
@@ -2139,7 +2231,10 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         {
             StopRetroUniversalVideo();
         }
-        StartRetroUniversalVideo();
+        if (FindNamed<UIElement>("LibraryPage")?.IsVisible == true)
+            StartLibraryBackgroundVideo();
+        else
+            StartRetroUniversalVideo();
     }
 
     private void StopRetroUniversalVideo()
@@ -2152,6 +2247,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     {
         ++_retroUniversalVideoRequestVersion;
         _pendingRetroUniversalVideoCategoryId = string.Empty;
+        _pendingRetroUniversalVideoContextId = string.Empty;
         CancelAndDisposeVideoLoad(
             Interlocked.Exchange(ref _retroUniversalVideoLoadCancellation, null));
     }
@@ -2163,6 +2259,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         _retroUniversalVideoPlayer = null;
         _retroUniversalVideoLease = null;
         _activeRetroUniversalVideoCategoryId = string.Empty;
+        _activeRetroUniversalVideoContextId = string.Empty;
         var playerClosed = player is null;
         if (player is not null)
         {
@@ -2182,7 +2279,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                 playerClosed = true;
             }
             catch (InvalidOperationException) { }
-            if (FindNamed<Grid>("RetroUniversalVideoPlayerHost") is { } host)
+            if (player.Parent is Panel host)
                 host.Children.Remove(player);
         }
 
@@ -2373,6 +2470,18 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     private static MediaElement CreateResponsiveBackgroundVideoPlayer(FrameworkElement host)
         => CreateResponsiveVideoPlayer(host, Stretch.UniformToFill);
 
+    private static MediaElement CreateResponsiveMirroredBackgroundVideoPlayer(
+        FrameworkElement host)
+    {
+        var player = CreateResponsiveBackgroundVideoPlayer(host);
+        player.RenderTransformOrigin = new Point(.5, .5);
+        player.RenderTransform = new ScaleTransform(-1, 1);
+        return player;
+    }
+
+    private static MediaElement CreateResponsiveLibraryVideoPlayer(FrameworkElement host) =>
+        CreateResponsiveMirroredBackgroundVideoPlayer(host);
+
     private static MediaElement CreateResponsiveSystemVideoPlayer(FrameworkElement host)
         => CreateResponsiveVideoPlayer(host, Stretch.UniformToFill);
 
@@ -2447,10 +2556,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             return;
 
         if (WindowState == WindowState.Minimized || _retroSystemVideoPausedForWindow)
-        {
-            _retroSystemVideoRestartOnResume = true;
             return;
-        }
 
         if (!IsReadyRetroSystemVideoSession(player) || !IsRetroCarouselVisible)
             return;
@@ -2458,7 +2564,6 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         try
         {
             player.Position = TimeSpan.Zero;
-            _retroSystemVideoRestartOnResume = false;
             player.Play();
         }
         catch (InvalidOperationException exception)
@@ -2538,44 +2643,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     private void ResumeRetroSystemVideoForWindow()
     {
         ResumeRetroUniversalVideo();
-        if (IsVideoPlaybackDisabled)
-        {
-            CancelRetroSystemVideoLoad();
-            CloseRetroSystemVideoCore(clearFallback: false);
-            return;
-        }
-        if (!_retroSystemVideoPausedForWindow) return;
-        _retroSystemVideoPausedForWindow = false;
-        if (!IsRetroCarouselVisible || _retroCarouselItems.Count == 0) return;
-
-        var current = _retroCarouselItems[_retroCarouselIndex];
-        if (_retroSystemVideoPlayer is { Source: not null } player
-            && _retroSystemVideoLease is { IsActive: true } activeLease
-            && _activeRetroSystemVideoItemId.Equals(current.Id, StringComparison.OrdinalIgnoreCase)
-            && IsPlayerUsingLease(player, activeLease)
-            && IsActiveRetroSystemVideo(player))
-        {
-            try
-            {
-                _activeRetroSystemVideoGeneration = _retroSystemVideoRequestVersion;
-                player.Tag = _activeRetroSystemVideoGeneration;
-                player.IsMuted = true;
-                player.Volume = 0;
-                if (_retroSystemVideoRestartOnResume)
-                {
-                    player.Position = TimeSpan.Zero;
-                    _retroSystemVideoRestartOnResume = false;
-                }
-                player.Play();
-                return;
-            }
-            catch (InvalidOperationException exception)
-            {
-                Debug.WriteLine($"Não foi possível retomar o vídeo de sistema: {exception.Message}");
-            }
-        }
-
-        SwitchRetroSystemVideo(current);
+        StopRetroSystemVideo(clearFallback: true);
     }
 
     private void StopRetroSystemVideo(bool clearFallback)
@@ -2619,7 +2687,6 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         _activeRetroSystemVideoItemId = string.Empty;
         _activeRetroSystemVideoPath = string.Empty;
         _pendingRetroSystemVideoItemId = string.Empty;
-        _retroSystemVideoRestartOnResume = false;
         var playerClosed = player is null;
 
         if (player is not null)
@@ -2756,26 +2823,36 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     private static string ResolveRetroUniversalVideoFileName(string? categoryId) =>
         categoryId?.ToLowerInvariant() switch
         {
-            "system-tools" => "Turborama-background-system-tools.mp4",
-            "playstation-1" => "Turborama-background-playstation.mp4",
-            "playstation-2" or "playstation-2-br"
-                => "Turborama-background-ps2.mp4",
-            "playstation-4" => "Turborama-background-ps4.mp4",
-            "playstation-5" => "Turborama-background-ps5.mp4",
-            "psp" => "Turborama-background-psp.mp4",
-            "ps-vita" => "Turborama-background-ps-vita.mp4",
-            "sega-saturn" => "Turborama-background-sega-saturn.mp4",
+            "playstation-1" or
+            "playstation-2" or
+            "playstation-2-br" or
+            "playstation-3" or
+            "playstation-4" or
+            "playstation-5" or
+            "psp" or
+            "ps-vita" => "Turborama-background-playstation.mp4",
             "xbox" or "xbox-360" or "xbox-one" or "xbox-series"
                 => "Turborama-background-xbox-one-x.mp4",
-            "nintendo-3ds" or "gamecube"
-                => "Turborama-background-nintendo-generic.mp4",
             "nintendo-switch" => "Turborama-background-nintendo-switch.mp4",
-            "nintendo-wii" or "nintendo-wii-u"
-                => "Turborama-background-nintendo-wii.mp4",
-            "windows" => "Turborama-background-windows.mp4",
-            "retro-games" => "Turborama-background-retro.mp4",
-            _ => "Turborama-background.mp4"
+            _ => "Turborama-background-psp.mp4"
         };
+
+    private static bool UsesMirroredUniversalBackground(string? categoryId)
+    {
+        var fileName = ResolveRetroUniversalVideoFileName(categoryId);
+        return fileName.Equals(
+                   "Turborama-background-playstation.mp4",
+                   StringComparison.OrdinalIgnoreCase)
+               || fileName.Equals(
+                   "Turborama-background-xbox-one-x.mp4",
+                   StringComparison.OrdinalIgnoreCase)
+               || fileName.Equals(
+                   "Turborama-background-nintendo-switch.mp4",
+                   StringComparison.OrdinalIgnoreCase)
+               || fileName.Equals(
+                   "Turborama-background-psp.mp4",
+                   StringComparison.OrdinalIgnoreCase);
+    }
 
     private static string? GetRetroSystemVideoRoot()
     {
@@ -5164,8 +5241,12 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         {
             CancelRetroCarouselAnimation();
             StopRetroSystemVideo(clearFallback: true);
-            StopRetroUniversalVideo();
         }
+
+        if (FindNamed<UIElement>("LibraryPage")?.IsVisible == true)
+            StopLibraryBackgroundVideo();
+        else
+            StopRetroUniversalVideo();
 
         SetVisibility("HomePage", isHome);
         SetVisibility("StorePage", isHome);
@@ -5173,6 +5254,9 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         SetVisibility("GameManagerPage", isGameManager);
         SetVisibility("DownloadsPage", isDownloads);
         SetVisibility("CatalogPage", isCatalog);
+
+        if (isLibrary)
+            StartLibraryBackgroundVideo();
 
         if (isCatalog && SelectedCategory is not null)
         {
