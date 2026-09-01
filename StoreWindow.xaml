@@ -404,7 +404,7 @@
         <Setter Property="Padding" Value="13,0" />
         <Setter Property="Foreground" Value="#FFFFFFFF" />
         <Setter Property="Background" Value="#FF0B100D" />
-        <Setter Property="BorderBrush" Value="{DynamicResource CurrentSystemLineBrush}" />
+        <Setter Property="BorderBrush" Value="#FF343A37" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="FontSize" Value="10" />
         <Setter Property="FontWeight" Value="Bold" />
@@ -414,46 +414,23 @@
         <Setter Property="Template">
           <Setter.Value>
             <ControlTemplate TargetType="{x:Type Button}">
-              <Grid>
-                <Border x:Name="HudSurface"
-                        Background="{TemplateBinding Control.Background}"
-                        BorderBrush="{TemplateBinding Control.BorderBrush}"
-                        BorderThickness="{TemplateBinding Control.BorderThickness}"
-                        CornerRadius="2"
-                        Padding="0">
-                  <Grid>
-                    <Rectangle x:Name="HudRail"
-                               Width="2"
-                               HorizontalAlignment="Left"
-                               Margin="0,4"
-                               Fill="{DynamicResource CurrentSystemAccentBrush}"
-                               Opacity=".72" />
-                    <ContentPresenter Margin="{TemplateBinding Control.Padding}"
-                                      HorizontalAlignment="{TemplateBinding Control.HorizontalContentAlignment}"
-                                      VerticalAlignment="Center" />
-                  </Grid>
-                </Border>
-                <Path x:Name="HudCorner"
-                      Data="M0,0 L8,0 L8,8"
-                      Width="9"
-                      Height="9"
-                      HorizontalAlignment="Right"
-                      VerticalAlignment="Top"
-                      Stroke="{DynamicResource CurrentSystemAccentBrush}"
-                      StrokeThickness="1"
-                      IsHitTestVisible="False" />
-              </Grid>
+              <Border x:Name="HudSurface"
+                      Background="{TemplateBinding Control.Background}"
+                      BorderBrush="{TemplateBinding Control.BorderBrush}"
+                      BorderThickness="{TemplateBinding Control.BorderThickness}"
+                      CornerRadius="2"
+                      Padding="0">
+                <ContentPresenter Margin="{TemplateBinding Control.Padding}"
+                                  HorizontalAlignment="{TemplateBinding Control.HorizontalContentAlignment}"
+                                  VerticalAlignment="Center" />
+              </Border>
               <ControlTemplate.Triggers>
                 <Trigger Property="UIElement.IsMouseOver" Value="True">
                   <Setter TargetName="HudSurface" Property="Border.BorderBrush" Value="{DynamicResource CurrentSystemBrightBrush}" />
-                  <Setter TargetName="HudRail" Property="UIElement.Opacity" Value="1" />
-                  <Setter TargetName="HudCorner" Property="Shape.Stroke" Value="{DynamicResource CurrentSystemBrightBrush}" />
                   <Setter Property="Foreground" Value="{DynamicResource CurrentSystemBrightBrush}" />
                 </Trigger>
                 <Trigger Property="UIElement.IsKeyboardFocused" Value="True">
                   <Setter TargetName="HudSurface" Property="Border.BorderBrush" Value="{DynamicResource CurrentSystemBrightBrush}" />
-                  <Setter TargetName="HudRail" Property="UIElement.Opacity" Value="1" />
-                  <Setter TargetName="HudCorner" Property="Shape.Stroke" Value="{DynamicResource CurrentSystemBrightBrush}" />
                   <Setter Property="Foreground" Value="{DynamicResource CurrentSystemBrightBrush}" />
                 </Trigger>
                 <Trigger Property="IsPressed" Value="True">
@@ -461,7 +438,6 @@
                 </Trigger>
                 <Trigger Property="IsEnabled" Value="False">
                   <Setter TargetName="HudSurface" Property="UIElement.Opacity" Value=".34" />
-                  <Setter TargetName="HudCorner" Property="UIElement.Opacity" Value=".34" />
                 </Trigger>
               </ControlTemplate.Triggers>
             </ControlTemplate>
@@ -474,8 +450,8 @@
         <Setter Property="Background" Value="#FF050806" />
         <Setter Property="Foreground" Value="#FFFFFFFF" />
         <Setter Property="TextBoxBase.CaretBrush" Value="{DynamicResource CurrentSystemAccentBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource CurrentSystemLineBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderBrush" Value="#FF343A37" />
+        <Setter Property="BorderThickness" Value="0" />
         <Setter Property="FontSize" Value="12" />
         <Setter Property="Template">
           <Setter.Value>
@@ -486,10 +462,6 @@
                       BorderThickness="{TemplateBinding Control.BorderThickness}"
                       CornerRadius="2">
                 <Grid>
-                  <Rectangle Width="2"
-                             HorizontalAlignment="Left"
-                             Margin="0,5"
-                             Fill="{DynamicResource CurrentSystemAccentBrush}" />
                   <TextBlock Text="⌕"
                              FontSize="19"
                              Foreground="{DynamicResource CurrentSystemAccentBrush}"
@@ -503,6 +475,7 @@
               <ControlTemplate.Triggers>
                 <Trigger Property="UIElement.IsKeyboardFocused" Value="True">
                   <Setter TargetName="HudSearchFrame" Property="Border.BorderBrush" Value="{DynamicResource CurrentSystemBrightBrush}" />
+                  <Setter TargetName="HudSearchFrame" Property="Border.BorderThickness" Value="0,0,0,1" />
                 </Trigger>
               </ControlTemplate.Triggers>
             </ControlTemplate>
@@ -1909,72 +1882,8 @@
                   AutomationProperties.Name="Moldura metálica do painel do catálogo">
               <Border x:Name="CatalogMetalOuterFrame"
                       Background="Transparent"
-                      BorderBrush="#FF343A37"
-                      BorderThickness="2" />
-              <Border x:Name="CatalogMetalInnerFrame"
-                      Margin="5"
-                      Background="Transparent"
-                      BorderBrush="{DynamicResource CurrentSystemLineBrush}"
+                      BorderBrush="#FF252D28"
                       BorderThickness="1" />
-              <Rectangle Width="116" Height="2"
-                         HorizontalAlignment="Left" VerticalAlignment="Top"
-                         Margin="30,2,0,0"
-                         Fill="{DynamicResource CurrentSystemBrightBrush}">
-                <UIElement.Effect>
-                  <DropShadowEffect Color="{DynamicResource CurrentSystemAccentColor}"
-                                    BlurRadius="9" ShadowDepth="0" Opacity=".78" />
-                </UIElement.Effect>
-              </Rectangle>
-              <Rectangle Width="2" Height="106"
-                         HorizontalAlignment="Left" VerticalAlignment="Top"
-                         Margin="2,30,0,0"
-                         Fill="{DynamicResource CurrentSystemAccentBrush}"
-                         Opacity=".88" />
-              <Rectangle Width="82" Height="2"
-                         HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                         Margin="0,0,30,2"
-                         Fill="{DynamicResource CurrentSystemAccentBrush}"
-                         Opacity=".78" />
-              <Path Data="M0,22 L0,0 L22,0 M5,22 L5,5 L22,5"
-                    Width="23" Height="23"
-                    HorizontalAlignment="Left" VerticalAlignment="Top"
-                    Margin="1"
-                    Stroke="#FF69736C" StrokeThickness="1" />
-              <Path Data="M0,22 L0,0 L22,0 M5,22 L5,5 L22,5"
-                    Width="23" Height="23"
-                    HorizontalAlignment="Right" VerticalAlignment="Top"
-                    Margin="1"
-                    Stroke="#FF69736C" StrokeThickness="1">
-                <Path.RenderTransform>
-                  <ScaleTransform ScaleX="-1" CenterX="11.5" />
-                </Path.RenderTransform>
-              </Path>
-              <Path Data="M0,22 L0,0 L22,0 M5,22 L5,5 L22,5"
-                    Width="23" Height="23"
-                    HorizontalAlignment="Left" VerticalAlignment="Bottom"
-                    Margin="1"
-                    Stroke="#FF69736C" StrokeThickness="1">
-                <Path.RenderTransform>
-                  <ScaleTransform ScaleY="-1" CenterY="11.5" />
-                </Path.RenderTransform>
-              </Path>
-              <Path Data="M0,22 L0,0 L22,0 M5,22 L5,5 L22,5"
-                    Width="23" Height="23"
-                    HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                    Margin="1"
-                    Stroke="#FF69736C" StrokeThickness="1">
-                <Path.RenderTransform>
-                  <ScaleTransform ScaleX="-1" ScaleY="-1" CenterX="11.5" CenterY="11.5" />
-                </Path.RenderTransform>
-              </Path>
-              <Ellipse Width="5" Height="5" HorizontalAlignment="Left" VerticalAlignment="Top"
-                       Margin="10" Fill="#FF737D76" Stroke="#FF050706" StrokeThickness="1" />
-              <Ellipse Width="5" Height="5" HorizontalAlignment="Right" VerticalAlignment="Top"
-                       Margin="10" Fill="#FF737D76" Stroke="#FF050706" StrokeThickness="1" />
-              <Ellipse Width="5" Height="5" HorizontalAlignment="Left" VerticalAlignment="Bottom"
-                       Margin="10" Fill="#FF737D76" Stroke="#FF050706" StrokeThickness="1" />
-              <Ellipse Width="5" Height="5" HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                       Margin="10" Fill="#FF737D76" Stroke="#FF050706" StrokeThickness="1" />
             </Grid>
             <Border x:Name="CatalogHudHeader"
                     Grid.Row="0"
@@ -1982,38 +1891,11 @@
                     Margin="24,9,20,7"
                     Padding="8,5"
                     Background="#FF080B09"
-                    BorderBrush="#FF343A37"
-                    BorderThickness="2"
+                    BorderBrush="#FF252D28"
+                    BorderThickness="0,0,0,1"
                     CornerRadius="0"
                     AutomationProperties.Name="HUD superior do catálogo">
-              <Grid>
-                <Border x:Name="CatalogHudInnerFrame"
-                        Margin="3"
-                        Background="Transparent"
-                        BorderBrush="{DynamicResource CurrentSystemLineBrush}"
-                        BorderThickness="1"
-                        IsHitTestVisible="False" />
-                <Rectangle Width="74"
-                           Height="1"
-                           HorizontalAlignment="Left"
-                           VerticalAlignment="Top"
-                           Margin="8,-6,0,0"
-                           Fill="{DynamicResource CurrentSystemAccentBrush}" />
-                <Path Data="M0,8 L0,0 L8,0"
-                      Width="9" Height="9"
-                      HorizontalAlignment="Left" VerticalAlignment="Top"
-                      Margin="2,2,0,0"
-                      Stroke="{DynamicResource CurrentSystemBrightBrush}"
-                      StrokeThickness="1"
-                      IsHitTestVisible="False" />
-                <Path Data="M0,0 L8,0 L8,8"
-                      Width="9" Height="9"
-                      HorizontalAlignment="Right" VerticalAlignment="Top"
-                      Margin="0,2,2,0"
-                      Stroke="{DynamicResource CurrentSystemBrightBrush}"
-                      StrokeThickness="1"
-                      IsHitTestVisible="False" />
-                <Grid x:Name="CatalogHudFieldsGrid" Margin="3,0">
+                <Grid x:Name="CatalogHudFieldsGrid" Margin="0">
                   <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="1.05*" />
                     <ColumnDefinition Width="1.15*" />
@@ -2023,8 +1905,7 @@
                           Margin="0,0,6,0"
                           Padding="4,0"
                           Background="#FF080C09"
-                          BorderBrush="#FF343A37"
-                          BorderThickness="1"
+                          BorderThickness="0"
                           CornerRadius="0"
                           ToolTip="Pasta de instalação">
                     <Grid>
@@ -2033,11 +1914,6 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="22" />
                       </Grid.ColumnDefinitions>
-                      <Rectangle Width="2"
-                                 HorizontalAlignment="Left"
-                                 Margin="0,5"
-                                 Fill="{DynamicResource CurrentSystemAccentBrush}"
-                                 Opacity=".78" />
                       <TextBlock Text="ROM"
                                  Margin="6,0,0,0"
                                  Foreground="{DynamicResource CurrentSystemAccentBrush}"
@@ -2068,8 +1944,7 @@
                           Margin="0,0,6,0"
                           Padding="4,0"
                           Background="#FF080C09"
-                          BorderBrush="#FF343A37"
-                          BorderThickness="1"
+                          BorderThickness="0"
                           CornerRadius="0"
                           ToolTip="Pasta de temporários">
                     <Grid>
@@ -2079,11 +1954,6 @@
                         <ColumnDefinition Width="22" />
                         <ColumnDefinition Width="22" />
                       </Grid.ColumnDefinitions>
-                      <Rectangle Width="2"
-                                 HorizontalAlignment="Left"
-                                 Margin="0,5"
-                                 Fill="{DynamicResource CurrentSystemAccentBrush}"
-                                 Opacity=".78" />
                       <TextBlock Text="TMP"
                                  Margin="6,0,0,0"
                                  Foreground="{DynamicResource CurrentSystemAccentBrush}"
@@ -2124,8 +1994,7 @@
                           Margin="0,0,6,0"
                           Padding="0"
                           Background="#FF080C09"
-                          BorderBrush="#FF343A37"
-                          BorderThickness="1"
+                          BorderThickness="0"
                           CornerRadius="0"
                           AutomationProperties.Name="Pesquisa do HUD compacto">
                     <Grid>
@@ -2150,7 +2019,6 @@
                     </Grid>
                   </Border>
                 </Grid>
-              </Grid>
             </Border>
             <Grid x:Name="CatalogContentPanel" Grid.Row="1" Margin="32,0,28,22">
               <Grid.RowDefinitions>
@@ -2244,15 +2112,7 @@
                                             Opacity=".48" />
                         </UIElement.Effect>
                       </Rectangle>
-                      <Rectangle x:Name="RetroCarouselInfoAccentLine"
-                                 Width="72"
-                                 Height="2"
-                                 HorizontalAlignment="Left"
-                                 VerticalAlignment="Top"
-                                 Margin="20,10,0,0"
-                                 Fill="{DynamicResource CurrentSystemAccentBrush}"
-                                 Opacity=".86" />
-                      <Grid Margin="20,18,10,7">
+                      <Grid Margin="20,7,10,7">
                         <StackPanel HorizontalAlignment="Stretch"
                                     VerticalAlignment="Center">
                           <TextBlock Name="RetroCarouselTitle"
@@ -2422,28 +2282,20 @@
                         VerticalAlignment="Center"
                         MaxWidth="960"
                         Background="#FF080B08"
-                        BorderBrush="#FF343A37"
-                        BorderThickness="2"
+                        BorderThickness="0"
                         CornerRadius="0"
                         Padding="9,4">
-                  <Grid>
-                    <Grid.ColumnDefinitions>
-                      <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Border x:Name="RetroCarouselFooterInnerFrame"
-                            Margin="-5,-1"
-                            BorderBrush="{DynamicResource CurrentSystemLineBrush}"
-                            BorderThickness="1"
-                            IsHitTestVisible="False" />
-                    <Rectangle Height="2" Width="76" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="2,-2,0,0" Fill="{DynamicResource CurrentSystemAccentBrush}" Opacity=".86" />
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="7,1">
+                    <StackPanel x:Name="RetroCarouselFooterContent"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Margin="7,1">
                       <TextBlock Text="← →  NAVEGAR" Foreground="#DDE6D9" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center" />
                       <TextBlock Text="   •   RODA DO MOUSE  ALTERNAR" Foreground="#A9B3A5" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center" />
                       <TextBlock Text="   •   ENTER  SELECIONAR" Foreground="#A9B3A5" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center" />
                       <TextBlock Text="   •   " Foreground="#596354" FontSize="9" VerticalAlignment="Center" />
                       <TextBlock Name="RetroCarouselPosition" Text="1 / 45" Foreground="{DynamicResource CurrentSystemAccentBrush}" FontSize="10" FontWeight="Bold" VerticalAlignment="Center" />
                     </StackPanel>
-                  </Grid>
                 </Border>
                 <StackPanel Name="CatalogManifestPanel" Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0">
                   <Ellipse Width="6" Height="6" Fill="{DynamicResource CurrentSystemAccentBrush}" Margin="0,0,8,0" />

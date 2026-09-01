@@ -143,9 +143,7 @@ internal static class WpfTemplateVerifier
                     || window.FindName("TitleCurrentPlatform") is not TextBlock titleCurrentPlatform
                     || window.FindName("CatalogMetalFrameOverlay") is not Grid catalogMetalFrameOverlay
                     || window.FindName("CatalogMetalOuterFrame") is not Border catalogMetalOuterFrame
-                    || window.FindName("CatalogMetalInnerFrame") is not Border catalogMetalInnerFrame
                     || window.FindName("CatalogHudHeader") is not Border catalogHudHeader
-                    || window.FindName("CatalogHudInnerFrame") is not Border catalogHudInnerFrame
                     || window.FindName("CatalogHudFieldsGrid") is not Grid catalogHudFieldsGrid
                     || window.FindName("CatalogHudOpenFolderButton") is not Button hudOpenFolder
                     || window.FindName("CatalogHudSupportButton") is not Button hudSupport
@@ -160,9 +158,8 @@ internal static class WpfTemplateVerifier
                     || window.FindName("TempFolderPath") is not TextBlock tempPath
                     || window.FindName("RetroCarouselInfoPanel") is not Grid retroCarouselInfoPanel
                     || window.FindName("RetroCarouselInfoAccentRail") is not System.Windows.Shapes.Rectangle retroCarouselInfoAccentRail
-                    || window.FindName("RetroCarouselInfoAccentLine") is not System.Windows.Shapes.Rectangle retroCarouselInfoAccentLine
                     || window.FindName("RetroCarouselFooter") is not Border retroCarouselFooter
-                    || window.FindName("RetroCarouselFooterInnerFrame") is not Border retroCarouselFooterInnerFrame
+                    || window.FindName("RetroCarouselFooterContent") is not StackPanel retroCarouselFooterContent
                     || !ReferenceEquals(hudOpenFolder.Style, hudButtonStyle)
                     || !ReferenceEquals(hudSupport.Style, hudButtonStyle)
                     || !ReferenceEquals(hudChooseInstall.Style, hudButtonStyle)
@@ -173,10 +170,7 @@ internal static class WpfTemplateVerifier
                     || hudSearchPanel.Background is not SolidColorBrush
                     || hudActionStatusPanel.Background is not SolidColorBrush
                     || catalogMetalOuterFrame.Background is not SolidColorBrush
-                    || catalogMetalInnerFrame.Background is not SolidColorBrush
-                    || catalogHudInnerFrame.Background is not SolidColorBrush
                     || retroCarouselInfoAccentRail.Fill is not SolidColorBrush
-                    || retroCarouselInfoAccentLine.Fill is not SolidColorBrush
                     || retroCarouselFooter.Background is not SolidColorBrush
                     || catalogHudHeader.CornerRadius != new CornerRadius(0)
                     || hudSearchPanel.CornerRadius != new CornerRadius(0)
@@ -189,17 +183,27 @@ internal static class WpfTemplateVerifier
                     || catalogMetalFrameOverlay.IsHitTestVisible
                     || catalogMetalFrameOverlay.Focusable
                     || Panel.GetZIndex(catalogMetalFrameOverlay) != 90
-                    || catalogMetalOuterFrame.BorderThickness != new Thickness(2)
-                    || catalogMetalInnerFrame.BorderThickness != new Thickness(1)
-                    || catalogHudHeader.BorderThickness != new Thickness(2)
-                    || catalogHudInnerFrame.BorderThickness != new Thickness(1)
-                    || retroCarouselFooter.BorderThickness != new Thickness(2)
-                    || retroCarouselFooterInnerFrame.BorderThickness != new Thickness(1)
+                    || catalogMetalOuterFrame.BorderThickness != new Thickness(1)
+                    || catalogHudHeader.BorderThickness != new Thickness(0, 0, 0, 1)
+                    || hudSearchPanel.BorderThickness != new Thickness(0)
+                    || retroCarouselFooter.BorderThickness != new Thickness(0)
                     || window.FindName("CatalogPageTitle") is not null
                     || window.FindName("CatalogPageDescription") is not null
                     || window.FindName("CatalogSystemCode") is not null
+                    || window.FindName("CatalogMetalInnerFrame") is not null
+                    || window.FindName("CatalogHudInnerFrame") is not null
+                    || window.FindName("RetroCarouselFooterInnerFrame") is not null
                     || window.FindName("RetroCarouselInfoOuterFrame") is not null
                     || window.FindName("RetroCarouselInfoInnerFrame") is not null
+                    || window.FindName("RetroCarouselInfoAccentLine") is not null
+                    || catalogMetalFrameOverlay.Children.Count != 1
+                    || !ReferenceEquals(catalogMetalFrameOverlay.Children[0], catalogMetalOuterFrame)
+                    || !ReferenceEquals(catalogHudHeader.Child, catalogHudFieldsGrid)
+                    || !ReferenceEquals(retroCarouselFooter.Child, retroCarouselFooterContent)
+                    || FindVisualDescendants<System.Windows.Shapes.Shape>(catalogMetalFrameOverlay).Any()
+                    || FindVisualDescendants<System.Windows.Shapes.Path>(catalogHudHeader).Any()
+                    || FindVisualDescendants<System.Windows.Shapes.Rectangle>(catalogHudHeader).Any()
+                    || FindVisualDescendants<Border>(retroCarouselFooter).Any()
                     || catalogHudFieldsGrid.ColumnDefinitions.Count != 3
                     || Grid.GetColumn(hudSearchPanel) != 2
                     || retroCarouselInfoPanel.Background is not null
@@ -207,13 +211,11 @@ internal static class WpfTemplateVerifier
                     || Math.Abs(retroCarouselInfoPanel.Height - 196) > double.Epsilon
                     || Math.Abs(retroCarouselInfoAccentRail.Width - 3) > double.Epsilon
                     || Math.Abs(retroCarouselInfoAccentRail.Height - 138) > double.Epsilon
-                    || Math.Abs(retroCarouselInfoAccentLine.Width - 72) > double.Epsilon
-                    || Math.Abs(retroCarouselInfoAccentLine.Height - 2) > double.Epsilon
                     || titleCurrentPlatform.TextTrimming != TextTrimming.CharacterEllipsis
                     || installPath.Visibility != Visibility.Visible
                     || tempPath.Visibility != Visibility.Visible)
                     throw new InvalidDataException(
-                        "O catálogo deve manter o nome da plataforma somente na barra superior e a descrição livre sobre o vídeo, sem quadro HUD.");
+                        "O catálogo deve usar uma composição limpa: contorno único, topo sem molduras sobrepostas e descrição livre sobre o vídeo.");
                 VerifyCatalogHudStyles(hudButtonStyle, hudSearchStyle);
                 if (window.FindName("SidebarHost") is not Border sidebarHost
                     || window.FindName("HomeNavButton") is not Button homeNavButton
@@ -1940,7 +1942,6 @@ internal static class WpfTemplateVerifier
             || window.FindName("CatalogHudSearchPanel") is not Border hudSearchPanel
             || window.FindName("RetroCarouselInfoPanel") is not Grid retroCarouselInfoPanel
             || window.FindName("RetroCarouselInfoAccentRail") is not System.Windows.Shapes.Rectangle retroCarouselInfoAccentRail
-            || window.FindName("RetroCarouselInfoAccentLine") is not System.Windows.Shapes.Rectangle retroCarouselInfoAccentLine
             || window.FindName("RetroCarouselTitle") is not TextBlock retroCarouselTitle
             || window.FindName("RetroCarouselPackageType") is not TextBlock retroCarouselPackageType
             || window.FindName("RetroCarouselPackageDescription") is not TextBlock retroCarouselPackageDescription
@@ -2269,12 +2270,6 @@ internal static class WpfTemplateVerifier
                     height,
                     "trilho de destaque da descrição livre");
                 AssertElementWithinAncestor(
-                    retroCarouselInfoAccentLine,
-                    retroCarouselInfoPanel,
-                    width,
-                    height,
-                    "linha de destaque da descrição livre");
-                AssertElementWithinAncestor(
                     retroCarouselTitle,
                     retroCarouselInfoPanel,
                     width,
@@ -2297,7 +2292,7 @@ internal static class WpfTemplateVerifier
                     catalogContentPanel,
                     width,
                     height,
-                    "rodapé metálico do carrossel");
+                    "rodapé limpo do carrossel");
 
                 foreach (var button in FindVisualDescendants<Button>(carouselViewport)
                              .Where(candidate => candidate.IsVisible
@@ -2683,18 +2678,19 @@ internal static class WpfTemplateVerifier
         double requestedHeight)
     {
         button.ApplyTemplate();
-        foreach (var templatePartName in new[] { "HudSurface", "HudRail", "HudCorner" })
-        {
-            if (button.Template.FindName(templatePartName, button) is not FrameworkElement templatePart)
-                throw new InvalidDataException(
-                    $"O botão HUD '{AutomationProperties.GetName(button)}' perdeu a peça {templatePartName}.");
-            AssertElementWithinAncestor(
-                templatePart,
-                button,
-                requestedWidth,
-                requestedHeight,
-                $"peça {templatePartName} do botão HUD '{AutomationProperties.GetName(button)}'");
-        }
+        if (button.Template.FindName("HudSurface", button) is not FrameworkElement hudSurface)
+            throw new InvalidDataException(
+                $"O botão HUD '{AutomationProperties.GetName(button)}' perdeu sua superfície única.");
+        if (button.Template.FindName("HudRail", button) is not null
+            || button.Template.FindName("HudCorner", button) is not null)
+            throw new InvalidDataException(
+                $"O botão HUD '{AutomationProperties.GetName(button)}' voltou a acumular trilhos ou cantos decorativos.");
+        AssertElementWithinAncestor(
+            hudSurface,
+            button,
+            requestedWidth,
+            requestedHeight,
+            $"superfície única do botão HUD '{AutomationProperties.GetName(button)}'");
     }
 
     private static IEnumerable<T> FindVisualDescendants<T>(DependencyObject root)
