@@ -12,6 +12,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Microsoft.Win32.SafeHandles;
@@ -128,6 +129,48 @@ internal static class WpfTemplateVerifier
                     || window.FindName("GlobalMusicVolumeSlider") is not Slider)
                     throw new InvalidDataException(
                         "Jogos locais precisa ser uma página separada e o player completo deve permanecer visível globalmente.");
+                if (window.Resources["CatalogHudButtonStyle"] is not Style
+                    {
+                        TargetType: { } hudButtonTarget
+                    } hudButtonStyle
+                    || hudButtonTarget != typeof(Button)
+                    || window.Resources["CatalogHudSearchBoxStyle"] is not Style
+                    {
+                        TargetType: { } hudSearchTarget
+                    } hudSearchStyle
+                    || hudSearchTarget != typeof(TextBox)
+                    || window.FindName("CatalogHudHeader") is not Border catalogHudHeader
+                    || window.FindName("CatalogHudOpenFolderButton") is not Button hudOpenFolder
+                    || window.FindName("CatalogHudSupportButton") is not Button hudSupport
+                    || window.FindName("CatalogFolderPanel") is not Border catalogFolderPanel
+                    || window.FindName("RetroCatalogFolderBar") is not Border retroFolderBar
+                    || window.FindName("CatalogHudSearchPanel") is not Border hudSearchPanel
+                    || window.FindName("CatalogHudActionStatusPanel") is not Border hudActionStatusPanel
+                    || window.FindName("CatalogSearchBox") is not TextBox hudSearchBox
+                    || window.FindName("RetroHudInstallFolderPath") is not TextBlock retroInstallPath
+                    || window.FindName("RetroHudTempFolderPath") is not TextBlock retroTempPath
+                    || !ReferenceEquals(hudOpenFolder.Style, hudButtonStyle)
+                    || !ReferenceEquals(hudSupport.Style, hudButtonStyle)
+                    || !ReferenceEquals(hudSearchBox.Style, hudSearchStyle)
+                    || catalogHudHeader.Background is not SolidColorBrush
+                    || catalogFolderPanel.Background is not SolidColorBrush
+                    || retroFolderBar.Background is not SolidColorBrush
+                    || hudSearchPanel.Background is not SolidColorBrush
+                    || hudActionStatusPanel.Background is not SolidColorBrush
+                    || catalogHudHeader.CornerRadius != new CornerRadius(0)
+                    || catalogFolderPanel.CornerRadius != new CornerRadius(0)
+                    || retroFolderBar.CornerRadius != new CornerRadius(0)
+                    || hudSearchPanel.CornerRadius != new CornerRadius(0)
+                    || hudActionStatusPanel.CornerRadius != new CornerRadius(0)
+                    || BindingOperations.GetBindingExpression(
+                           retroInstallPath,
+                           TextBlock.TextProperty)?.ParentBinding.ElementName != "InstallFolderPath"
+                    || BindingOperations.GetBindingExpression(
+                           retroTempPath,
+                           TextBlock.TextProperty)?.ParentBinding.ElementName != "TempFolderPath")
+                    throw new InvalidDataException(
+                        "O topo do catálogo precisa manter o HUD sólido e isolado com título, ações, pastas e pesquisa.");
+                VerifyCatalogHudStyles(hudButtonStyle, hudSearchStyle);
                 if (window.FindName("SidebarHost") is not Border sidebarHost
                     || window.FindName("HomeNavButton") is not Button homeNavButton
                     || window.FindName("LibraryNavButton") is not Button libraryNavButton
@@ -142,6 +185,7 @@ internal static class WpfTemplateVerifier
                     || Math.Abs(sidebarLed.Width - 2) > double.Epsilon
                     || sidebarLed.HorizontalAlignment != HorizontalAlignment.Left
                     || sidebarLed.VerticalAlignment != VerticalAlignment.Stretch
+                    || sidebarLed.CacheMode is not BitmapCache
                     || sidebarLed.Fill is not SolidColorBrush ledCore
                     || ledCore.Color != Color.FromRgb(183, 255, 70)
                     || sidebarLed.Effect is not System.Windows.Media.Effects.DropShadowEffect ledGlow
@@ -156,6 +200,7 @@ internal static class WpfTemplateVerifier
                     || window.FindName("SidebarFrameLeftEnergySegments") is not null)
                     throw new InvalidDataException(
                         "O menu lateral original precisa manter um LED fino com núcleo brilhante e luz projetada para dentro, sem moldura tecnológica.");
+                VerifySidebarLedPulse(sidebarLedLayer, sidebarLed, ledGlow);
                 if (window.FindName("LicenseConsumerText") is not TextBlock licenseConsumer
                     || licenseConsumer.Text != "Cliente ••••FIER"
                     || licenseConsumer.Text.Contains("TR-WPF-VERIFIER", StringComparison.Ordinal)
@@ -228,6 +273,8 @@ internal static class WpfTemplateVerifier
                     || globalBright.Color != Color.FromRgb(183, 255, 70)
                     || sidebarLed.Fill is not SolidColorBrush ledAccent
                     || ledAccent.Color != globalBright.Color
+                    || !sidebarLed.HasAnimatedProperties
+                    || !ledGlow.HasAnimatedProperties
                     || homeNavButton.Foreground is not SolidColorBrush homeNavForeground
                     || libraryNavButton.Foreground is not SolidColorBrush libraryNavForeground
                     || gameManagerNavButton.Foreground is not SolidColorBrush gameManagerNavForeground
@@ -274,6 +321,112 @@ internal static class WpfTemplateVerifier
             throw new InvalidOperationException(
                 "O catálogo WPF falhou ao criar os templates reais.",
                 failure);
+    }
+
+    private static void VerifySidebarLedPulse(
+        Grid sidebarLedLayer,
+        System.Windows.Shapes.Rectangle sidebarLed,
+        System.Windows.Media.Effects.DropShadowEffect ledGlow)
+    {
+        if (sidebarLedLayer.Triggers.Count != 2
+            || !ReferenceEquals(sidebarLed.Effect, ledGlow))
+            throw new InvalidDataException(
+                "O LED lateral precisa manter exatamente os ciclos de início e encerramento do pulso.");
+
+        var loadedTriggers = sidebarLedLayer.Triggers
+            .OfType<EventTrigger>()
+            .Where(trigger => trigger.RoutedEvent == FrameworkElement.LoadedEvent)
+            .ToArray();
+        var unloadedTriggers = sidebarLedLayer.Triggers
+            .OfType<EventTrigger>()
+            .Where(trigger => trigger.RoutedEvent == FrameworkElement.UnloadedEvent)
+            .ToArray();
+        if (loadedTriggers.Length != 1
+            || loadedTriggers[0].Actions.Count != 1
+            || loadedTriggers[0].Actions[0] is not BeginStoryboard
+            {
+                Name: "SidebarLedPulse",
+                Storyboard: { } pulseStoryboard
+            }
+            || unloadedTriggers.Length != 1
+            || unloadedTriggers[0].Actions.Count != 1
+            || unloadedTriggers[0].Actions[0] is not RemoveStoryboard
+            {
+                BeginStoryboardName: "SidebarLedPulse"
+            }
+            || !pulseStoryboard.AutoReverse
+            || !pulseStoryboard.RepeatBehavior.Equals(RepeatBehavior.Forever)
+            || pulseStoryboard.Children.Count != 3)
+            throw new InvalidDataException(
+                "O LED lateral precisa iniciar e encerrar um único pulso suave, infinito e autorreversível.");
+
+        var animations = pulseStoryboard.Children
+            .OfType<DoubleAnimation>()
+            .ToArray();
+        if (animations.Length != 3)
+            throw new InvalidDataException(
+                "O pulso do LED precisa animar núcleo, intensidade do halo e alcance da luz.");
+
+        DoubleAnimation RequireAnimation(string targetName, string targetProperty)
+        {
+            var matches = animations.Where(animation =>
+                    Storyboard.GetTargetName(animation).Equals(
+                        targetName,
+                        StringComparison.Ordinal)
+                    && Storyboard.GetTargetProperty(animation)?.Path.Equals(
+                        targetProperty,
+                        StringComparison.Ordinal) == true)
+                .ToArray();
+            if (matches.Length != 1)
+                throw new InvalidDataException(
+                    $"A animação {targetName}.{targetProperty} precisa existir exatamente uma vez.");
+            var animation = matches[0];
+            if (!animation.Duration.HasTimeSpan
+                || animation.Duration.TimeSpan != TimeSpan.FromSeconds(1)
+                || animation.EasingFunction is not SineEase
+                {
+                    EasingMode: EasingMode.EaseInOut
+                })
+                throw new InvalidDataException(
+                    $"A animação {targetName}.{targetProperty} precisa pulsar suavemente em um segundo.");
+            return animation;
+        }
+
+        var coreOpacity = RequireAnimation("SidebarLedBar", "Opacity");
+        var glowOpacity = RequireAnimation("SidebarLedGlow", "Opacity");
+        var glowRadius = RequireAnimation("SidebarLedGlow", "BlurRadius");
+        if (coreOpacity.From != .35
+            || coreOpacity.To != 1
+            || glowOpacity.From != .20
+            || glowOpacity.To != .98
+            || glowRadius.From != 6
+            || glowRadius.To != 24)
+            throw new InvalidDataException(
+                "A amplitude do pulso precisa tornar visíveis o brilho e a luz refletida no menu.");
+    }
+
+    private static void VerifyCatalogHudStyles(Style buttonStyle, Style searchStyle)
+    {
+        var buttonTemplate = buttonStyle.Setters
+                                 .OfType<Setter>()
+                                 .SingleOrDefault(setter => setter.Property == Button.TemplateProperty)
+                                 ?.Value as ControlTemplate
+                             ?? throw new InvalidDataException(
+                                 "O botão HUD precisa possuir template próprio.");
+        var searchTemplate = searchStyle.Setters
+                                 .OfType<Setter>()
+                                 .SingleOrDefault(setter => setter.Property == TextBox.TemplateProperty)
+                                 ?.Value as ControlTemplate
+                             ?? throw new InvalidDataException(
+                                 "A pesquisa HUD precisa possuir template próprio.");
+        if (!buttonTemplate.Triggers.OfType<Trigger>().Any(trigger =>
+                trigger.Property == UIElement.IsKeyboardFocusedProperty
+                && trigger.Value is true)
+            || !searchTemplate.Triggers.OfType<Trigger>().Any(trigger =>
+                trigger.Property == UIElement.IsKeyboardFocusedProperty
+                && trigger.Value is true))
+            throw new InvalidDataException(
+                "Botões e pesquisa do HUD precisam indicar foco de teclado explicitamente.");
     }
 
     private static void VerifyExplorerStartInfo()
@@ -1709,7 +1862,13 @@ internal static class WpfTemplateVerifier
             || window.FindName("TitleBarHost") is not Border titleBarHost
             || window.FindName("TitleBranding") is not StackPanel titleBranding
             || window.FindName("WindowChromeButtons") is not StackPanel windowChromeButtons
-            || window.FindName("GlobalMusicPlayer") is not Border globalMusicPlayer)
+            || window.FindName("GlobalMusicPlayer") is not Border globalMusicPlayer
+            || window.FindName("CatalogPage") is not Grid catalogPage
+            || window.FindName("CatalogHudHeader") is not Border catalogHudHeader
+            || window.FindName("CatalogHudOpenFolderButton") is not Button hudOpenFolder
+            || window.FindName("CatalogHudSupportButton") is not Button hudSupport
+            || window.FindName("RetroCatalogFolderBar") is not Border retroFolderBar
+            || window.FindName("CatalogHudSearchPanel") is not Border hudSearchPanel)
             throw new InvalidDataException("A área responsiva do vídeo de fundo não foi criada.");
         if (!background.ClipToBounds
             || !host.ClipToBounds
@@ -1816,6 +1975,33 @@ internal static class WpfTemplateVerifier
                         $"O player global sobrepôs a marca ou os controles em {width:0}×{height:0}: " +
                         $"marca={brandingBounds}, player={playerBounds}, janela={chromeBounds}.");
 
+                var hudHeaderBounds = catalogHudHeader
+                    .TransformToAncestor(catalogPage)
+                    .TransformBounds(new Rect(catalogHudHeader.RenderSize));
+                var folderBarBounds = retroFolderBar
+                    .TransformToAncestor(catalogPage)
+                    .TransformBounds(new Rect(retroFolderBar.RenderSize));
+                var searchPanelBounds = hudSearchPanel
+                    .TransformToAncestor(catalogPage)
+                    .TransformBounds(new Rect(hudSearchPanel.RenderSize));
+                const double hudTolerance = 0.5;
+                if (!catalogHudHeader.IsVisible
+                    || !retroFolderBar.IsVisible
+                    || !hudSearchPanel.IsVisible
+                    || hudHeaderBounds.Left < -hudTolerance
+                    || hudHeaderBounds.Right > catalogPage.ActualWidth + hudTolerance
+                    || folderBarBounds.Left < -hudTolerance
+                    || folderBarBounds.Right > catalogPage.ActualWidth + hudTolerance
+                    || searchPanelBounds.Left < -hudTolerance
+                    || searchPanelBounds.Right > catalogPage.ActualWidth + hudTolerance
+                    || hudHeaderBounds.Bottom > folderBarBounds.Top + hudTolerance
+                    || folderBarBounds.Bottom > searchPanelBounds.Top + hudTolerance
+                    || searchPanelBounds.Bottom > catalogPage.ActualHeight + hudTolerance
+                    || hudSearchPanel.ActualWidth < 300)
+                    throw new InvalidDataException(
+                        $"O HUD superior perdeu a ordem ou ultrapassou o catálogo em {width:0}×{height:0}: " +
+                        $"cabeçalho={hudHeaderBounds}, pastas={folderBarBounds}, busca={searchPanelBounds}.");
+
                 if (Math.Abs(player.Width - host.ActualWidth) > 0.5
                     || Math.Abs(player.Height - host.ActualHeight) > 0.5
                     || Math.Abs(systemPlayer.Width - systemHost.ActualWidth) > 0.5
@@ -1877,6 +2063,54 @@ internal static class WpfTemplateVerifier
                     width,
                     height,
                     "player global de música");
+                AssertElementWithinAncestor(
+                    catalogHudHeader,
+                    catalogPage,
+                    width,
+                    height,
+                    "cabeçalho HUD do catálogo");
+                AssertElementWithinAncestor(
+                    hudOpenFolder,
+                    catalogHudHeader,
+                    width,
+                    height,
+                    "ação abrir pasta do HUD");
+                AssertElementWithinAncestor(
+                    hudSupport,
+                    catalogHudHeader,
+                    width,
+                    height,
+                    "ação suporte do HUD");
+                AssertHudButtonTemplateWithinButton(
+                    hudOpenFolder,
+                    width,
+                    height);
+                AssertHudButtonTemplateWithinButton(
+                    hudSupport,
+                    width,
+                    height);
+                AssertElementWithinAncestor(
+                    retroFolderBar,
+                    catalogPage,
+                    width,
+                    height,
+                    "barra HUD de pastas");
+                AssertElementWithinAncestor(
+                    hudSearchPanel,
+                    catalogPage,
+                    width,
+                    height,
+                    "painel HUD de pesquisa");
+
+                foreach (var hudButton in FindVisualDescendants<Button>(retroFolderBar)
+                             .Where(candidate => candidate.IsVisible
+                                                 && ReferenceEquals(
+                                                     candidate.Style,
+                                                     window.Resources["CatalogHudButtonStyle"])))
+                    AssertHudButtonTemplateWithinButton(
+                        hudButton,
+                        width,
+                        height);
 
                 foreach (var button in FindVisualDescendants<Button>(carouselViewport)
                              .Where(candidate => candidate.IsVisible
@@ -2253,6 +2487,26 @@ internal static class WpfTemplateVerifier
                 $"{requestedWidth:0}×{requestedHeight:0}: " +
                 $"elemento={bounds}, ancestral=" +
                 $"{ancestor.ActualWidth:0.##}×{ancestor.ActualHeight:0.##}.");
+        }
+    }
+
+    private static void AssertHudButtonTemplateWithinButton(
+        Button button,
+        double requestedWidth,
+        double requestedHeight)
+    {
+        button.ApplyTemplate();
+        foreach (var templatePartName in new[] { "HudSurface", "HudRail", "HudCorner" })
+        {
+            if (button.Template.FindName(templatePartName, button) is not FrameworkElement templatePart)
+                throw new InvalidDataException(
+                    $"O botão HUD '{AutomationProperties.GetName(button)}' perdeu a peça {templatePartName}.");
+            AssertElementWithinAncestor(
+                templatePart,
+                button,
+                requestedWidth,
+                requestedHeight,
+                $"peça {templatePartName} do botão HUD '{AutomationProperties.GetName(button)}'");
         }
     }
 
