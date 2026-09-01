@@ -139,10 +139,16 @@ internal static class WpfTemplateVerifier
                         TargetType: { } hudSearchTarget
                     } hudSearchStyle
                     || hudSearchTarget != typeof(TextBox)
-                    || window.FindName("CatalogPage") is not Grid catalogPage
+                     || window.FindName("CatalogPage") is not Grid catalogPage
+                    || window.FindName("TitleCurrentPlatform") is not TextBlock titleCurrentPlatform
+                    || window.FindName("CatalogMetalFrameOverlay") is not Grid catalogMetalFrameOverlay
+                    || window.FindName("CatalogMetalOuterFrame") is not Border catalogMetalOuterFrame
+                    || window.FindName("CatalogMetalInnerFrame") is not Border catalogMetalInnerFrame
                     || window.FindName("CatalogHudHeader") is not Border catalogHudHeader
+                    || window.FindName("CatalogHudInnerFrame") is not Border catalogHudInnerFrame
                     || window.FindName("CatalogHudOpenFolderButton") is not Button hudOpenFolder
                     || window.FindName("CatalogHudSupportButton") is not Button hudSupport
+                    || window.FindName("CatalogBottomActions") is not StackPanel catalogBottomActions
                     || window.FindName("CatalogHudChooseInstallButton") is not Button hudChooseInstall
                     || window.FindName("CatalogHudChooseTempButton") is not Button hudChooseTemp
                     || window.FindName("CatalogHudResetTempButton") is not Button hudResetTemp
@@ -151,6 +157,11 @@ internal static class WpfTemplateVerifier
                     || window.FindName("CatalogSearchBox") is not TextBox hudSearchBox
                     || window.FindName("InstallFolderPath") is not TextBlock installPath
                     || window.FindName("TempFolderPath") is not TextBlock tempPath
+                    || window.FindName("RetroCarouselInfoPanel") is not Grid retroCarouselInfoPanel
+                    || window.FindName("RetroCarouselInfoOuterFrame") is not Border retroCarouselInfoOuterFrame
+                    || window.FindName("RetroCarouselInfoInnerFrame") is not Border retroCarouselInfoInnerFrame
+                    || window.FindName("RetroCarouselFooter") is not Border retroCarouselFooter
+                    || window.FindName("RetroCarouselFooterInnerFrame") is not Border retroCarouselFooterInnerFrame
                     || !ReferenceEquals(hudOpenFolder.Style, hudButtonStyle)
                     || !ReferenceEquals(hudSupport.Style, hudButtonStyle)
                     || !ReferenceEquals(hudChooseInstall.Style, hudButtonStyle)
@@ -160,6 +171,12 @@ internal static class WpfTemplateVerifier
                     || catalogHudHeader.Background is not SolidColorBrush
                     || hudSearchPanel.Background is not SolidColorBrush
                     || hudActionStatusPanel.Background is not SolidColorBrush
+                    || catalogMetalOuterFrame.Background is not SolidColorBrush
+                    || catalogMetalInnerFrame.Background is not SolidColorBrush
+                    || catalogHudInnerFrame.Background is not SolidColorBrush
+                    || retroCarouselInfoOuterFrame.Background is not SolidColorBrush
+                    || retroCarouselInfoInnerFrame.Background is not SolidColorBrush
+                    || retroCarouselFooter.Background is not SolidColorBrush
                     || catalogHudHeader.CornerRadius != new CornerRadius(0)
                     || hudSearchPanel.CornerRadius != new CornerRadius(0)
                     || hudActionStatusPanel.CornerRadius != new CornerRadius(0)
@@ -167,10 +184,23 @@ internal static class WpfTemplateVerifier
                     || Math.Abs(catalogHudHeader.Height - 50) > double.Epsilon
                     || Grid.GetRow(catalogHudHeader) != 0
                     || Grid.GetRow(hudSearchPanel) != 0
+                    || Grid.GetColumn(catalogBottomActions) != 1
+                    || catalogMetalFrameOverlay.IsHitTestVisible
+                    || catalogMetalFrameOverlay.Focusable
+                    || Panel.GetZIndex(catalogMetalFrameOverlay) != 90
+                    || catalogMetalOuterFrame.BorderThickness != new Thickness(2)
+                    || catalogMetalInnerFrame.BorderThickness != new Thickness(1)
+                    || catalogHudHeader.BorderThickness != new Thickness(2)
+                    || catalogHudInnerFrame.BorderThickness != new Thickness(1)
+                    || retroCarouselInfoOuterFrame.BorderThickness != new Thickness(2)
+                    || retroCarouselInfoInnerFrame.BorderThickness != new Thickness(1)
+                    || retroCarouselFooter.BorderThickness != new Thickness(2)
+                    || retroCarouselFooterInnerFrame.BorderThickness != new Thickness(1)
+                    || titleCurrentPlatform.TextTrimming != TextTrimming.CharacterEllipsis
                     || installPath.Visibility != Visibility.Visible
                     || tempPath.Visibility != Visibility.Visible)
                     throw new InvalidDataException(
-                        "O topo do catálogo precisa concentrar título, pastas, pesquisa e ações em uma única barra HUD sólida.");
+                        "O painel precisa manter molduras metálicas no estilo das capas, topo HUD sólido e ações inferiores separadas.");
                 VerifyCatalogHudStyles(hudButtonStyle, hudSearchStyle);
                 if (window.FindName("SidebarHost") is not Border sidebarHost
                     || window.FindName("HomeNavButton") is not Button homeNavButton
@@ -213,6 +243,9 @@ internal static class WpfTemplateVerifier
                 var ps3 = window.CatalogCategories.Single(item =>
                     item.Id.Equals("playstation-3", StringComparison.OrdinalIgnoreCase));
                 openCatalog.Invoke(window, [ps3]);
+                if (titleCurrentPlatform.Text != ps3.DisplayName)
+                    throw new InvalidDataException(
+                        "A barra superior não apresentou o nome da plataforma selecionada.");
                 if (sidebarHost.Background is not SolidColorBrush renderedSidebar
                     || renderedSidebar.Color != Color.FromRgb(5, 7, 5))
                     throw new InvalidDataException(
@@ -1866,9 +1899,12 @@ internal static class WpfTemplateVerifier
             || window.FindName("TitleBranding") is not StackPanel titleBranding
             || window.FindName("WindowChromeButtons") is not StackPanel windowChromeButtons
             || window.FindName("GlobalMusicPlayer") is not Border globalMusicPlayer
+            || window.FindName("TitleCurrentPlatform") is not TextBlock titleCurrentPlatform
             || window.FindName("CatalogPage") is not Grid catalogPage
+            || window.FindName("CatalogMetalFrameOverlay") is not Grid catalogMetalFrameOverlay
             || window.FindName("CatalogHudHeader") is not Border catalogHudHeader
             || window.FindName("CatalogContentPanel") is not Grid catalogContentPanel
+            || window.FindName("CatalogBottomActions") is not StackPanel catalogBottomActions
             || window.FindName("CatalogHudOpenFolderButton") is not Button hudOpenFolder
             || window.FindName("CatalogHudSupportButton") is not Button hudSupport
             || window.FindName("CatalogHudChooseInstallButton") is not Button hudChooseInstall
@@ -1876,7 +1912,11 @@ internal static class WpfTemplateVerifier
             || window.FindName("CatalogHudResetTempButton") is not Button hudResetTemp
             || window.FindName("InstallFolderPath") is not TextBlock installPath
             || window.FindName("TempFolderPath") is not TextBlock tempPath
-            || window.FindName("CatalogHudSearchPanel") is not Border hudSearchPanel)
+            || window.FindName("CatalogHudSearchPanel") is not Border hudSearchPanel
+            || window.FindName("RetroCarouselInfoPanel") is not Grid retroCarouselInfoPanel
+            || window.FindName("RetroCarouselInfoOuterFrame") is not Border retroCarouselInfoOuterFrame
+            || window.FindName("RetroCarouselInfoInnerFrame") is not Border retroCarouselInfoInnerFrame
+            || window.FindName("RetroCarouselFooter") is not Border retroCarouselFooter)
             throw new InvalidDataException("A área responsiva do vídeo de fundo não foi criada.");
         if (!background.ClipToBounds
             || !host.ClipToBounds
@@ -2010,6 +2050,9 @@ internal static class WpfTemplateVerifier
                 var searchPanelBounds = hudSearchPanel
                     .TransformToAncestor(catalogHudHeader)
                     .TransformBounds(new Rect(hudSearchPanel.RenderSize));
+                var bottomActionBounds = catalogBottomActions
+                    .TransformToAncestor(catalogContentPanel)
+                    .TransformBounds(new Rect(catalogBottomActions.RenderSize));
                 const double hudTolerance = 0.5;
                 if (!catalogHudHeader.IsVisible
                     || !hudSearchPanel.IsVisible
@@ -2025,6 +2068,10 @@ internal static class WpfTemplateVerifier
                     || Math.Abs(catalogHudHeader.ActualHeight - 50) > hudTolerance
                     || hudHeaderBounds.Bottom > contentBounds.Top + hudTolerance
                     || contentBounds.Bottom > catalogPage.ActualHeight + hudTolerance
+                    || bottomActionBounds.Right > catalogContentPanel.ActualWidth + hudTolerance
+                    || bottomActionBounds.Bottom > catalogContentPanel.ActualHeight + hudTolerance
+                    || Math.Abs(bottomActionBounds.Right - catalogContentPanel.ActualWidth) > hudTolerance
+                    || bottomActionBounds.Top < catalogContentPanel.ActualHeight - 54
                     || hudSearchPanel.ActualWidth < 70
                     || installPath.ActualWidth < 12
                     || tempPath.ActualWidth < 12)
@@ -2112,6 +2159,18 @@ internal static class WpfTemplateVerifier
                     height,
                     "conteúdo ampliado abaixo do HUD");
                 AssertElementWithinAncestor(
+                    catalogMetalFrameOverlay,
+                    catalogPage,
+                    width,
+                    height,
+                    "moldura metálica integral do catálogo");
+                AssertElementWithinAncestor(
+                    catalogBottomActions,
+                    catalogContentPanel,
+                    width,
+                    height,
+                    "ações inferiores do catálogo");
+                AssertElementWithinAncestor(
                     hudSearchPanel,
                     catalogHudHeader,
                     width,
@@ -2134,9 +2193,7 @@ internal static class WpfTemplateVerifier
                          {
                              hudChooseInstall,
                              hudChooseTemp,
-                             hudResetTemp,
-                             hudOpenFolder,
-                             hudSupport
+                             hudResetTemp
                          })
                 {
                     AssertElementWithinAncestor(
@@ -2150,6 +2207,45 @@ internal static class WpfTemplateVerifier
                         width,
                         height);
                 }
+
+                foreach (var bottomButton in new[] { hudOpenFolder, hudSupport })
+                {
+                    AssertElementWithinAncestor(
+                        bottomButton,
+                        catalogBottomActions,
+                        width,
+                        height,
+                        $"ação inferior '{AutomationProperties.GetName(bottomButton)}'");
+                    AssertHudButtonTemplateWithinButton(
+                        bottomButton,
+                        width,
+                        height);
+                }
+
+                AssertElementWithinAncestor(
+                    titleCurrentPlatform,
+                    titleBranding,
+                    width,
+                    height,
+                    "nome da plataforma na barra superior");
+                AssertElementWithinAncestor(
+                    retroCarouselInfoOuterFrame,
+                    retroCarouselInfoPanel,
+                    width,
+                    height,
+                    "moldura externa da descrição do jogo");
+                AssertElementWithinAncestor(
+                    retroCarouselInfoInnerFrame,
+                    retroCarouselInfoPanel,
+                    width,
+                    height,
+                    "moldura interna da descrição do jogo");
+                AssertElementWithinAncestor(
+                    retroCarouselFooter,
+                    catalogContentPanel,
+                    width,
+                    height,
+                    "rodapé metálico do carrossel");
 
                 foreach (var button in FindVisualDescendants<Button>(carouselViewport)
                              .Where(candidate => candidate.IsVisible

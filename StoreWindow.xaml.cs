@@ -3858,6 +3858,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
         SetText("PageTitle", SelectedCategory.DisplayName);
         SetText("PageSubtitle", SelectedCategory.Description);
+        SetText("TitleCurrentPlatform", SelectedCategory.DisplayName);
         SetText("CatalogPageTitle", SelectedCategory.DisplayName);
         SetText("CatalogPageDescription", SelectedCategory.Description);
         SetText("CatalogSystemCode", SelectedCategory.ShortCode);
