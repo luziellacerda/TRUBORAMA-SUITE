@@ -2013,57 +2013,13 @@
                       Stroke="{DynamicResource CurrentSystemBrightBrush}"
                       StrokeThickness="1"
                       IsHitTestVisible="False" />
-                <Grid Margin="3,0">
+                <Grid x:Name="CatalogHudFieldsGrid" Margin="3,0">
                   <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="1.1*" />
-                    <ColumnDefinition Width="1*" />
-                    <ColumnDefinition Width="1.1*" />
-                    <ColumnDefinition Width="1.45*" />
+                    <ColumnDefinition Width="1.05*" />
+                    <ColumnDefinition Width="1.15*" />
+                    <ColumnDefinition Width="1.65*" />
                   </Grid.ColumnDefinitions>
-                  <Grid Grid.Column="0" Margin="0,0,6,0">
-                    <Grid.ColumnDefinitions>
-                      <ColumnDefinition Width="7" />
-                      <ColumnDefinition Width="*" />
-                      <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <Rectangle Width="3"
-                               HorizontalAlignment="Left"
-                               Margin="0,3,0,3"
-                               Fill="{DynamicResource CurrentSystemAccentBrush}">
-                      <UIElement.Effect>
-                        <DropShadowEffect Color="{DynamicResource CurrentSystemAccentColor}"
-                                          BlurRadius="8"
-                                          ShadowDepth="0"
-                                          Opacity=".72" />
-                      </UIElement.Effect>
-                    </Rectangle>
-                      <TextBlock Name="CatalogPageTitle"
-                                 Grid.Column="1"
-                                 Text="Sistemas retrô"
-                                 FontSize="20"
-                                 FontWeight="Bold"
-                                 FontFamily="Bahnschrift SemiCondensed"
-                                 VerticalAlignment="Center"
-                                 TextTrimming="CharacterEllipsis" />
-                      <Border Grid.Column="2"
-                              Background="#FF0B100D"
-                              BorderBrush="{DynamicResource CurrentSystemLineBrush}"
-                              BorderThickness="1"
-                              CornerRadius="2"
-                              Padding="5,2"
-                              Margin="5,4,0,4"
-                              VerticalAlignment="Center">
-                        <TextBlock Name="CatalogSystemCode"
-                                   Text="RETRO"
-                                   Foreground="{DynamicResource CurrentSystemAccentBrush}"
-                                   FontSize="7"
-                                   FontWeight="Bold" />
-                      </Border>
-                    <TextBlock Name="CatalogPageDescription"
-                               Text="Escolha um pacote e baixe com um clique"
-                               Visibility="Collapsed" />
-                  </Grid>
-                  <Border Grid.Column="1"
+                  <Border Grid.Column="0"
                           Margin="0,0,6,0"
                           Padding="4,0"
                           Background="#FF080C09"
@@ -2108,7 +2064,7 @@
                               Click="ChooseInstallFolder_Click" />
                     </Grid>
                   </Border>
-                  <Border Grid.Column="2"
+                  <Border Grid.Column="1"
                           Margin="0,0,6,0"
                           Padding="4,0"
                           Background="#FF080C09"
@@ -2164,7 +2120,7 @@
                     </Grid>
                   </Border>
                   <Border x:Name="CatalogHudSearchPanel"
-                          Grid.Column="3"
+                          Grid.Column="2"
                           Margin="0,0,6,0"
                           Padding="0"
                           Background="#FF080C09"
@@ -2267,69 +2223,53 @@
                           ClipToBounds="True">
                     <Grid x:Name="RetroCarouselInfoPanel"
                           Width="710"
-                          Height="230"
+                          Height="196"
                           HorizontalAlignment="Right"
                           VerticalAlignment="Bottom"
-                          Margin="0,0,0,8"
+                          Margin="0,0,0,26"
                           IsHitTestVisible="False"
                           Panel.ZIndex="2">
-                      <Border x:Name="RetroCarouselInfoOuterFrame"
-                              Background="Transparent"
-                              BorderBrush="#FF343A37"
-                              BorderThickness="2" />
-                      <Border x:Name="RetroCarouselInfoInnerFrame"
-                              Margin="5"
-                              Background="Transparent"
-                              BorderBrush="{DynamicResource CurrentSystemLineBrush}"
-                              BorderThickness="1" />
-                      <Rectangle Width="112" Height="2"
-                                 HorizontalAlignment="Left" VerticalAlignment="Top"
-                                 Margin="20,2,0,0"
-                                 Fill="{DynamicResource CurrentSystemAccentBrush}" />
-                      <Rectangle Width="68" Height="2"
-                                 HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                                 Margin="0,0,20,2"
-                                 Fill="{DynamicResource CurrentSystemAccentBrush}"
-                                 Opacity=".72" />
-                      <Path Data="M0,14 L0,0 L14,0"
-                            Width="15" Height="15"
-                            HorizontalAlignment="Left" VerticalAlignment="Top"
-                            Margin="3"
-                            Stroke="{DynamicResource CurrentSystemBrightBrush}"
-                            StrokeThickness="1" />
-                      <Path Data="M0,0 L14,0 L14,14"
-                            Width="15" Height="15"
-                            HorizontalAlignment="Right" VerticalAlignment="Top"
-                            Margin="3"
-                            Stroke="{DynamicResource CurrentSystemBrightBrush}"
-                            StrokeThickness="1" />
-                      <Ellipse Width="4" Height="4"
-                               HorizontalAlignment="Left" VerticalAlignment="Bottom"
-                               Margin="10"
-                               Fill="#FF737D76" Stroke="#FF050706" StrokeThickness="1" />
-                      <Ellipse Width="4" Height="4"
-                               HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                               Margin="10"
-                               Fill="#FF737D76" Stroke="#FF050706" StrokeThickness="1" />
-                      <Rectangle
-                                 Width="2"
-                                 Height="158"
+                      <Rectangle x:Name="RetroCarouselInfoAccentRail"
+                                 Width="3"
+                                 Height="138"
                                  HorizontalAlignment="Left"
                                  VerticalAlignment="Center"
-                                 Margin="7,0,0,0"
+                                 Margin="0,0,0,0"
                                  Fill="{DynamicResource CurrentSystemAccentBrush}"
-                                 Opacity=".72" />
-                      <Grid Margin="24,7,12,7">
+                                 Opacity=".94">
+                        <UIElement.Effect>
+                          <DropShadowEffect Color="{DynamicResource CurrentSystemAccentColor}"
+                                            BlurRadius="9"
+                                            ShadowDepth="0"
+                                            Opacity=".48" />
+                        </UIElement.Effect>
+                      </Rectangle>
+                      <Rectangle x:Name="RetroCarouselInfoAccentLine"
+                                 Width="72"
+                                 Height="2"
+                                 HorizontalAlignment="Left"
+                                 VerticalAlignment="Top"
+                                 Margin="20,10,0,0"
+                                 Fill="{DynamicResource CurrentSystemAccentBrush}"
+                                 Opacity=".86" />
+                      <Grid Margin="20,18,10,7">
                         <StackPanel HorizontalAlignment="Stretch"
                                     VerticalAlignment="Center">
                           <TextBlock Name="RetroCarouselTitle"
                                      Text="Sistema retrô"
                                      Foreground="White"
-                                     FontSize="22"
+                                     FontSize="24"
                                      FontWeight="Bold"
                                      FontFamily="Bahnschrift SemiCondensed"
                                      TextOptions.TextRenderingMode="ClearType"
-                                     TextTrimming="CharacterEllipsis" />
+                                     TextTrimming="CharacterEllipsis">
+                            <TextBlock.Effect>
+                              <DropShadowEffect Color="#FF000000"
+                                                BlurRadius="5"
+                                                ShadowDepth="1"
+                                                Opacity=".84" />
+                            </TextBlock.Effect>
+                          </TextBlock>
                           <TextBlock Name="RetroCarouselPackageType"
                                      Text="Jogos retrô • Catálogo completo"
                                      Foreground="{DynamicResource CurrentSystemAccentBrush}"
@@ -2339,10 +2279,10 @@
                                      TextTrimming="CharacterEllipsis" />
                            <TextBlock Name="RetroCarouselPackageDescription"
                                      Text="Coleção Turborama • Tamanho sob consulta"
-                                     Foreground="#F2F6F0"
-                                     FontSize="11.5"
+                                     Foreground="#FFFFFFFF"
+                                     FontSize="12"
                                      FontWeight="SemiBold"
-                                     LineHeight="17"
+                                     LineHeight="18"
                                      Margin="0,7,0,0"
                                      TextWrapping="Wrap"
                                      TextOptions.TextRenderingMode="ClearType"

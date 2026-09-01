@@ -3859,9 +3859,6 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         SetText("PageTitle", SelectedCategory.DisplayName);
         SetText("PageSubtitle", SelectedCategory.Description);
         SetText("TitleCurrentPlatform", SelectedCategory.DisplayName);
-        SetText("CatalogPageTitle", SelectedCategory.DisplayName);
-        SetText("CatalogPageDescription", SelectedCategory.Description);
-        SetText("CatalogSystemCode", SelectedCategory.ShortCode);
 
         var itemLabel = result.TotalItems == 1 ? "1 item" : $"{result.TotalItems} itens";
         var pageLabel = result.TotalPages == 1
