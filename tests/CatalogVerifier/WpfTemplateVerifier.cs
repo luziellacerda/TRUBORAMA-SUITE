@@ -129,6 +129,22 @@ internal static class WpfTemplateVerifier
                     || window.FindName("GlobalMusicVolumeSlider") is not Slider)
                     throw new InvalidDataException(
                         "Jogos locais precisa ser uma página separada e o player completo deve permanecer visível globalmente.");
+                if (window.Resources["MusicTransportButtonStyle"] is not Style
+                    {
+                        TargetType: { } musicTransportTarget
+                    }
+                    || musicTransportTarget != typeof(Button)
+                    || window.Resources["MusicPrimaryButtonStyle"] is not Style
+                    {
+                        TargetType: { } musicPrimaryTarget
+                    } musicPrimaryStyle
+                    || musicPrimaryTarget != typeof(Button)
+                    || musicPrimaryStyle.BasedOn is not Style musicTransportStyle
+                    || !ReferenceEquals(
+                        musicTransportStyle,
+                        window.Resources["MusicTransportButtonStyle"]))
+                    throw new InvalidDataException(
+                        "A barra superior precisa manter controles musicais compactos e coerentes.");
                 if (window.Resources["CatalogHudButtonStyle"] is not Style
                     {
                         TargetType: { } hudButtonTarget
@@ -139,6 +155,16 @@ internal static class WpfTemplateVerifier
                         TargetType: { } hudSearchTarget
                     } hudSearchStyle
                     || hudSearchTarget != typeof(TextBox)
+                    || window.Resources["CatalogHudIconButtonStyle"] is not Style
+                    {
+                        TargetType: { } hudIconTarget
+                    } hudIconStyle
+                    || hudIconTarget != typeof(Button)
+                    || window.Resources["DownloadNeonButtonStyle"] is not Style
+                    {
+                        TargetType: { } downloadNeonTarget
+                    } downloadNeonStyle
+                    || downloadNeonTarget != typeof(Button)
                      || window.FindName("CatalogPage") is not Grid catalogPage
                     || window.FindName("TitleCurrentPlatform") is not TextBlock titleCurrentPlatform
                     || window.FindName("CatalogMetalFrameOverlay") is not Grid catalogMetalFrameOverlay
@@ -158,13 +184,21 @@ internal static class WpfTemplateVerifier
                     || window.FindName("TempFolderPath") is not TextBlock tempPath
                     || window.FindName("RetroCarouselInfoPanel") is not Grid retroCarouselInfoPanel
                     || window.FindName("RetroCarouselInfoAccentRail") is not System.Windows.Shapes.Rectangle retroCarouselInfoAccentRail
+                    || retroCarouselInfoAccentRail.Effect is not System.Windows.Media.Effects.DropShadowEffect retroCarouselInfoAccentGlow
                     || window.FindName("RetroCarouselFooter") is not Border retroCarouselFooter
                     || window.FindName("RetroCarouselFooterContent") is not StackPanel retroCarouselFooterContent
                     || !ReferenceEquals(hudOpenFolder.Style, hudButtonStyle)
                     || !ReferenceEquals(hudSupport.Style, hudButtonStyle)
-                    || !ReferenceEquals(hudChooseInstall.Style, hudButtonStyle)
-                    || !ReferenceEquals(hudChooseTemp.Style, hudButtonStyle)
-                    || !ReferenceEquals(hudResetTemp.Style, hudButtonStyle)
+                    || !ReferenceEquals(hudChooseInstall.Style, hudIconStyle)
+                    || !ReferenceEquals(hudChooseTemp.Style, hudIconStyle)
+                    || !ReferenceEquals(hudResetTemp.Style, hudIconStyle)
+                    || !ReferenceEquals(hudIconStyle.BasedOn, hudButtonStyle)
+                    || Math.Abs(hudChooseInstall.Width - 26) > double.Epsilon
+                    || Math.Abs(hudChooseTemp.Width - 26) > double.Epsilon
+                    || Math.Abs(hudResetTemp.Width - 26) > double.Epsilon
+                    || Math.Abs(hudChooseInstall.FontSize - 14) > double.Epsilon
+                    || Math.Abs(hudChooseTemp.FontSize - 14) > double.Epsilon
+                    || Math.Abs(hudResetTemp.FontSize - 14) > double.Epsilon
                     || !ReferenceEquals(hudSearchBox.Style, hudSearchStyle)
                     || catalogHudHeader.Background is not SolidColorBrush
                     || hudSearchPanel.Background is not SolidColorBrush
@@ -209,14 +243,22 @@ internal static class WpfTemplateVerifier
                     || retroCarouselInfoPanel.Background is not null
                     || FindVisualDescendants<Border>(retroCarouselInfoPanel).Any()
                     || Math.Abs(retroCarouselInfoPanel.Height - 196) > double.Epsilon
-                    || Math.Abs(retroCarouselInfoAccentRail.Width - 3) > double.Epsilon
+                    || Math.Abs(retroCarouselInfoAccentRail.Width - 4) > double.Epsilon
                     || Math.Abs(retroCarouselInfoAccentRail.Height - 138) > double.Epsilon
+                    || retroCarouselInfoAccentRail.CacheMode is not BitmapCache
+                    || Math.Abs(retroCarouselInfoAccentGlow.BlurRadius - 16) > double.Epsilon
+                    || Math.Abs(retroCarouselInfoAccentGlow.Opacity - .90) > double.Epsilon
                     || titleCurrentPlatform.TextTrimming != TextTrimming.CharacterEllipsis
                     || installPath.Visibility != Visibility.Visible
                     || tempPath.Visibility != Visibility.Visible)
                     throw new InvalidDataException(
                         "O catálogo deve usar uma composição limpa: contorno único, topo sem molduras sobrepostas e descrição livre sobre o vídeo.");
                 VerifyCatalogHudStyles(hudButtonStyle, hudSearchStyle);
+                VerifyDownloadNeonButtonStyle(downloadNeonStyle);
+                VerifyRetroInfoLedPulse(
+                    retroCarouselInfoPanel,
+                    retroCarouselInfoAccentRail,
+                    retroCarouselInfoAccentGlow);
                 if (window.FindName("SidebarHost") is not Border sidebarHost
                     || window.FindName("HomeNavButton") is not Button homeNavButton
                     || window.FindName("LibraryNavButton") is not Button libraryNavButton
@@ -236,10 +278,10 @@ internal static class WpfTemplateVerifier
                     || ledCore.Color != Color.FromRgb(183, 255, 70)
                     || sidebarLed.Effect is not System.Windows.Media.Effects.DropShadowEffect ledGlow
                     || ledGlow.Color != Color.FromRgb(157, 255, 0)
-                    || Math.Abs(ledGlow.BlurRadius - 18) > double.Epsilon
-                    || Math.Abs(ledGlow.ShadowDepth - 5) > double.Epsilon
+                    || Math.Abs(ledGlow.BlurRadius - 24) > double.Epsilon
+                    || Math.Abs(ledGlow.ShadowDepth - 7) > double.Epsilon
                     || Math.Abs(ledGlow.Direction) > double.Epsilon
-                    || Math.Abs(ledGlow.Opacity - .92) > double.Epsilon
+                    || Math.Abs(ledGlow.Opacity - 1) > double.Epsilon
                     || window.FindName("SidebarCoverFrame") is not null
                     || window.FindName("SidebarMetalTopRail") is not null
                     || window.FindName("SidebarTopLedBar") is not null
@@ -286,6 +328,10 @@ internal static class WpfTemplateVerifier
                     || window.Resources.Values.OfType<GradientBrush>().Count() != 1)
                     throw new InvalidDataException(
                         "Somente o vídeo pode manter degradê: preto até 18% e transparente aos 28%.");
+                if (window.Resources["CurrentSystemVideoTintBrush"] is not SolidColorBrush videoTint
+                    || videoTint.Color != Color.FromArgb(46, 81, 184, 223))
+                    throw new InvalidDataException(
+                        "O vídeo precisa receber uma tonalidade neon sólida e vinculada à cor do sistema.");
 
                 var requestedThemeColors = new Dictionary<string, Color>(StringComparer.OrdinalIgnoreCase)
                 {
@@ -303,6 +349,14 @@ internal static class WpfTemplateVerifier
                         || actualAccent != requestedTheme.Value)
                         throw new InvalidDataException(
                             $"A paleta de {requestedTheme.Key} não corresponde à capa aprovada.");
+                    if (window.Resources["CurrentSystemVideoTintBrush"] is not SolidColorBrush requestedTint
+                        || requestedTint.Color != Color.FromArgb(
+                            46,
+                            requestedTheme.Value.R,
+                            requestedTheme.Value.G,
+                            requestedTheme.Value.B))
+                        throw new InvalidDataException(
+                            $"A luz do vídeo não acompanhou a cor de {requestedTheme.Key}.");
                 }
 
                 openCatalog.Invoke(window, [category]);
@@ -444,14 +498,14 @@ internal static class WpfTemplateVerifier
         var coreOpacity = RequireAnimation("SidebarLedBar", "Opacity");
         var glowOpacity = RequireAnimation("SidebarLedGlow", "Opacity");
         var glowRadius = RequireAnimation("SidebarLedGlow", "BlurRadius");
-        if (coreOpacity.From != .35
+        if (coreOpacity.From != .52
             || coreOpacity.To != 1
-            || glowOpacity.From != .20
-            || glowOpacity.To != .98
-            || glowRadius.From != 6
-            || glowRadius.To != 24)
+            || glowOpacity.From != .38
+            || glowOpacity.To != 1
+            || glowRadius.From != 10
+            || glowRadius.To != 32)
             throw new InvalidDataException(
-                "A amplitude do pulso precisa tornar visíveis o brilho e a luz refletida no menu.");
+                "A amplitude do pulso precisa produzir um neon verde forte e uma luz claramente refletida no menu.");
     }
 
     private static void VerifyCatalogHudStyles(Style buttonStyle, Style searchStyle)
@@ -476,6 +530,188 @@ internal static class WpfTemplateVerifier
                 && trigger.Value is true))
             throw new InvalidDataException(
                 "Botões e pesquisa do HUD precisam indicar foco de teclado explicitamente.");
+    }
+
+    private static void VerifyDownloadNeonButtonStyle(Style style)
+    {
+        var template = style.Setters
+                           .OfType<Setter>()
+                           .SingleOrDefault(setter => setter.Property == Button.TemplateProperty)
+                           ?.Value as ControlTemplate
+                       ?? throw new InvalidDataException(
+                           "O botão de download precisa possuir um template neon próprio.");
+        var visibleTrigger = template.Triggers
+            .OfType<Trigger>()
+            .SingleOrDefault(trigger =>
+                trigger.Property == UIElement.IsVisibleProperty
+                && trigger.Value is true)
+            ?? throw new InvalidDataException(
+                "O brilho do botão de download precisa acompanhar sua visibilidade.");
+        if (visibleTrigger.EnterActions.Count != 1
+            || visibleTrigger.EnterActions[0] is not BeginStoryboard
+            {
+                Name: "DownloadNeonPulse",
+                Storyboard: { } storyboard
+            }
+            || visibleTrigger.ExitActions.Count != 1
+            || visibleTrigger.ExitActions[0] is not RemoveStoryboard
+            {
+                BeginStoryboardName: "DownloadNeonPulse"
+            }
+            || !storyboard.AutoReverse
+            || !storyboard.RepeatBehavior.Equals(RepeatBehavior.Forever)
+            || storyboard.Children.Count != 5
+            || !template.Triggers.OfType<Trigger>().Any(trigger =>
+                trigger.Property == UIElement.IsKeyboardFocusedProperty
+                && trigger.Value is true))
+            throw new InvalidDataException(
+                "O botão de download precisa pulsar continuamente e manter foco de teclado visível.");
+
+        var animations = storyboard.Children.OfType<DoubleAnimation>().ToArray();
+        if (animations.Length != 5)
+            throw new InvalidDataException(
+                "O botão de download precisa animar aura, halo e escala nos dois eixos.");
+
+        DoubleAnimation Require(
+            string target,
+            string property,
+            DependencyProperty? firstPathProperty = null,
+            DependencyProperty? secondPathProperty = null)
+        {
+            var animation = animations.SingleOrDefault(candidate =>
+            {
+                if (!Storyboard.GetTargetName(candidate).Equals(
+                        target,
+                        StringComparison.Ordinal))
+                    return false;
+                var targetPath = Storyboard.GetTargetProperty(candidate);
+                if (firstPathProperty is null || secondPathProperty is null)
+                    return targetPath?.Path.Equals(
+                        property,
+                        StringComparison.Ordinal) == true;
+                return targetPath?.PathParameters.Count == 2
+                       && ReferenceEquals(
+                           targetPath.PathParameters[0],
+                           firstPathProperty)
+                       && ReferenceEquals(
+                           targetPath.PathParameters[1],
+                           secondPathProperty);
+            })
+                ?? throw new InvalidDataException(
+                    $"A animação neon {target}.{property} está ausente. " +
+                    "Materializado: " + string.Join(
+                        ", ",
+                        animations.Select(candidate =>
+                            $"{Storyboard.GetTargetName(candidate)}." +
+                            $"{Storyboard.GetTargetProperty(candidate)?.Path}")));
+            if (!animation.Duration.HasTimeSpan
+                || animation.Duration.TimeSpan != TimeSpan.FromSeconds(.9)
+                || animation.EasingFunction is not SineEase
+                {
+                    EasingMode: EasingMode.EaseInOut
+                })
+                throw new InvalidDataException(
+                    $"A animação neon {target}.{property} perdeu o pulso suave de 0,9 segundo.");
+            return animation;
+        }
+
+        var aura = Require("NeonAura", "Opacity");
+        var glowOpacity = Require(
+            "NeonAura",
+            "Effect.Opacity",
+            UIElement.EffectProperty,
+            System.Windows.Media.Effects.DropShadowEffect.OpacityProperty);
+        var glowRadius = Require(
+            "NeonAura",
+            "Effect.BlurRadius",
+            UIElement.EffectProperty,
+            System.Windows.Media.Effects.DropShadowEffect.BlurRadiusProperty);
+        var scaleX = Require(
+            "NeonAura",
+            "RenderTransform.ScaleX",
+            UIElement.RenderTransformProperty,
+            ScaleTransform.ScaleXProperty);
+        var scaleY = Require(
+            "NeonAura",
+            "RenderTransform.ScaleY",
+            UIElement.RenderTransformProperty,
+            ScaleTransform.ScaleYProperty);
+        if (aura.From != .48
+            || aura.To != 1
+            || glowOpacity.From != .48
+            || glowOpacity.To != 1
+            || glowRadius.From != 10
+            || glowRadius.To != 24
+            || scaleX.From != .99
+            || scaleX.To != 1.01
+            || scaleY.From != .99
+            || scaleY.To != 1.01)
+            throw new InvalidDataException(
+                "O botão de download precisa manter brilho forte e uma respiração visual discreta.");
+    }
+
+    private static void VerifyRetroInfoLedPulse(
+        Grid panel,
+        System.Windows.Shapes.Rectangle rail,
+        System.Windows.Media.Effects.DropShadowEffect glow)
+    {
+        if (panel.Triggers.Count != 2
+            || !ReferenceEquals(rail.Effect, glow))
+            throw new InvalidDataException(
+                "A barra da descrição precisa manter um único LED pulsante.");
+        var loaded = panel.Triggers.OfType<EventTrigger>().SingleOrDefault(trigger =>
+            trigger.RoutedEvent == FrameworkElement.LoadedEvent);
+        var unloaded = panel.Triggers.OfType<EventTrigger>().SingleOrDefault(trigger =>
+            trigger.RoutedEvent == FrameworkElement.UnloadedEvent);
+        if (loaded?.Actions.Count != 1
+            || loaded.Actions[0] is not BeginStoryboard
+            {
+                Name: "RetroInfoLedPulse",
+                Storyboard: { } storyboard
+            }
+            || unloaded?.Actions.Count != 1
+            || unloaded.Actions[0] is not RemoveStoryboard
+            {
+                BeginStoryboardName: "RetroInfoLedPulse"
+            }
+            || !storyboard.AutoReverse
+            || !storyboard.RepeatBehavior.Equals(RepeatBehavior.Forever)
+            || storyboard.Children.Count != 3)
+            throw new InvalidDataException(
+                "O LED da descrição precisa iniciar e encerrar um pulso suave e infinito.");
+
+        var animations = storyboard.Children.OfType<DoubleAnimation>().ToArray();
+        DoubleAnimation Require(string target, string property)
+        {
+            var animation = animations.SingleOrDefault(candidate =>
+                Storyboard.GetTargetName(candidate).Equals(target, StringComparison.Ordinal)
+                && Storyboard.GetTargetProperty(candidate)?.Path.Equals(
+                    property,
+                    StringComparison.Ordinal) == true)
+                ?? throw new InvalidDataException(
+                    $"A animação do LED da descrição {target}.{property} está ausente.");
+            if (!animation.Duration.HasTimeSpan
+                || animation.Duration.TimeSpan != TimeSpan.FromSeconds(1)
+                || animation.EasingFunction is not SineEase
+                {
+                    EasingMode: EasingMode.EaseInOut
+                })
+                throw new InvalidDataException(
+                    $"A animação do LED da descrição {target}.{property} perdeu a transição suave.");
+            return animation;
+        }
+
+        var railOpacity = Require("RetroCarouselInfoAccentRail", "Opacity");
+        var glowOpacity = Require("RetroCarouselInfoAccentGlow", "Opacity");
+        var glowRadius = Require("RetroCarouselInfoAccentGlow", "BlurRadius");
+        if (railOpacity.From != .58
+            || railOpacity.To != 1
+            || glowOpacity.From != .40
+            || glowOpacity.To != 1
+            || glowRadius.From != 8
+            || glowRadius.To != 24)
+            throw new InvalidDataException(
+                "A barra da descrição precisa oscilar com brilho neon forte na cor do sistema.");
     }
 
     private static void VerifyExplorerStartInfo()
@@ -1917,6 +2153,7 @@ internal static class WpfTemplateVerifier
         if (window.FindName("RetroSystemVideoBackground") is not Grid background
             || window.FindName("RetroUniversalVideoPlayerHost") is not Grid host
             || window.FindName("RetroSystemVideoPlayerHost") is not Grid systemHost
+            || window.FindName("RetroSystemVideoTint") is not Border videoTint
             || window.FindName("RetroCarouselHost") is not Grid carouselHost
             || window.FindName("RetroCarouselScaleHost") is not Viewbox scaleHost
             || window.FindName("RetroCarouselViewport") is not Grid carouselViewport
@@ -1950,15 +2187,23 @@ internal static class WpfTemplateVerifier
         if (!background.ClipToBounds
             || !host.ClipToBounds
             || !systemHost.ClipToBounds
-            || background.Children.Count != 3
+            || background.Children.Count != 4
             || !ReferenceEquals(background.Children[0], host)
             || !ReferenceEquals(background.Children[1], systemHost)
-            || background.Children[2] is not Border videoOverlay
+            || !ReferenceEquals(background.Children[2], videoTint)
+            || background.Children[3] is not Border videoOverlay
+            || videoTint.Background is not SolidColorBrush
+            || !ReferenceEquals(
+                videoTint.Background,
+                window.Resources["CurrentSystemVideoTintBrush"])
             || videoOverlay.Background is not LinearGradientBrush
             || !ReferenceEquals(
                 videoOverlay.Background,
                 window.Resources["CurrentSystemVideoOverlayBrush"])
-            || Panel.GetZIndex(videoOverlay) != 2
+            || Panel.GetZIndex(videoTint) != 2
+            || Panel.GetZIndex(videoOverlay) != 3
+            || videoTint.HorizontalAlignment != HorizontalAlignment.Stretch
+            || videoTint.VerticalAlignment != VerticalAlignment.Stretch
             || videoOverlay.HorizontalAlignment != HorizontalAlignment.Stretch
             || videoOverlay.VerticalAlignment != VerticalAlignment.Stretch
             || host.HorizontalAlignment != HorizontalAlignment.Stretch
@@ -2116,6 +2361,8 @@ internal static class WpfTemplateVerifier
                     || Math.Abs(host.ActualHeight - background.ActualHeight) > 0.5
                     || Math.Abs(systemHost.ActualWidth - background.ActualWidth) > 0.5
                     || Math.Abs(systemHost.ActualHeight - background.ActualHeight) > 0.5
+                    || Math.Abs(videoTint.ActualWidth - background.ActualWidth) > 0.5
+                    || Math.Abs(videoTint.ActualHeight - background.ActualHeight) > 0.5
                     || Math.Abs(videoOverlay.ActualWidth - background.ActualWidth) > 0.5
                     || Math.Abs(videoOverlay.ActualHeight - background.ActualHeight) > 0.5
                     || Math.Abs(background.ActualWidth - carouselHost.ActualWidth) > 0.5
@@ -2157,6 +2404,12 @@ internal static class WpfTemplateVerifier
                     width,
                     height,
                     "host do vídeo do sistema");
+                AssertElementWithinAncestor(
+                    videoTint,
+                    window,
+                    width,
+                    height,
+                    "luz de cor do sistema sobre o vídeo");
                 AssertElementWithinAncestor(
                     carouselHost,
                     window,
@@ -2518,6 +2771,42 @@ internal static class WpfTemplateVerifier
             throw new InvalidDataException(
                 "O player global não expôs faixa, reprodução, desligamento e volume na barra superior.");
 
+        if (window.Resources["MusicTransportButtonStyle"] is not Style musicTransportStyle
+            || window.Resources["MusicPrimaryButtonStyle"] is not Style musicPrimaryStyle
+            || !ReferenceEquals(previousButton.Style, musicTransportStyle)
+            || !ReferenceEquals(playPauseButton.Style, musicPrimaryStyle)
+            || !ReferenceEquals(nextButton.Style, musicTransportStyle)
+            || !ReferenceEquals(stopButton.Style, musicTransportStyle)
+            || !ReferenceEquals(folderButton.Style, musicTransportStyle)
+            || previousButton.Content as string != "⏮"
+            || nextButton.Content as string != "⏭"
+            || stopButton.Content as string != "■"
+            || folderButton.Content as string != "♫")
+            throw new InvalidDataException(
+                "Os botões do player superior precisam manter ícones claros e um único estilo gamer limpo.");
+        foreach (var musicButton in new[]
+                 {
+                     previousButton,
+                     playPauseButton,
+                     nextButton,
+                     stopButton,
+                     folderButton
+                 })
+        {
+            musicButton.ApplyTemplate();
+            if (musicButton.Template.FindName("MusicButtonSurface", musicButton) is not Border
+                || musicButton.Template.FindName("MusicButtonGlow", musicButton) is not Border
+                {
+                    Effect: System.Windows.Media.Effects.DropShadowEffect
+                    {
+                        BlurRadius: 12,
+                        ShadowDepth: 0
+                    }
+                })
+                throw new InvalidDataException(
+                    $"O botão superior '{AutomationProperties.GetName(musicButton)}' perdeu superfície ou brilho limpo.");
+        }
+
         var musicPlayerInput = typeof(StoreWindow).GetMethod(
                                    "IsGlobalMusicPlayerInput",
                                    BindingFlags.Instance | BindingFlags.NonPublic)
@@ -2681,6 +2970,13 @@ internal static class WpfTemplateVerifier
         if (button.Template.FindName("HudSurface", button) is not FrameworkElement hudSurface)
             throw new InvalidDataException(
                 $"O botão HUD '{AutomationProperties.GetName(button)}' perdeu sua superfície única.");
+        if (button.Template.FindName("HudGlow", button) is not Border hudGlowHost
+            || hudGlowHost.Effect is not System.Windows.Media.Effects.DropShadowEffect hudGlow
+            || Math.Abs(hudGlow.BlurRadius - 12) > double.Epsilon
+            || Math.Abs(hudGlow.ShadowDepth) > double.Epsilon
+            || Math.Abs(hudGlow.Opacity - .92) > double.Epsilon)
+            throw new InvalidDataException(
+                $"O botão HUD '{AutomationProperties.GetName(button)}' perdeu seu brilho interativo limpo.");
         if (button.Template.FindName("HudRail", button) is not null
             || button.Template.FindName("HudCorner", button) is not null)
             throw new InvalidDataException(
@@ -2691,6 +2987,12 @@ internal static class WpfTemplateVerifier
             requestedWidth,
             requestedHeight,
             $"superfície única do botão HUD '{AutomationProperties.GetName(button)}'");
+        AssertElementWithinAncestor(
+            hudGlowHost,
+            button,
+            requestedWidth,
+            requestedHeight,
+            $"halo interno do botão HUD '{AutomationProperties.GetName(button)}'");
     }
 
     private static IEnumerable<T> FindVisualDescendants<T>(DependencyObject root)

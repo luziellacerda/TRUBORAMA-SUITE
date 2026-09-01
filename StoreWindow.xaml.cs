@@ -1510,6 +1510,9 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         SetCategoryThemeBrush(
             "CurrentSystemSidebarSelectionBrush",
             Color.FromArgb(28, accent.R, accent.G, accent.B));
+        SetCategoryThemeBrush(
+            "CurrentSystemVideoTintBrush",
+            Color.FromArgb(46, accent.R, accent.G, accent.B));
     }
 
     private void SetCategoryThemeBrush(string key, Color color)

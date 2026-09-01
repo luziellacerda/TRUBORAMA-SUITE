@@ -33,6 +33,7 @@
         <GradientStop Color="#FF000000" Offset=".18" />
         <GradientStop Color="#00000000" Offset=".28" />
       </LinearGradientBrush>
+      <SolidColorBrush x:Key="CurrentSystemVideoTintBrush" Color="#2E5FA5F5" />
       <BitmapImage x:Key="CatalogFallbackArtwork" UriSource="Assets/f15-turborama-user-original-v13.png" DecodePixelWidth="512" CacheOption="OnLoad" CreateOptions="DelayCreation" />
       <Style x:Key="TechScrollThumbStyle" TargetType="{x:Type Thumb}">
         <Setter Property="Opacity" Value=".72" />
@@ -229,24 +230,29 @@
             <ControlTemplate TargetType="{x:Type Button}">
               <Grid Margin="2" ClipToBounds="False">
                 <Border x:Name="NeonAura"
-                        Margin="-1"
+                        Margin="-2"
                         CornerRadius="10"
                         BorderBrush="{DynamicResource CurrentSystemAccentBrush}"
-                        BorderThickness="1"
-                        Opacity=".44"
+                        BorderThickness="2"
+                        Opacity=".72"
                         IsHitTestVisible="False"
-                        CacheMode="BitmapCache">
+                        CacheMode="BitmapCache"
+                        RenderTransformOrigin=".5,.5">
+                  <Border.RenderTransform>
+                    <ScaleTransform ScaleX="1" ScaleY="1" />
+                  </Border.RenderTransform>
                   <Border.Effect>
                     <DropShadowEffect Color="{DynamicResource CurrentSystemAccentColor}"
-                                      BlurRadius="9"
+                                      BlurRadius="16"
                                       ShadowDepth="0"
-                                      Opacity=".62" />
+                                      Opacity=".86"
+                                      RenderingBias="Quality" />
                   </Border.Effect>
                 </Border>
                 <Border x:Name="Surface"
                         Background="{TemplateBinding Control.Background}"
                         BorderBrush="{DynamicResource CurrentSystemBrightBrush}"
-                        BorderThickness="1"
+                        BorderThickness="1.5"
                         CornerRadius="9"
                         Padding="{TemplateBinding Control.Padding}"
                         ClipToBounds="True">
@@ -263,7 +269,39 @@
                       <Storyboard RepeatBehavior="Forever" AutoReverse="True">
                         <DoubleAnimation Storyboard.TargetName="NeonAura"
                                          Storyboard.TargetProperty="Opacity"
-                                         From=".30" To=".72" Duration="0:0:1.15" />
+                                         From=".48" To="1" Duration="0:0:.9">
+                          <DoubleAnimation.EasingFunction>
+                            <SineEase EasingMode="EaseInOut" />
+                          </DoubleAnimation.EasingFunction>
+                        </DoubleAnimation>
+                        <DoubleAnimation Storyboard.TargetName="NeonAura"
+                                         Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.Opacity)"
+                                         From=".48" To="1" Duration="0:0:.9">
+                          <DoubleAnimation.EasingFunction>
+                            <SineEase EasingMode="EaseInOut" />
+                          </DoubleAnimation.EasingFunction>
+                        </DoubleAnimation>
+                        <DoubleAnimation Storyboard.TargetName="NeonAura"
+                                         Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.BlurRadius)"
+                                         From="10" To="24" Duration="0:0:.9">
+                          <DoubleAnimation.EasingFunction>
+                            <SineEase EasingMode="EaseInOut" />
+                          </DoubleAnimation.EasingFunction>
+                        </DoubleAnimation>
+                        <DoubleAnimation Storyboard.TargetName="NeonAura"
+                                         Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                         From=".99" To="1.01" Duration="0:0:.9">
+                          <DoubleAnimation.EasingFunction>
+                            <SineEase EasingMode="EaseInOut" />
+                          </DoubleAnimation.EasingFunction>
+                        </DoubleAnimation>
+                        <DoubleAnimation Storyboard.TargetName="NeonAura"
+                                         Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                         From=".99" To="1.01" Duration="0:0:.9">
+                          <DoubleAnimation.EasingFunction>
+                            <SineEase EasingMode="EaseInOut" />
+                          </DoubleAnimation.EasingFunction>
+                        </DoubleAnimation>
                       </Storyboard>
                     </BeginStoryboard>
                   </Trigger.EnterActions>
@@ -275,6 +313,11 @@
                   <Setter TargetName="Surface" Property="Border.Background" Value="{DynamicResource CurrentSystemBrightBrush}" />
                   <Setter Property="Foreground" Value="{DynamicResource CurrentSystemBrightContrastBrush}" />
                   <Setter TargetName="NeonAura" Property="Opacity" Value=".92" />
+                </Trigger>
+                <Trigger Property="UIElement.IsKeyboardFocused" Value="True">
+                  <Setter TargetName="Surface" Property="Border.Background" Value="{DynamicResource CurrentSystemBrightBrush}" />
+                  <Setter Property="Foreground" Value="{DynamicResource CurrentSystemBrightContrastBrush}" />
+                  <Setter TargetName="NeonAura" Property="Opacity" Value="1" />
                 </Trigger>
                 <Trigger Property="IsPressed" Value="True">
                   <Setter TargetName="Surface" Property="UIElement.Opacity" Value=".76" />
@@ -320,6 +363,80 @@
             </ControlTemplate>
           </Setter.Value>
         </Setter>
+      </Style>
+      <Style x:Key="MusicTransportButtonStyle" TargetType="{x:Type Button}">
+        <Setter Property="Width" Value="26" />
+        <Setter Property="Height" Value="26" />
+        <Setter Property="MinHeight" Value="26" />
+        <Setter Property="Margin" Value="2,0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Foreground" Value="#FFFFFFFF" />
+        <Setter Property="Background" Value="#FF090E0A" />
+        <Setter Property="BorderBrush" Value="#FF334033" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="FontFamily" Value="Segoe UI Symbol" />
+        <Setter Property="FontSize" Value="10" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="FrameworkElement.Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+          <Setter.Value>
+            <ControlTemplate TargetType="{x:Type Button}">
+              <Grid ClipToBounds="False">
+                <Border x:Name="MusicButtonGlow"
+                        Margin="2"
+                        Background="{StaticResource GlobalAccentBrush}"
+                        CornerRadius="7"
+                        Opacity="0"
+                        IsHitTestVisible="False">
+                  <Border.Effect>
+                    <DropShadowEffect Color="{StaticResource GlobalAccentColor}"
+                                      BlurRadius="12"
+                                      ShadowDepth="0"
+                                      Opacity=".90"
+                                      RenderingBias="Quality" />
+                  </Border.Effect>
+                </Border>
+                <Border x:Name="MusicButtonSurface"
+                        Background="{TemplateBinding Control.Background}"
+                        BorderBrush="{TemplateBinding Control.BorderBrush}"
+                        BorderThickness="{TemplateBinding Control.BorderThickness}"
+                        CornerRadius="7">
+                  <ContentPresenter HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    SnapsToDevicePixels="True" />
+                </Border>
+              </Grid>
+              <ControlTemplate.Triggers>
+                <Trigger Property="UIElement.IsMouseOver" Value="True">
+                  <Setter TargetName="MusicButtonSurface" Property="Border.BorderBrush" Value="{StaticResource GlobalBrightBrush}" />
+                  <Setter TargetName="MusicButtonGlow" Property="UIElement.Opacity" Value=".78" />
+                </Trigger>
+                <Trigger Property="UIElement.IsKeyboardFocused" Value="True">
+                  <Setter TargetName="MusicButtonSurface" Property="Border.BorderBrush" Value="{StaticResource GlobalBrightBrush}" />
+                  <Setter TargetName="MusicButtonGlow" Property="UIElement.Opacity" Value=".78" />
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                  <Setter TargetName="MusicButtonSurface" Property="UIElement.Opacity" Value=".62" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                  <Setter TargetName="MusicButtonSurface" Property="UIElement.Opacity" Value=".34" />
+                </Trigger>
+              </ControlTemplate.Triggers>
+            </ControlTemplate>
+          </Setter.Value>
+        </Setter>
+      </Style>
+      <Style x:Key="MusicPrimaryButtonStyle"
+             TargetType="{x:Type Button}"
+             BasedOn="{StaticResource MusicTransportButtonStyle}">
+        <Setter Property="Width" Value="30" />
+        <Setter Property="Background" Value="{StaticResource GlobalAccentBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource GlobalBrightBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource GlobalContrastBrush}" />
+        <Setter Property="FontSize" Value="11" />
       </Style>
       <Style x:Key="SidebarNavStyle" TargetType="{x:Type Button}">
         <Setter Property="Height" Value="45" />
@@ -414,23 +531,41 @@
         <Setter Property="Template">
           <Setter.Value>
             <ControlTemplate TargetType="{x:Type Button}">
-              <Border x:Name="HudSurface"
-                      Background="{TemplateBinding Control.Background}"
-                      BorderBrush="{TemplateBinding Control.BorderBrush}"
-                      BorderThickness="{TemplateBinding Control.BorderThickness}"
-                      CornerRadius="2"
-                      Padding="0">
-                <ContentPresenter Margin="{TemplateBinding Control.Padding}"
-                                  HorizontalAlignment="{TemplateBinding Control.HorizontalContentAlignment}"
-                                  VerticalAlignment="Center" />
-              </Border>
+              <Grid ClipToBounds="False">
+                <Border x:Name="HudGlow"
+                        Margin="1"
+                        Background="{DynamicResource CurrentSystemAccentBrush}"
+                        CornerRadius="5"
+                        Opacity="0"
+                        IsHitTestVisible="False">
+                  <Border.Effect>
+                    <DropShadowEffect Color="{DynamicResource CurrentSystemAccentColor}"
+                                      BlurRadius="12"
+                                      ShadowDepth="0"
+                                      Opacity=".92"
+                                      RenderingBias="Quality" />
+                  </Border.Effect>
+                </Border>
+                <Border x:Name="HudSurface"
+                        Background="{TemplateBinding Control.Background}"
+                        BorderBrush="{TemplateBinding Control.BorderBrush}"
+                        BorderThickness="{TemplateBinding Control.BorderThickness}"
+                        CornerRadius="5"
+                        Padding="0">
+                  <ContentPresenter Margin="{TemplateBinding Control.Padding}"
+                                    HorizontalAlignment="{TemplateBinding Control.HorizontalContentAlignment}"
+                                    VerticalAlignment="Center" />
+                </Border>
+              </Grid>
               <ControlTemplate.Triggers>
                 <Trigger Property="UIElement.IsMouseOver" Value="True">
                   <Setter TargetName="HudSurface" Property="Border.BorderBrush" Value="{DynamicResource CurrentSystemBrightBrush}" />
+                  <Setter TargetName="HudGlow" Property="UIElement.Opacity" Value=".78" />
                   <Setter Property="Foreground" Value="{DynamicResource CurrentSystemBrightBrush}" />
                 </Trigger>
                 <Trigger Property="UIElement.IsKeyboardFocused" Value="True">
                   <Setter TargetName="HudSurface" Property="Border.BorderBrush" Value="{DynamicResource CurrentSystemBrightBrush}" />
+                  <Setter TargetName="HudGlow" Property="UIElement.Opacity" Value=".78" />
                   <Setter Property="Foreground" Value="{DynamicResource CurrentSystemBrightBrush}" />
                 </Trigger>
                 <Trigger Property="IsPressed" Value="True">
@@ -443,6 +578,19 @@
             </ControlTemplate>
           </Setter.Value>
         </Setter>
+      </Style>
+      <Style x:Key="CatalogHudIconButtonStyle"
+             TargetType="{x:Type Button}"
+             BasedOn="{StaticResource CatalogHudButtonStyle}">
+        <Setter Property="Width" Value="26" />
+        <Setter Property="Height" Value="28" />
+        <Setter Property="MinHeight" Value="28" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Foreground" Value="{DynamicResource CurrentSystemBrightBrush}" />
+        <Setter Property="Background" Value="#FF0D130F" />
+        <Setter Property="BorderBrush" Value="#FF3A443C" />
       </Style>
       <Style x:Key="CatalogHudSearchBoxStyle" TargetType="{x:Type TextBox}">
         <Setter Property="Height" Value="36" />
@@ -1042,7 +1190,8 @@
                 <Setter Property="Height" Value="24" />
                 <Setter Property="MinHeight" Value="24" />
                 <Setter Property="Padding" Value="6,0" />
-                <Setter Property="FontSize" Value="8" />
+                <Setter Property="FontSize" Value="9" />
+                <Setter Property="FontWeight" Value="Bold" />
                 <Setter Property="Visibility" Value="Visible" />
                 <Style.Triggers>
                   <DataTrigger Binding="{Binding CanPause}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
@@ -1285,41 +1434,38 @@
                          VerticalAlignment="Center" />
               <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                 <Button x:Name="MusicPreviousButton"
-                        Content="◀"
+                        Content="⏮"
                         AutomationProperties.Name="Música anterior"
                         ToolTip="Música anterior"
-                        Style="{StaticResource SecondaryButtonStyle}"
-                        Width="24" Height="24" MinHeight="24" Padding="0" FontSize="9"
+                        Style="{StaticResource MusicTransportButtonStyle}"
                         Click="MusicPrevious_Click" />
                 <Button x:Name="MusicPlayPauseButton"
                         AutomationProperties.Name="Tocar ou pausar música"
                         ToolTip="Tocar ou pausar"
-                        Style="{StaticResource PrimaryButtonStyle}"
-                        Width="27" Height="24" MinHeight="24" Padding="0" FontSize="9" Margin="4,0"
+                        Style="{StaticResource MusicPrimaryButtonStyle}"
                         Click="MusicPlayPause_Click">
                   <TextBlock Name="GlobalMusicPlayPauseGlyph" Text="▶" />
                 </Button>
                 <Button x:Name="MusicNextButton"
-                        Content="▶"
+                        Content="⏭"
                         AutomationProperties.Name="Próxima música"
                         ToolTip="Próxima música"
-                        Style="{StaticResource SecondaryButtonStyle}"
-                        Width="24" Height="24" MinHeight="24" Padding="0" FontSize="9"
+                        Style="{StaticResource MusicTransportButtonStyle}"
                         Click="MusicNext_Click" />
                 <Button x:Name="MusicStopButton"
                         Content="■"
                         AutomationProperties.Name="Desligar música"
                         ToolTip="Desligar música"
-                        Style="{StaticResource SecondaryButtonStyle}"
+                        Style="{StaticResource MusicTransportButtonStyle}"
                         Foreground="#FF6B79"
-                        Width="24" Height="24" MinHeight="24" Padding="0" FontSize="8" Margin="4,0,0,0"
                         Click="MusicStop_Click" />
                 <Button x:Name="MusicFolderButton"
-                        Content="♫+"
+                        Content="♫"
                         AutomationProperties.Name="Escolher pasta de músicas"
                         ToolTip="Escolher pasta de músicas"
-                        Style="{StaticResource SecondaryButtonStyle}"
-                        Width="30" Height="24" MinHeight="24" Padding="0" FontSize="8" Margin="4,0,0,0"
+                        Style="{StaticResource MusicTransportButtonStyle}"
+                        Width="28"
+                        FontSize="12"
                         Click="ChooseMusicFolder_Click" />
               </StackPanel>
               <StackPanel Grid.Column="2" Margin="8,0,8,0" VerticalAlignment="Center">
@@ -1365,21 +1511,21 @@
                     <Storyboard RepeatBehavior="Forever" AutoReverse="True">
                       <DoubleAnimation Storyboard.TargetName="SidebarLedBar"
                                        Storyboard.TargetProperty="Opacity"
-                                       From=".35" To="1" Duration="0:0:1">
+                                       From=".52" To="1" Duration="0:0:1">
                         <DoubleAnimation.EasingFunction>
                           <SineEase EasingMode="EaseInOut" />
                         </DoubleAnimation.EasingFunction>
                       </DoubleAnimation>
                       <DoubleAnimation Storyboard.TargetName="SidebarLedGlow"
                                        Storyboard.TargetProperty="Opacity"
-                                       From=".20" To=".98" Duration="0:0:1">
+                                       From=".38" To="1" Duration="0:0:1">
                         <DoubleAnimation.EasingFunction>
                           <SineEase EasingMode="EaseInOut" />
                         </DoubleAnimation.EasingFunction>
                       </DoubleAnimation>
                       <DoubleAnimation Storyboard.TargetName="SidebarLedGlow"
                                        Storyboard.TargetProperty="BlurRadius"
-                                       From="6" To="24" Duration="0:0:1">
+                                       From="10" To="32" Duration="0:0:1">
                         <DoubleAnimation.EasingFunction>
                           <SineEase EasingMode="EaseInOut" />
                         </DoubleAnimation.EasingFunction>
@@ -1404,10 +1550,10 @@
                 <Rectangle.Effect>
                   <DropShadowEffect x:Name="SidebarLedGlow"
                                     Color="{StaticResource GlobalAccentColor}"
-                                    BlurRadius="18"
-                                    ShadowDepth="5"
+                                    BlurRadius="24"
+                                    ShadowDepth="7"
                                     Direction="0"
-                                    Opacity=".92"
+                                    Opacity="1"
                                     RenderingBias="Quality" />
                 </Rectangle.Effect>
               </Rectangle>
@@ -1912,7 +2058,7 @@
                       <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="30" />
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="22" />
+                        <ColumnDefinition Width="30" />
                       </Grid.ColumnDefinitions>
                       <TextBlock Text="ROM"
                                  Margin="6,0,0,0"
@@ -1930,14 +2076,12 @@
                                  TextTrimming="CharacterEllipsis"
                                  ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
                       <Button x:Name="CatalogHudChooseInstallButton"
-                              Grid.Column="2"
-                              Content="✎"
-                              Width="20" Height="28" MinHeight="28"
-                              Padding="0"
-                              FontSize="11"
-                              AutomationProperties.Name="Alterar pasta de instalação"
-                              Style="{StaticResource CatalogHudButtonStyle}"
-                              Click="ChooseInstallFolder_Click" />
+                               Grid.Column="2"
+                               Content="✎"
+                               ToolTip="Alterar pasta de instalação"
+                               AutomationProperties.Name="Alterar pasta de instalação"
+                               Style="{StaticResource CatalogHudIconButtonStyle}"
+                               Click="ChooseInstallFolder_Click" />
                     </Grid>
                   </Border>
                   <Border Grid.Column="1"
@@ -1951,8 +2095,8 @@
                       <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="30" />
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="22" />
-                        <ColumnDefinition Width="22" />
+                        <ColumnDefinition Width="30" />
+                        <ColumnDefinition Width="30" />
                       </Grid.ColumnDefinitions>
                       <TextBlock Text="TMP"
                                  Margin="6,0,0,0"
@@ -1970,23 +2114,19 @@
                                  TextTrimming="CharacterEllipsis"
                                  ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
                       <Button x:Name="CatalogHudChooseTempButton"
-                              Grid.Column="2"
-                              Content="✎"
-                              Width="20" Height="28" MinHeight="28"
-                              Padding="0"
-                              FontSize="11"
-                              AutomationProperties.Name="Alterar pasta temporária"
-                              Style="{StaticResource CatalogHudButtonStyle}"
-                              Click="ChooseTempFolder_Click" />
+                               Grid.Column="2"
+                               Content="✎"
+                               ToolTip="Alterar pasta temporária"
+                               AutomationProperties.Name="Alterar pasta temporária"
+                               Style="{StaticResource CatalogHudIconButtonStyle}"
+                               Click="ChooseTempFolder_Click" />
                       <Button x:Name="CatalogHudResetTempButton"
-                              Grid.Column="3"
-                              Content="↺"
-                              Width="20" Height="28" MinHeight="28"
-                              Padding="0"
-                              FontSize="12"
-                              AutomationProperties.Name="Usar pasta temporária padrão"
-                              Style="{StaticResource CatalogHudButtonStyle}"
-                              Click="ResetTempFolder_Click" />
+                               Grid.Column="3"
+                               Content="↻"
+                               ToolTip="Restaurar pasta temporária padrão"
+                               AutomationProperties.Name="Usar pasta temporária padrão"
+                               Style="{StaticResource CatalogHudIconButtonStyle}"
+                               Click="ResetTempFolder_Click" />
                     </Grid>
                   </Border>
                   <Border x:Name="CatalogHudSearchPanel"
@@ -2074,8 +2214,14 @@
                           VerticalAlignment="Stretch"
                           IsHitTestVisible="False"
                           Panel.ZIndex="1" />
-                    <Border Background="{DynamicResource CurrentSystemVideoOverlayBrush}"
+                    <Border x:Name="RetroSystemVideoTint"
+                            Background="{DynamicResource CurrentSystemVideoTintBrush}"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            IsHitTestVisible="False"
                             Panel.ZIndex="2" />
+                    <Border Background="{DynamicResource CurrentSystemVideoOverlayBrush}"
+                            Panel.ZIndex="3" />
                   </Grid>
                   <Viewbox x:Name="RetroCarouselScaleHost"
                            HorizontalAlignment="Stretch"
@@ -2097,19 +2243,54 @@
                           Margin="0,0,0,26"
                           IsHitTestVisible="False"
                           Panel.ZIndex="2">
+                      <Grid.Triggers>
+                        <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                          <BeginStoryboard x:Name="RetroInfoLedPulse">
+                            <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                              <DoubleAnimation Storyboard.TargetName="RetroCarouselInfoAccentRail"
+                                               Storyboard.TargetProperty="Opacity"
+                                               From=".58" To="1" Duration="0:0:1">
+                                <DoubleAnimation.EasingFunction>
+                                  <SineEase EasingMode="EaseInOut" />
+                                </DoubleAnimation.EasingFunction>
+                              </DoubleAnimation>
+                              <DoubleAnimation Storyboard.TargetName="RetroCarouselInfoAccentGlow"
+                                               Storyboard.TargetProperty="Opacity"
+                                               From=".40" To="1" Duration="0:0:1">
+                                <DoubleAnimation.EasingFunction>
+                                  <SineEase EasingMode="EaseInOut" />
+                                </DoubleAnimation.EasingFunction>
+                              </DoubleAnimation>
+                              <DoubleAnimation Storyboard.TargetName="RetroCarouselInfoAccentGlow"
+                                               Storyboard.TargetProperty="BlurRadius"
+                                               From="8" To="24" Duration="0:0:1">
+                                <DoubleAnimation.EasingFunction>
+                                  <SineEase EasingMode="EaseInOut" />
+                                </DoubleAnimation.EasingFunction>
+                              </DoubleAnimation>
+                            </Storyboard>
+                          </BeginStoryboard>
+                        </EventTrigger>
+                        <EventTrigger RoutedEvent="FrameworkElement.Unloaded">
+                          <RemoveStoryboard BeginStoryboardName="RetroInfoLedPulse" />
+                        </EventTrigger>
+                      </Grid.Triggers>
                       <Rectangle x:Name="RetroCarouselInfoAccentRail"
-                                 Width="3"
+                                 Width="4"
                                  Height="138"
                                  HorizontalAlignment="Left"
                                  VerticalAlignment="Center"
                                  Margin="0,0,0,0"
                                  Fill="{DynamicResource CurrentSystemAccentBrush}"
-                                 Opacity=".94">
+                                 Opacity="1"
+                                 CacheMode="BitmapCache">
                         <UIElement.Effect>
-                          <DropShadowEffect Color="{DynamicResource CurrentSystemAccentColor}"
-                                            BlurRadius="9"
+                          <DropShadowEffect x:Name="RetroCarouselInfoAccentGlow"
+                                            Color="{DynamicResource CurrentSystemAccentColor}"
+                                            BlurRadius="16"
                                             ShadowDepth="0"
-                                            Opacity=".48" />
+                                            Opacity=".90"
+                                            RenderingBias="Quality" />
                         </UIElement.Effect>
                       </Rectangle>
                       <Grid Margin="20,7,10,7">
