@@ -10,6 +10,7 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -116,10 +117,17 @@ internal static class WpfTemplateVerifier
                 if (window.ManagedGameSystems.Count != 21
                     || window.FindName("GameManagerPage") is not Grid
                     || window.FindName("ManagedGamesList") is not ListBox
-                    || window.FindName("MusicTrackTitle") is not TextBlock
-                    || window.FindName("MusicPlayPauseGlyph") is not TextBlock)
+                    || window.FindName("GlobalMusicPlayer") is not Border
+                    || window.FindName("GlobalMusicTrackTitle") is not TextBlock
+                    || window.FindName("GlobalMusicPlayPauseGlyph") is not TextBlock
+                    || window.FindName("MusicPreviousButton") is not Button
+                    || window.FindName("MusicPlayPauseButton") is not Button
+                    || window.FindName("MusicNextButton") is not Button
+                    || window.FindName("MusicStopButton") is not Button
+                    || window.FindName("MusicFolderButton") is not Button
+                    || window.FindName("GlobalMusicVolumeSlider") is not Slider)
                     throw new InvalidDataException(
-                        "Jogos locais precisa ser uma página separada, por sistema e com player de música.");
+                        "Jogos locais precisa ser uma página separada e o player completo deve permanecer visível globalmente.");
                 if (window.FindName("SidebarHost") is not Border sidebarHost
                     || window.FindName("HomeNavButton") is not Button homeNavButton
                     || window.FindName("LibraryNavButton") is not Button libraryNavButton
@@ -134,14 +142,20 @@ internal static class WpfTemplateVerifier
                     || Math.Abs(sidebarLed.Width - 2) > double.Epsilon
                     || sidebarLed.HorizontalAlignment != HorizontalAlignment.Left
                     || sidebarLed.VerticalAlignment != VerticalAlignment.Stretch
-                    || sidebarLed.Fill is null
-                    || sidebarLed.Effect is not System.Windows.Media.Effects.DropShadowEffect
+                    || sidebarLed.Fill is not SolidColorBrush ledCore
+                    || ledCore.Color != Color.FromRgb(183, 255, 70)
+                    || sidebarLed.Effect is not System.Windows.Media.Effects.DropShadowEffect ledGlow
+                    || ledGlow.Color != Color.FromRgb(157, 255, 0)
+                    || Math.Abs(ledGlow.BlurRadius - 18) > double.Epsilon
+                    || Math.Abs(ledGlow.ShadowDepth - 5) > double.Epsilon
+                    || Math.Abs(ledGlow.Direction) > double.Epsilon
+                    || Math.Abs(ledGlow.Opacity - .92) > double.Epsilon
                     || window.FindName("SidebarCoverFrame") is not null
                     || window.FindName("SidebarMetalTopRail") is not null
                     || window.FindName("SidebarTopLedBar") is not null
                     || window.FindName("SidebarFrameLeftEnergySegments") is not null)
                     throw new InvalidDataException(
-                        "O menu lateral original precisa manter apenas um LED lateral fino, sem a moldura tecnológica.");
+                        "O menu lateral original precisa manter um LED fino com núcleo brilhante e luz projetada para dentro, sem moldura tecnológica.");
                 if (window.FindName("LicenseConsumerText") is not TextBlock licenseConsumer
                     || licenseConsumer.Text != "Cliente ••••FIER"
                     || licenseConsumer.Text.Contains("TR-WPF-VERIFIER", StringComparison.Ordinal)
@@ -172,12 +186,12 @@ internal static class WpfTemplateVerifier
                     || overlay.GradientStops[0].Color != Color.FromArgb(255, 0, 0, 0)
                     || overlay.GradientStops[0].Offset != 0
                     || overlay.GradientStops[1].Color != Color.FromArgb(255, 0, 0, 0)
-                    || overlay.GradientStops[1].Offset != .30
+                    || overlay.GradientStops[1].Offset != .18
                     || overlay.GradientStops[2].Color != Color.FromArgb(0, 0, 0, 0)
-                    || overlay.GradientStops[2].Offset != .40
+                    || overlay.GradientStops[2].Offset != .28
                     || window.Resources.Values.OfType<GradientBrush>().Count() != 1)
                     throw new InvalidDataException(
-                        "Somente o vídeo pode manter degradê: preto até 30% e transparente aos 40%.");
+                        "Somente o vídeo pode manter degradê: preto até 18% e transparente aos 28%.");
 
                 var requestedThemeColors = new Dictionary<string, Color>(StringComparer.OrdinalIgnoreCase)
                 {
@@ -210,8 +224,10 @@ internal static class WpfTemplateVerifier
                     || window.Resources["CurrentSystemAccentBrush"] is not SolidColorBrush activeAccent
                     || window.Resources["GlobalAccentBrush"] is not SolidColorBrush globalAccent
                     || globalAccent.Color != Color.FromRgb(157, 255, 0)
+                    || window.Resources["GlobalBrightBrush"] is not SolidColorBrush globalBright
+                    || globalBright.Color != Color.FromRgb(183, 255, 70)
                     || sidebarLed.Fill is not SolidColorBrush ledAccent
-                    || ledAccent.Color != globalAccent.Color
+                    || ledAccent.Color != globalBright.Color
                     || homeNavButton.Foreground is not SolidColorBrush homeNavForeground
                     || libraryNavButton.Foreground is not SolidColorBrush libraryNavForeground
                     || gameManagerNavButton.Foreground is not SolidColorBrush gameManagerNavForeground
@@ -1689,7 +1705,11 @@ internal static class WpfTemplateVerifier
             || window.FindName("RetroSystemVideoPlayerHost") is not Grid systemHost
             || window.FindName("RetroCarouselHost") is not Grid carouselHost
             || window.FindName("RetroCarouselScaleHost") is not Viewbox scaleHost
-            || window.FindName("RetroCarouselViewport") is not Grid carouselViewport)
+            || window.FindName("RetroCarouselViewport") is not Grid carouselViewport
+            || window.FindName("TitleBarHost") is not Border titleBarHost
+            || window.FindName("TitleBranding") is not StackPanel titleBranding
+            || window.FindName("WindowChromeButtons") is not StackPanel windowChromeButtons
+            || window.FindName("GlobalMusicPlayer") is not Border globalMusicPlayer)
             throw new InvalidDataException("A área responsiva do vídeo de fundo não foi criada.");
         if (!background.ClipToBounds
             || !host.ClipToBounds
@@ -1771,6 +1791,31 @@ internal static class WpfTemplateVerifier
                 window.Height = height;
                 window.UpdateLayout();
 
+                var brandingBounds = titleBranding
+                    .TransformToAncestor(titleBarHost)
+                    .TransformBounds(new Rect(titleBranding.RenderSize));
+                var playerBounds = globalMusicPlayer
+                    .TransformToAncestor(titleBarHost)
+                    .TransformBounds(new Rect(globalMusicPlayer.RenderSize));
+                var chromeBounds = windowChromeButtons
+                    .TransformToAncestor(titleBarHost)
+                    .TransformBounds(new Rect(windowChromeButtons.RenderSize));
+                const double titleBarTolerance = 0.5;
+                if (Math.Abs(globalMusicPlayer.ActualWidth - 420d) > titleBarTolerance
+                    || brandingBounds.Left < -titleBarTolerance
+                    || brandingBounds.Right > playerBounds.Left + titleBarTolerance
+                    || playerBounds.Right > chromeBounds.Left + titleBarTolerance
+                    || chromeBounds.Right > titleBarHost.ActualWidth + titleBarTolerance
+                    || brandingBounds.Top < -titleBarTolerance
+                    || playerBounds.Top < -titleBarTolerance
+                    || chromeBounds.Top < -titleBarTolerance
+                    || brandingBounds.Bottom > titleBarHost.ActualHeight + titleBarTolerance
+                    || playerBounds.Bottom > titleBarHost.ActualHeight + titleBarTolerance
+                    || chromeBounds.Bottom > titleBarHost.ActualHeight + titleBarTolerance)
+                    throw new InvalidDataException(
+                        $"O player global sobrepôs a marca ou os controles em {width:0}×{height:0}: " +
+                        $"marca={brandingBounds}, player={playerBounds}, janela={chromeBounds}.");
+
                 if (Math.Abs(player.Width - host.ActualWidth) > 0.5
                     || Math.Abs(player.Height - host.ActualHeight) > 0.5
                     || Math.Abs(systemPlayer.Width - systemHost.ActualWidth) > 0.5
@@ -1826,6 +1871,12 @@ internal static class WpfTemplateVerifier
                     width,
                     height,
                     "host do carrossel");
+                AssertElementWithinAncestor(
+                    globalMusicPlayer,
+                    window,
+                    width,
+                    height,
+                    "player global de música");
 
                 foreach (var button in FindVisualDescendants<Button>(carouselViewport)
                              .Where(candidate => candidate.IsVisible
@@ -1936,6 +1987,30 @@ internal static class WpfTemplateVerifier
                                "_isMusicPlaying",
                                BindingFlags.Instance | BindingFlags.NonPublic)
                            ?? throw new MissingFieldException(nameof(StoreWindow), "_isMusicPlaying");
+        var trackIndexField = typeof(StoreWindow).GetField(
+                                  "_musicTrackIndex",
+                                  BindingFlags.Instance | BindingFlags.NonPublic)
+                              ?? throw new MissingFieldException(
+                                  nameof(StoreWindow),
+                                  "_musicTrackIndex");
+        var carouselIndexField = typeof(StoreWindow).GetField(
+                                     "_retroCarouselIndex",
+                                     BindingFlags.Instance | BindingFlags.NonPublic)
+                                 ?? throw new MissingFieldException(
+                                     nameof(StoreWindow),
+                                     "_retroCarouselIndex");
+        var enabledField = typeof(StoreWindow).GetField(
+                               "_isMusicPlaybackEnabled",
+                               BindingFlags.Instance | BindingFlags.NonPublic)
+                           ?? throw new MissingFieldException(
+                               nameof(StoreWindow),
+                               "_isMusicPlaybackEnabled");
+        var openedPathField = typeof(StoreWindow).GetField(
+                                  "_openedMusicTrackPath",
+                                  BindingFlags.Instance | BindingFlags.NonPublic)
+                              ?? throw new MissingFieldException(
+                                  nameof(StoreWindow),
+                                  "_openedMusicTrackPath");
         var leaseField = typeof(StoreWindow).GetField(
                              "_activeEmbeddedMusicTrackLease",
                              BindingFlags.Instance | BindingFlags.NonPublic)
@@ -2001,6 +2076,130 @@ internal static class WpfTemplateVerifier
         if (!succeeded)
             throw new InvalidDataException(
                 "As músicas internas não iniciaram automaticamente na ordem incorporada.");
+
+        if (window.FindName("GlobalMusicPlayer") is not Border globalPlayer
+            || window.FindName("GlobalMusicTrackTitle") is not TextBlock trackTitle
+            || window.FindName("GlobalMusicPlaybackStatus") is not TextBlock playbackStatus
+            || window.FindName("GlobalMusicPlayPauseGlyph") is not TextBlock playPauseGlyph
+            || window.FindName("MusicPreviousButton") is not Button previousButton
+            || window.FindName("MusicPlayPauseButton") is not Button playPauseButton
+            || window.FindName("MusicNextButton") is not Button nextButton
+            || window.FindName("MusicStopButton") is not Button stopButton
+            || window.FindName("MusicFolderButton") is not Button folderButton
+            || window.FindName("GlobalMusicVolumeSlider") is not Slider volumeSlider
+            || !globalPlayer.IsVisible
+            || !previousButton.IsVisible
+            || !playPauseButton.IsVisible
+            || !nextButton.IsVisible
+            || !stopButton.IsVisible
+            || !folderButton.IsVisible
+            || !volumeSlider.IsVisible
+            || globalPlayer.ActualWidth < 300
+            || string.IsNullOrWhiteSpace(trackTitle.Text)
+            || playbackStatus.Text != "TOCANDO"
+            || playPauseGlyph.Text != "Ⅱ"
+            || Math.Abs(volumeSlider.Value - 35) > double.Epsilon)
+            throw new InvalidDataException(
+                "O player global não expôs faixa, reprodução, desligamento e volume na barra superior.");
+
+        var musicPlayerInput = typeof(StoreWindow).GetMethod(
+                                   "IsGlobalMusicPlayerInput",
+                                   BindingFlags.Instance | BindingFlags.NonPublic)
+                               ?? throw new MissingMethodException(
+                                   nameof(StoreWindow),
+                                   "IsGlobalMusicPlayerInput");
+        foreach (var musicControl in new Control[]
+                 {
+                     previousButton,
+                     playPauseButton,
+                     nextButton,
+                     stopButton,
+                     folderButton,
+                     volumeSlider
+                 })
+        {
+            if (musicPlayerInput.Invoke(window, [musicControl]) as bool? != true)
+                throw new InvalidDataException(
+                    $"O controle '{musicControl.Name}' não foi isolado das setas do carrossel.");
+        }
+        var previewKeyDown = typeof(StoreWindow).GetMethod(
+                                 "OnPreviewKeyDown",
+                                 BindingFlags.Instance | BindingFlags.NonPublic)
+                             ?? throw new MissingMethodException(
+                                 nameof(StoreWindow),
+                                 "OnPreviewKeyDown");
+        var presentationSource = PresentationSource.FromVisual(window)
+                                 ?? throw new InvalidDataException(
+                                     "A janela não possui PresentationSource para validar o teclado.");
+        var carouselIndexBeforeVolumeKey = carouselIndexField.GetValue(window) as int?;
+        var volumeKey = new KeyEventArgs(
+            Keyboard.PrimaryDevice,
+            presentationSource,
+            Environment.TickCount,
+            Key.Right)
+        {
+            RoutedEvent = Keyboard.PreviewKeyDownEvent,
+            Source = volumeSlider
+        };
+        previewKeyDown.Invoke(window, [volumeKey]);
+        if (volumeKey.Handled
+            || carouselIndexField.GetValue(window) as int? != carouselIndexBeforeVolumeKey)
+            throw new InvalidDataException(
+                "A seta de volume foi capturada pelo carrossel em vez do player global.");
+
+        stopButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        if (enabledField.GetValue(window) as bool? != false
+            || playingField.GetValue(window) as bool? != false
+            || leaseField.GetValue(window) is not null
+            || !string.IsNullOrEmpty(openedPathField.GetValue(window) as string)
+            || playbackStatus.Text != "DESLIGADO"
+            || playPauseGlyph.Text != "▶")
+            throw new InvalidDataException(
+                "O botão desligar não encerrou a reprodução e liberou a faixa incorporada.");
+
+        var mediaOpened = typeof(StoreWindow).GetMethod(
+                              "MusicPlayer_MediaOpened",
+                              BindingFlags.Instance | BindingFlags.NonPublic)
+                          ?? throw new MissingMethodException(
+                              nameof(StoreWindow),
+                              "MusicPlayer_MediaOpened");
+        mediaOpened.Invoke(window, [null, EventArgs.Empty]);
+        if (enabledField.GetValue(window) as bool? != false
+            || playingField.GetValue(window) as bool? != false
+            || playbackStatus.Text != "DESLIGADO"
+            || playPauseGlyph.Text != "▶")
+            throw new InvalidDataException(
+                "Um MediaOpened atrasado reativou visualmente o player desligado.");
+
+        playPauseButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        if (enabledField.GetValue(window) as bool? != true
+            || playingField.GetValue(window) as bool? != true
+            || leaseField.GetValue(window) is not EmbeddedMusicTrackLease resumedLease
+            || string.IsNullOrWhiteSpace(openedPathField.GetValue(window) as string)
+            || playbackStatus.Text != "TOCANDO"
+            || playPauseGlyph.Text != "Ⅱ")
+            throw new InvalidDataException(
+                "O player global não retomou a faixa depois de desligar.");
+        resumedLease.Revalidate();
+
+        playPauseButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        var pausedTrackIndex = trackIndexField.GetValue(window) as int?
+                               ?? throw new InvalidDataException(
+                                   "O índice da faixa pausada não foi preservado.");
+        var mediaEnded = typeof(StoreWindow).GetMethod(
+                             "MusicPlayer_MediaEnded",
+                             BindingFlags.Instance | BindingFlags.NonPublic)
+                         ?? throw new MissingMethodException(
+                             nameof(StoreWindow),
+                             "MusicPlayer_MediaEnded");
+        mediaEnded.Invoke(window, [null, EventArgs.Empty]);
+        if (enabledField.GetValue(window) as bool? != true
+            || playingField.GetValue(window) as bool? != false
+            || trackIndexField.GetValue(window) as int? != pausedTrackIndex
+            || playbackStatus.Text != "PAUSADO"
+            || playPauseGlyph.Text != "▶")
+            throw new InvalidDataException(
+                "Um MediaEnded atrasado avançou ou retomou o player pausado.");
     }
 
     private static void VerifyLocalGamesOnlyShowsPhysicalContent()

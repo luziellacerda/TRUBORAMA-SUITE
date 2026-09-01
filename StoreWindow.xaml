@@ -30,8 +30,8 @@
       <SolidColorBrush x:Key="CurrentSystemSidebarSelectionBrush" Color="#1C5FA5F5" />
       <LinearGradientBrush x:Key="CurrentSystemVideoOverlayBrush" StartPoint="0,.5" EndPoint="1,.5">
         <GradientStop Color="#FF000000" Offset="0" />
-        <GradientStop Color="#FF000000" Offset=".30" />
-        <GradientStop Color="#00000000" Offset=".40" />
+        <GradientStop Color="#FF000000" Offset=".18" />
+        <GradientStop Color="#00000000" Offset=".28" />
       </LinearGradientBrush>
       <BitmapImage x:Key="CatalogFallbackArtwork" UriSource="Assets/f15-turborama-user-original-v13.png" DecodePixelWidth="512" CacheOption="OnLoad" CreateOptions="DelayCreation" />
       <Style x:Key="TechScrollThumbStyle" TargetType="{x:Type Thumb}">
@@ -1146,9 +1146,9 @@
         <RowDefinition Height="44" />
         <RowDefinition Height="*" />
       </Grid.RowDefinitions>
-      <Border Grid.Row="0" Background="#080A08" BorderBrush="#222820" BorderThickness="0,0,0,1" AutomationProperties.Name="Barra de título Turborama" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+      <Border x:Name="TitleBarHost" Grid.Row="0" Background="#080A08" BorderBrush="#222820" BorderThickness="0,0,0,1" AutomationProperties.Name="Barra de título Turborama" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
         <DockPanel LastChildFill="False">
-          <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center" Margin="15,0,0,0">
+          <StackPanel x:Name="TitleBranding" DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center" Margin="15,0,0,0">
             <Image Source="Assets/turborama-app-icon.ico" Width="24" Height="24" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
             <TextBlock Text="TURBORAMA" FontSize="12" FontWeight="Bold" VerticalAlignment="Center" Margin="10,0,0,0" />
             <Rectangle Width="1" Height="15" Fill="#394035" Margin="11,0" />
@@ -1159,11 +1159,95 @@
               </UIElement.Effect>
             </Ellipse>
           </StackPanel>
-          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+          <StackPanel x:Name="WindowChromeButtons" DockPanel.Dock="Right" Orientation="Horizontal">
             <Button Content="—" AutomationProperties.Name="Minimizar" Style="{StaticResource WindowButtonStyle}" Click="Minimize_Click" />
             <Button Content="□" AutomationProperties.Name="Maximizar ou restaurar" Style="{StaticResource WindowButtonStyle}" Click="Maximize_Click" />
             <Button Content="×" AutomationProperties.Name="Fechar" Style="{StaticResource WindowButtonStyle}" Foreground="#FF6B79" Click="Close_Click" />
           </StackPanel>
+          <Border x:Name="GlobalMusicPlayer"
+                  DockPanel.Dock="Right"
+                  Width="420"
+                  Height="34"
+                  Margin="0,5,10,5"
+                  Background="#E60B100C"
+                  BorderBrush="{StaticResource GlobalLineBrush}"
+                  BorderThickness="1"
+                  CornerRadius="8"
+                  AutomationProperties.Name="Player de música global">
+            <Grid Margin="8,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="18" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="82" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Text="♪"
+                         Foreground="{StaticResource GlobalAccentBrush}"
+                         FontSize="14"
+                         FontWeight="Bold"
+                         VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button x:Name="MusicPreviousButton"
+                        Content="◀"
+                        AutomationProperties.Name="Música anterior"
+                        ToolTip="Música anterior"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Width="24" Height="24" MinHeight="24" Padding="0" FontSize="9"
+                        Click="MusicPrevious_Click" />
+                <Button x:Name="MusicPlayPauseButton"
+                        AutomationProperties.Name="Tocar ou pausar música"
+                        ToolTip="Tocar ou pausar"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Width="27" Height="24" MinHeight="24" Padding="0" FontSize="9" Margin="4,0"
+                        Click="MusicPlayPause_Click">
+                  <TextBlock Name="GlobalMusicPlayPauseGlyph" Text="▶" />
+                </Button>
+                <Button x:Name="MusicNextButton"
+                        Content="▶"
+                        AutomationProperties.Name="Próxima música"
+                        ToolTip="Próxima música"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Width="24" Height="24" MinHeight="24" Padding="0" FontSize="9"
+                        Click="MusicNext_Click" />
+                <Button x:Name="MusicStopButton"
+                        Content="■"
+                        AutomationProperties.Name="Desligar música"
+                        ToolTip="Desligar música"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Foreground="#FF6B79"
+                        Width="24" Height="24" MinHeight="24" Padding="0" FontSize="8" Margin="4,0,0,0"
+                        Click="MusicStop_Click" />
+                <Button x:Name="MusicFolderButton"
+                        Content="♫+"
+                        AutomationProperties.Name="Escolher pasta de músicas"
+                        ToolTip="Escolher pasta de músicas"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Width="30" Height="24" MinHeight="24" Padding="0" FontSize="8" Margin="4,0,0,0"
+                        Click="ChooseMusicFolder_Click" />
+              </StackPanel>
+              <StackPanel Grid.Column="2" Margin="8,0,8,0" VerticalAlignment="Center">
+                <TextBlock Name="GlobalMusicTrackTitle"
+                           Text="Preparando músicas internas..."
+                           FontSize="9"
+                           FontWeight="SemiBold"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Name="GlobalMusicPlaybackStatus"
+                           Text="AUTOMÁTICO"
+                           Foreground="{StaticResource GlobalAccentBrush}"
+                           FontSize="7"
+                           FontWeight="Bold"
+                           Margin="0,1,0,0" />
+              </StackPanel>
+              <Slider x:Name="GlobalMusicVolumeSlider"
+                      Grid.Column="3"
+                      Minimum="0"
+                      Maximum="100"
+                      Value="35"
+                      VerticalAlignment="Center"
+                      ValueChanged="MusicVolume_ValueChanged"
+                      AutomationProperties.Name="Volume da música" />
+            </Grid>
+          </Border>
         </DockPanel>
       </Border>
       <Grid Row="1">
@@ -1177,14 +1261,14 @@
                   IsHitTestVisible="False"
                   Focusable="False"
                   SnapsToDevicePixels="True"
-                  AutomationProperties.Name="LED lateral do sistema">
+                  AutomationProperties.Name="LED lateral global Turborama">
               <Grid.Triggers>
                 <EventTrigger RoutedEvent="FrameworkElement.Loaded">
                   <BeginStoryboard>
                     <Storyboard RepeatBehavior="Forever" AutoReverse="True">
                       <DoubleAnimation Storyboard.TargetName="SidebarLedBar"
                                        Storyboard.TargetProperty="Opacity"
-                                       From=".72" To="1" Duration="0:0:1.6" />
+                                       From=".78" To="1" Duration="0:0:1.25" />
                     </Storyboard>
                   </BeginStoryboard>
                 </EventTrigger>
@@ -1196,13 +1280,16 @@
                          VerticalAlignment="Stretch"
                          RadiusX="1"
                          RadiusY="1"
-                          Fill="{StaticResource GlobalAccentBrush}"
-                         Opacity=".88">
+                         Fill="{StaticResource GlobalBrightBrush}"
+                         Opacity=".94"
+                         CacheMode="BitmapCache">
                 <Rectangle.Effect>
                   <DropShadowEffect Color="{StaticResource GlobalAccentColor}"
-                                    BlurRadius="7"
-                                    ShadowDepth="0"
-                                    Opacity=".72" />
+                                    BlurRadius="18"
+                                    ShadowDepth="5"
+                                    Direction="0"
+                                    Opacity=".92"
+                                    RenderingBias="Quality" />
                 </Rectangle.Effect>
               </Rectangle>
             </Grid>
@@ -1506,45 +1593,10 @@
                 <Grid.RowDefinitions>
                   <RowDefinition Height="Auto" />
                   <RowDefinition Height="Auto" />
-                  <RowDefinition Height="Auto" />
                   <RowDefinition Height="*" />
                   <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <Border Style="{StaticResource PanelBorderStyle}" Padding="12,9">
-                  <Grid>
-                    <Grid.RowDefinitions>
-                      <RowDefinition Height="Auto" />
-                      <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                      <ColumnDefinition Width="Auto" />
-                      <ColumnDefinition Width="*" />
-                      <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                      <Button Content="◀" AutomationProperties.Name="Música anterior" Style="{StaticResource SecondaryButtonStyle}" Width="34" MinHeight="32" Height="32" Padding="0" Click="MusicPrevious_Click" />
-                      <Button AutomationProperties.Name="Tocar ou pausar música" Style="{StaticResource PrimaryButtonStyle}" Width="38" MinHeight="32" Height="32" Padding="0" Margin="6,0" Click="MusicPlayPause_Click">
-                        <TextBlock Name="MusicPlayPauseGlyph" Text="▶" />
-                      </Button>
-                      <Button Content="▶" AutomationProperties.Name="Próxima música" Style="{StaticResource SecondaryButtonStyle}" Width="34" MinHeight="32" Height="32" Padding="0" Click="MusicNext_Click" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
-                      <TextBlock Name="MusicTrackTitle" Text="Preparando músicas internas..." FontSize="11" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                      <TextBlock Name="MusicPlaybackStatus" Text="AUTOMÁTICO" Foreground="#687363" FontSize="8" FontWeight="Bold" Margin="0,2,0,0" />
-                    </StackPanel>
-                    <Button Grid.Column="2" Content="PASTA DE MÚSICAS" AutomationProperties.Name="Escolher pasta de músicas" Style="{StaticResource SecondaryButtonStyle}" MinHeight="32" Height="32" Padding="10,0" Click="ChooseMusicFolder_Click" />
-                    <Grid Grid.Row="1" Grid.ColumnSpan="3" Margin="0,8,0,0">
-                      <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                      </Grid.ColumnDefinitions>
-                      <TextBlock Text="VOLUME" Foreground="#687363" FontSize="8" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,9,0" />
-                      <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="35" VerticalAlignment="Center" ValueChanged="MusicVolume_ValueChanged" AutomationProperties.Name="Volume da música" />
-                    </Grid>
-                  </Grid>
-                </Border>
-
-                <Border Grid.Row="1" Style="{StaticResource PanelBorderStyle}" Padding="13,8" Margin="0,9,0,0">
+                <Border Grid.Row="0" Style="{StaticResource PanelBorderStyle}" Padding="13,8">
                   <Grid>
                     <Grid.ColumnDefinitions>
                       <ColumnDefinition Width="*" />
@@ -1560,7 +1612,7 @@
                   </Grid>
                 </Border>
 
-                <Grid Grid.Row="2" Margin="0,9,0,9">
+                <Grid Grid.Row="1" Margin="0,9,0,9">
                   <TextBox AutomationProperties.Name="Buscar nos jogos locais" Style="{StaticResource SearchBoxStyle}" TextChanged="ManagedGameSearch_TextChanged" />
                   <TextBlock Text="⌕" Foreground="{StaticResource GlobalAccentBrush}" FontSize="19" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="15,0,0,1" IsHitTestVisible="False" />
                   <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,15,0" IsHitTestVisible="False">
@@ -1569,7 +1621,7 @@
                   </StackPanel>
                 </Grid>
 
-                <Grid Grid.Row="3">
+                <Grid Grid.Row="2">
                   <Border Name="ManagedGamesEmptyPanel" Style="{StaticResource PanelBorderStyle}">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                       <TextBlock Text="Nenhum jogo instalado neste sistema" FontSize="17" FontWeight="Bold" />
@@ -1604,7 +1656,7 @@
                     </ListBox.ItemContainerStyle>
                   </ListBox>
                 </Grid>
-                <TextBlock Name="ManagedGameManagerStatus" Grid.Row="4" Text="Selecione um sistema para analisar a pasta de ROMs." Foreground="#7F897C" FontSize="9" TextWrapping="Wrap" Margin="3,7,3,0" />
+                <TextBlock Name="ManagedGameManagerStatus" Grid.Row="3" Text="Selecione um sistema para analisar a pasta de ROMs." Foreground="#7F897C" FontSize="9" TextWrapping="Wrap" Margin="3,7,3,0" />
               </Grid>
             </Grid>
           </Grid>

@@ -179,6 +179,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     private int _musicPlaylistLoadVersion;
     private int _musicTrackIndex = -1;
     private string _openedMusicTrackPath = string.Empty;
+    private bool _isMusicPlaybackEnabled = true;
     private bool _isMusicPlaying;
     private bool _isBuiltInMusicPlaylist;
     private int _consecutiveMusicFailures;
@@ -1064,7 +1065,8 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             _isMusicPlaying = false;
             UpdateMusicPlayerUi(
                 $"Músicas internas indisponíveis: {exception.Message}",
-                isPlaying: false);
+                isPlaying: false,
+                statusOverride: _isMusicPlaybackEnabled ? null : "DESLIGADO");
         }
         finally
         {
@@ -1081,6 +1083,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             : Environment.GetFolderPath(Environment.SpecialFolder.MyMusic);
         var selected = ChooseFolder("Escolha a pasta de músicas", initialFolder);
         if (selected is null) return;
+        _isMusicPlaybackEnabled = true;
         await LoadMusicPlaylistAsync(
             selected,
             startPlayback: true,
@@ -1134,7 +1137,10 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             _musicTrackIndex = -1;
             _openedMusicTrackPath = string.Empty;
             _isMusicPlaying = false;
-            UpdateMusicPlayerUi($"Pasta de músicas indisponível: {exception.Message}", false);
+            UpdateMusicPlayerUi(
+                $"Pasta de músicas indisponível: {exception.Message}",
+                isPlaying: false,
+                statusOverride: _isMusicPlaybackEnabled ? null : "DESLIGADO");
         }
         finally
         {
@@ -1161,12 +1167,14 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         _openedMusicTrackPath = string.Empty;
         _isMusicPlaying = false;
         _consecutiveMusicFailures = 0;
-        if (startPlayback)
+        var shouldStartPlayback = startPlayback && _isMusicPlaybackEnabled;
+        if (shouldStartPlayback)
             PlayMusicAtIndex(_musicTrackIndex);
         else
             UpdateMusicPlayerUi(
                 Path.GetFileNameWithoutExtension(_musicTracks[_musicTrackIndex]),
-                isPlaying: false);
+                isPlaying: false,
+                statusOverride: _isMusicPlaybackEnabled ? null : "DESLIGADO");
     }
 
     private static List<string> DiscoverMusicTracks(
@@ -1222,11 +1230,17 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         catch (ObjectDisposedException) { }
     }
 
-    private void MusicPrevious_Click(object sender, RoutedEventArgs e) =>
+    private void MusicPrevious_Click(object sender, RoutedEventArgs e)
+    {
+        _isMusicPlaybackEnabled = true;
         MoveMusicTrack(-1);
+    }
 
-    private void MusicNext_Click(object sender, RoutedEventArgs e) =>
+    private void MusicNext_Click(object sender, RoutedEventArgs e)
+    {
+        _isMusicPlaybackEnabled = true;
         MoveMusicTrack(1);
+    }
 
     private void MoveMusicTrack(int direction)
     {
@@ -1251,6 +1265,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         }
         else if (_musicTrackIndex >= 0)
         {
+            _isMusicPlaybackEnabled = true;
             var selectedPath = _musicTracks[_musicTrackIndex];
             if (!_openedMusicTrackPath.Equals(
                     selectedPath,
@@ -1265,6 +1280,20 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         UpdateMusicPlayerUi(
             Path.GetFileNameWithoutExtension(_musicTracks[_musicTrackIndex]),
             _isMusicPlaying);
+    }
+
+    private void MusicStop_Click(object sender, RoutedEventArgs e)
+    {
+        _isMusicPlaybackEnabled = false;
+        _musicPlayer.Stop();
+        _musicPlayer.Close();
+        DisposeActiveEmbeddedMusicTrackLease();
+        _openedMusicTrackPath = string.Empty;
+        _isMusicPlaying = false;
+        var trackLabel = _musicTrackIndex >= 0 && _musicTrackIndex < _musicTracks.Count
+            ? Path.GetFileNameWithoutExtension(_musicTracks[_musicTrackIndex])
+            : "Música desligada";
+        UpdateMusicPlayerUi(trackLabel, isPlaying: false, statusOverride: "DESLIGADO");
     }
 
     private void MusicVolume_ValueChanged(
@@ -1316,6 +1345,20 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
     private void MusicPlayer_MediaOpened(object? sender, EventArgs e)
     {
+        if (!_isMusicPlaybackEnabled)
+        {
+            _isMusicPlaying = false;
+            var stoppedTrackLabel = _musicTrackIndex >= 0
+                                    && _musicTrackIndex < _musicTracks.Count
+                ? Path.GetFileNameWithoutExtension(_musicTracks[_musicTrackIndex])
+                : "Música desligada";
+            UpdateMusicPlayerUi(
+                stoppedTrackLabel,
+                isPlaying: false,
+                statusOverride: "DESLIGADO");
+            return;
+        }
+
         _consecutiveMusicFailures = 0;
         if (_musicTrackIndex >= 0 && _musicTrackIndex < _musicTracks.Count)
             UpdateMusicPlayerUi(
@@ -1325,12 +1368,14 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
     private void MusicPlayer_MediaEnded(object? sender, EventArgs e)
     {
+        if (!_isMusicPlaybackEnabled || !_isMusicPlaying) return;
         _consecutiveMusicFailures = 0;
         MoveMusicTrack(1);
     }
 
     private void MusicPlayer_MediaFailed(object? sender, ExceptionEventArgs e)
     {
+        if (!_isMusicPlaybackEnabled) return;
         _consecutiveMusicFailures++;
         if (_musicTracks.Count == 0 || _consecutiveMusicFailures >= _musicTracks.Count)
         {
@@ -1344,11 +1389,22 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         MoveMusicTrack(1);
     }
 
-    private void UpdateMusicPlayerUi(string trackLabel, bool isPlaying)
+    private void UpdateMusicPlayerUi(
+        string trackLabel,
+        bool isPlaying,
+        string? statusOverride = null)
     {
-        SetText("MusicTrackTitle", trackLabel);
-        SetText("MusicPlayPauseGlyph", isPlaying ? "Ⅱ" : "▶");
-        SetText("MusicPlaybackStatus", isPlaying ? "TOCANDO" : "PAUSADO");
+        if (!_isMusicPlaybackEnabled)
+        {
+            isPlaying = false;
+            statusOverride = "DESLIGADO";
+        }
+
+        SetText("GlobalMusicTrackTitle", trackLabel);
+        SetText("GlobalMusicPlayPauseGlyph", isPlaying ? "Ⅱ" : "▶");
+        SetText(
+            "GlobalMusicPlaybackStatus",
+            statusOverride ?? (isPlaying ? "TOCANDO" : "PAUSADO"));
     }
 
     private void DisposeActiveEmbeddedMusicTrackLease()
@@ -5379,9 +5435,12 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     protected override void OnPreviewKeyDown(KeyEventArgs e)
     {
         base.OnPreviewKeyDown(e);
+        var inputSource = e.OriginalSource as DependencyObject
+                          ?? Keyboard.FocusedElement as DependencyObject;
         if (e.Handled
             || !IsRetroCarouselVisible
-            || Keyboard.FocusedElement is TextBox)
+            || inputSource is TextBox
+            || IsGlobalMusicPlayerInput(inputSource))
             return;
 
         if (e.Key == Key.Left)
@@ -5394,6 +5453,15 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             QueueRetroCarouselMove(1);
             e.Handled = true;
         }
+    }
+
+    private bool IsGlobalMusicPlayerInput(DependencyObject? inputSource)
+    {
+        if (inputSource is not Visual inputVisual
+            || FindNamed<Border>("GlobalMusicPlayer") is not { } player)
+            return false;
+
+        return ReferenceEquals(player, inputVisual) || player.IsAncestorOf(inputVisual);
     }
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
