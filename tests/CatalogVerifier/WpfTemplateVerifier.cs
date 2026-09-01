@@ -1365,9 +1365,21 @@ internal static class WpfTemplateVerifier
         PremiumLoginWindow? login = null;
         try
         {
-            window.Dispatcher.Invoke(
-                () => window.UpdateLayout(),
-                DispatcherPriority.ApplicationIdle);
+            WaitForDispatcherCondition(
+                window,
+                () =>
+                {
+                    window.UpdateLayout();
+                    login = Application.Current.Windows
+                        .OfType<PremiumLoginWindow>()
+                        .SingleOrDefault(candidate => !existingWindows.Contains(candidate));
+                    return !window.IsEnabled
+                           && !window.IsVisible
+                           && window.FindName("SessionStatusText") is TextBlock status
+                           && status.Text.Equals("SESSÃO ENCERRADA", StringComparison.Ordinal)
+                           && login is { IsVisible: true };
+                },
+                "o callback de revogação fechar a loja e abrir o login");
             login = Application.Current.Windows
                 .OfType<PremiumLoginWindow>()
                 .SingleOrDefault(candidate => !existingWindows.Contains(candidate));
