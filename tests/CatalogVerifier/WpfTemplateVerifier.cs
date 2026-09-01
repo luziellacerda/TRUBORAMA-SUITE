@@ -161,7 +161,7 @@ internal static class WpfTemplateVerifier
                     || hudSearchPanel.Background is not SolidColorBrush
                     || hudActionStatusPanel.Background is not SolidColorBrush
                     || catalogHudHeader.CornerRadius != new CornerRadius(0)
-                    || hudSearchPanel.CornerRadius != new CornerRadius(2)
+                    || hudSearchPanel.CornerRadius != new CornerRadius(0)
                     || hudActionStatusPanel.CornerRadius != new CornerRadius(0)
                     || catalogPage.RowDefinitions.Count != 2
                     || Math.Abs(catalogHudHeader.Height - 50) > double.Epsilon
@@ -1899,12 +1899,12 @@ internal static class WpfTemplateVerifier
             || scaleHost.Stretch != Stretch.Uniform
             || scaleHost.StretchDirection != StretchDirection.Both
             || Math.Abs(carouselViewport.Width - 1060) > double.Epsilon
-            || Math.Abs(carouselViewport.Height - 440) > double.Epsilon
-            || Math.Abs(carouselActionBar.Width - 280) > double.Epsilon
+            || Math.Abs(carouselViewport.Height - 504) > double.Epsilon
+            || Math.Abs(carouselActionBar.Width - 320) > double.Epsilon
             || carouselCurrent.RenderTransform is not TransformGroup currentTransforms
             || currentTransforms.Children.OfType<ScaleTransform>().SingleOrDefault() is not { } currentScale
-            || currentScale.ScaleX < 1.11
-            || currentScale.ScaleY < 1.11)
+            || currentScale.ScaleX < 1.27
+            || currentScale.ScaleY < 1.27)
             throw new InvalidDataException(
                 "O vídeo precisa preencher a área e o carrossel deve aproveitar o espaço liberado com capas ampliadas.");
 
@@ -1964,6 +1964,17 @@ internal static class WpfTemplateVerifier
                 window.Width = width;
                 window.Height = height;
                 window.UpdateLayout();
+
+                var visibleCarouselActions = FindVisualDescendants<Button>(carouselActionBar)
+                    .Where(candidate => candidate.IsVisible)
+                    .ToArray();
+                if (visibleCarouselActions.Length != 1
+                    || Math.Abs(
+                        visibleCarouselActions[0].ActualWidth
+                        - carouselActionBar.ActualWidth) > .5
+                    || visibleCarouselActions[0].ActualHeight < 23.5)
+                    throw new InvalidDataException(
+                        $"O botão da capa principal não ocupou toda a largura em {width:0}×{height:0}.");
 
                 var brandingBounds = titleBranding
                     .TransformToAncestor(titleBarHost)
@@ -2082,6 +2093,12 @@ internal static class WpfTemplateVerifier
                     width,
                     height,
                     "player global de música");
+                AssertElementWithinAncestor(
+                    visibleCarouselActions[0],
+                    carouselActionBar,
+                    width,
+                    height,
+                    "botão integral da capa principal");
                 AssertElementWithinAncestor(
                     catalogHudHeader,
                     catalogPage,

@@ -1055,7 +1055,9 @@
 
       <!-- Download/pause/open remains fixed below the selected poster while covers move. -->
       <DataTemplate x:Key="RetroCarouselActionTemplate">
-        <Grid Width="250" Height="20" AutomationProperties.HelpText="{Binding DownloadStatus}">
+        <Grid Height="24"
+              HorizontalAlignment="Stretch"
+              AutomationProperties.HelpText="{Binding DownloadStatus}">
           <Button Content="{Binding DownloadActionLabel}"
                   IsEnabled="{Binding CanDownload}"
                   Tag="{Binding Id}"
@@ -1064,8 +1066,8 @@
                   AutomationProperties.HelpText="{Binding Title}">
             <Button.Style>
               <Style TargetType="{x:Type Button}" BasedOn="{StaticResource DownloadNeonButtonStyle}">
-                <Setter Property="Height" Value="20" />
-                <Setter Property="MinHeight" Value="20" />
+                <Setter Property="Height" Value="24" />
+                <Setter Property="MinHeight" Value="24" />
                 <Setter Property="Padding" Value="6,0" />
                 <Setter Property="FontSize" Value="8" />
                 <Setter Property="Visibility" Value="Visible" />
@@ -1083,8 +1085,8 @@
                   AutomationProperties.HelpText="{Binding Title}">
             <Button.Style>
               <Style TargetType="{x:Type Button}" BasedOn="{StaticResource SecondaryButtonStyle}">
-                <Setter Property="Height" Value="20" />
-                <Setter Property="MinHeight" Value="20" />
+                <Setter Property="Height" Value="24" />
+                <Setter Property="MinHeight" Value="24" />
                 <Setter Property="Padding" Value="6,0" />
                 <Setter Property="FontSize" Value="8" />
                 <Setter Property="Foreground" Value="#FFD36B" />
@@ -1103,8 +1105,8 @@
                   AutomationProperties.HelpText="{Binding Title}">
             <Button.Style>
               <Style TargetType="{x:Type Button}" BasedOn="{StaticResource PrimaryButtonStyle}">
-                <Setter Property="Height" Value="20" />
-                <Setter Property="MinHeight" Value="20" />
+                <Setter Property="Height" Value="24" />
+                <Setter Property="MinHeight" Value="24" />
                 <Setter Property="Padding" Value="6,0" />
                 <Setter Property="FontSize" Value="8" />
                 <Setter Property="Visibility" Value="Collapsed" />
@@ -1972,18 +1974,22 @@
                   <Border Grid.Column="1"
                           Margin="0,0,6,0"
                           Padding="4,0"
-                          Background="#FF050806"
+                          Background="#FF080C09"
                           BorderBrush="{DynamicResource CurrentSystemLineBrush}"
-                          BorderThickness="1"
-                          CornerRadius="2"
+                          BorderThickness="0,0,0,1"
+                          CornerRadius="0"
                           ToolTip="Pasta de instalação">
                     <Grid>
                       <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="30" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="22" />
                       </Grid.ColumnDefinitions>
-                      <TextBlock Text="▣" Foreground="{DynamicResource CurrentSystemAccentBrush}" FontSize="12" VerticalAlignment="Center" />
+                      <TextBlock Text="ROM"
+                                 Foreground="{DynamicResource CurrentSystemAccentBrush}"
+                                 FontSize="7"
+                                 FontWeight="Bold"
+                                 VerticalAlignment="Center" />
                       <TextBlock Name="InstallFolderPath"
                                  Grid.Column="1"
                                  Text="Documentos\Turborama"
@@ -2007,19 +2013,23 @@
                   <Border Grid.Column="2"
                           Margin="0,0,6,0"
                           Padding="4,0"
-                          Background="#FF050806"
+                          Background="#FF080C09"
                           BorderBrush="{DynamicResource CurrentSystemLineBrush}"
-                          BorderThickness="1"
-                          CornerRadius="2"
+                          BorderThickness="0,0,0,1"
+                          CornerRadius="0"
                           ToolTip="Pasta de temporários">
                     <Grid>
                       <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="30" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="22" />
                         <ColumnDefinition Width="22" />
                       </Grid.ColumnDefinitions>
-                      <TextBlock Text="↔" Foreground="{DynamicResource CurrentSystemAccentBrush}" FontSize="12" VerticalAlignment="Center" />
+                      <TextBlock Text="TMP"
+                                 Foreground="{DynamicResource CurrentSystemAccentBrush}"
+                                 FontSize="7"
+                                 FontWeight="Bold"
+                                 VerticalAlignment="Center" />
                       <TextBlock Name="TempFolderPath"
                                  Grid.Column="1"
                                  Text="(padrão)"
@@ -2053,10 +2063,10 @@
                           Grid.Column="3"
                           Margin="0,0,6,0"
                           Padding="0"
-                          Background="#FF050806"
+                          Background="#FF080C09"
                           BorderBrush="{DynamicResource CurrentSystemLineBrush}"
-                          BorderThickness="1"
-                          CornerRadius="2"
+                          BorderThickness="0,0,0,1"
+                          CornerRadius="0"
                           AutomationProperties.Name="Pesquisa do HUD compacto">
                     <Grid>
                       <Grid.ColumnDefinitions>
@@ -2084,6 +2094,7 @@
                             Content="▣  PASTA"
                             Width="68" Height="32" MinHeight="32"
                             Padding="5,0"
+                            Background="#FF111812"
                             AutomationProperties.Name="Abrir pasta de instalação"
                             Style="{StaticResource CatalogHudButtonStyle}"
                             Margin="0,0,6,0"
@@ -2093,6 +2104,7 @@
                             Content="●  SUPORTE"
                             Width="70" Height="32" MinHeight="32"
                             Padding="5,0"
+                            Background="#FF111812"
                             AutomationProperties.Name="Abrir suporte"
                             Style="{StaticResource CatalogHudButtonStyle}"
                             BorderBrush="{DynamicResource CurrentSystemBrightBrush}"
@@ -2165,13 +2177,13 @@
                            Panel.ZIndex="10">
                     <Grid x:Name="RetroCarouselViewport"
                           Width="1060"
-                          Height="440"
+                          Height="504"
                           HorizontalAlignment="Center"
                           VerticalAlignment="Center"
                           ClipToBounds="True">
                     <Grid x:Name="RetroCarouselInfoPanel"
-                          Width="750"
-                          Height="160"
+                          Width="710"
+                          Height="230"
                           HorizontalAlignment="Right"
                           VerticalAlignment="Bottom"
                           Margin="0,0,0,8"
@@ -2179,7 +2191,7 @@
                           Panel.ZIndex="2">
                       <Rectangle
                                  Width="2"
-                                 Height="118"
+                                 Height="158"
                                  HorizontalAlignment="Left"
                                  VerticalAlignment="Center"
                                  Fill="{DynamicResource CurrentSystemAccentBrush}"
@@ -2215,61 +2227,61 @@
                         </StackPanel>
                       </Grid>
                     </Grid>
-                    <Canvas x:Name="RetroCarouselTrack" Width="1060" Height="440" Panel.ZIndex="10">
+                    <Canvas x:Name="RetroCarouselTrack" Width="1060" Height="504" Panel.ZIndex="10">
                       <ContentControl x:Name="RetroCarouselCurrent"
-                                      Canvas.Left="20"
+                                      Canvas.Left="10"
                                       Canvas.Top="0"
-                                      Width="280"
-                                      Height="420"
+                                      Width="320"
+                                      Height="480"
                                       Opacity="1"
                                       Panel.ZIndex="40"
                                       ContentTemplate="{StaticResource RetroCarouselPosterTemplate}" />
                       <ContentControl x:Name="RetroCarouselMini1"
-                                      Canvas.Left="310"
+                                      Canvas.Left="344"
                                       Canvas.Top="0"
-                                      Width="144"
-                                      Height="216"
+                                      Width="136"
+                                      Height="204"
                                       Opacity=".95"
                                       Panel.ZIndex="25"
                                       ContentTemplate="{StaticResource RetroCarouselPosterTemplate}" />
                       <ContentControl x:Name="RetroCarouselMini2"
-                                      Canvas.Left="460"
+                                      Canvas.Left="489"
                                       Canvas.Top="0"
-                                      Width="144"
-                                      Height="216"
+                                      Width="136"
+                                      Height="204"
                                       Opacity=".90"
                                       Panel.ZIndex="24"
                                       ContentTemplate="{StaticResource RetroCarouselPosterTemplate}" />
                       <ContentControl x:Name="RetroCarouselMini3"
-                                      Canvas.Left="610"
+                                      Canvas.Left="634"
                                       Canvas.Top="0"
-                                      Width="144"
-                                      Height="216"
+                                      Width="136"
+                                      Height="204"
                                       Opacity=".85"
                                       Panel.ZIndex="23"
                                       ContentTemplate="{StaticResource RetroCarouselPosterTemplate}" />
                       <ContentControl x:Name="RetroCarouselMini4"
-                                      Canvas.Left="760"
+                                      Canvas.Left="779"
                                       Canvas.Top="0"
-                                      Width="144"
-                                      Height="216"
+                                      Width="136"
+                                      Height="204"
                                       Opacity=".80"
                                       Panel.ZIndex="22"
                                       ContentTemplate="{StaticResource RetroCarouselPosterTemplate}" />
                       <ContentControl x:Name="RetroCarouselMini5"
-                                      Canvas.Left="910"
+                                      Canvas.Left="924"
                                       Canvas.Top="0"
-                                      Width="144"
-                                      Height="216"
+                                      Width="136"
+                                      Height="204"
                                       Opacity=".75"
                                       Panel.ZIndex="21"
                                       ContentTemplate="{StaticResource RetroCarouselPosterTemplate}" />
                       <!-- This recycled control is rebound only while fully outside the viewport. -->
                       <ContentControl x:Name="RetroCarouselIncoming"
-                                      Canvas.Left="1060"
+                                      Canvas.Left="1069"
                                       Canvas.Top="0"
-                                      Width="144"
-                                      Height="216"
+                                      Width="136"
+                                      Height="204"
                                       Opacity="0"
                                       IsEnabled="False"
                                       IsHitTestVisible="False"
@@ -2280,15 +2292,15 @@
                     </Canvas>
 
                     <ContentControl x:Name="RetroCarouselActionBar"
-                                    Width="280"
-                                    Height="20"
+                                    Width="320"
+                                    Height="24"
                                     Focusable="False"
                                     KeyboardNavigation.IsTabStop="False"
                                     HorizontalContentAlignment="Stretch"
                                     VerticalContentAlignment="Stretch"
                                     HorizontalAlignment="Left"
                                     VerticalAlignment="Bottom"
-                                    Margin="20,0,0,0"
+                                    Margin="10,0,0,0"
                                     Panel.ZIndex="60"
                                     ContentTemplate="{StaticResource RetroCarouselActionTemplate}" />
 

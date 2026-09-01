@@ -1816,8 +1816,8 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                 ? VerticalAlignment.Bottom
                 : VerticalAlignment.Top;
             actionBar.Margin = UsesPortraitCarouselCovers
-                ? new Thickness(20, 0, 0, 0)
-                : new Thickness(20, 217, 0, 0);
+                ? new Thickness(10, 0, 0, 0)
+                : new Thickness(10, 247, 0, 0);
             SetRetroCarouselActionInteractive(actionBar, true);
         }
         StartRetroUniversalVideo();
@@ -3414,18 +3414,18 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
     private static RetroCarouselSlot GetRetroCarouselSlot(int offset)
     {
-        var selectedHeight = UsesPortraitCarouselCovers ? 420 : 210;
-        var compactHeight = UsesPortraitCarouselCovers ? 216 : 108;
+        var selectedHeight = UsesPortraitCarouselCovers ? 480 : 240;
+        var compactHeight = UsesPortraitCarouselCovers ? 204 : 102;
         return offset switch
         {
-            -1 => new RetroCarouselSlot(-290, 0, 280, selectedHeight, 1, 35),
-            0 => new RetroCarouselSlot(20, 0, 280, selectedHeight, 1, 40),
-            1 => new RetroCarouselSlot(310, 0, 144, compactHeight, .95, 25),
-            2 => new RetroCarouselSlot(460, 0, 144, compactHeight, .90, 24),
-            3 => new RetroCarouselSlot(610, 0, 144, compactHeight, .85, 23),
-            4 => new RetroCarouselSlot(760, 0, 144, compactHeight, .80, 22),
-            5 => new RetroCarouselSlot(910, 0, 144, compactHeight, .75, 21),
-            6 => new RetroCarouselSlot(1060, 0, 144, compactHeight, 1, 20),
+            -1 => new RetroCarouselSlot(-330, 0, 320, selectedHeight, 1, 35),
+            0 => new RetroCarouselSlot(10, 0, 320, selectedHeight, 1, 40),
+            1 => new RetroCarouselSlot(344, 0, 136, compactHeight, .95, 25),
+            2 => new RetroCarouselSlot(489, 0, 136, compactHeight, .90, 24),
+            3 => new RetroCarouselSlot(634, 0, 136, compactHeight, .85, 23),
+            4 => new RetroCarouselSlot(779, 0, 136, compactHeight, .80, 22),
+            5 => new RetroCarouselSlot(924, 0, 136, compactHeight, .75, 21),
+            6 => new RetroCarouselSlot(1069, 0, 136, compactHeight, 1, 20),
             _ => throw new ArgumentOutOfRangeException(nameof(offset))
         };
     }
