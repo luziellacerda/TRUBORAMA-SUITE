@@ -33,12 +33,7 @@
         <GradientStop Color="#FF000000" Offset=".16" />
         <GradientStop Color="#00000000" Offset=".34" />
       </LinearGradientBrush>
-      <LinearGradientBrush x:Key="CurrentSystemTextOverlayBrush" StartPoint="0,.5" EndPoint="1,.5">
-        <GradientStop Color="#F2000000" Offset="0" />
-        <GradientStop Color="#E8000000" Offset=".44" />
-        <GradientStop Color="#00000000" Offset=".74" />
-      </LinearGradientBrush>
-      <SolidColorBrush x:Key="NintendoVideoRedTintBrush" Color="#00000000" />
+      <SolidColorBrush x:Key="CurrentSystemVideoTintBrush" Color="#00000000" />
       <BitmapImage x:Key="CatalogFallbackArtwork" UriSource="Assets/f15-turborama-user-original-v13.png" DecodePixelWidth="512" CacheOption="OnLoad" CreateOptions="DelayCreation" />
       <Style x:Key="TechScrollThumbStyle" TargetType="{x:Type Thumb}">
         <Setter Property="Opacity" Value=".72" />
@@ -304,8 +299,8 @@
         <Setter Property="MinHeight" Value="36" />
         <Setter Property="Padding" Value="18,0" />
         <Setter Property="Foreground" Value="#FFFFFFFF" />
-        <Setter Property="Background" Value="#FF090B0E" />
-        <Setter Property="BorderBrush" Value="#FFFF304F" />
+        <Setter Property="Background" Value="#FF070A0F" />
+        <Setter Property="BorderBrush" Value="{DynamicResource CurrentSystemBrightBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="FontFamily" Value="Bahnschrift SemiCondensed" />
         <Setter Property="FontSize" Value="11" />
@@ -322,12 +317,37 @@
                       BorderThickness="0"
                       ClipToBounds="False">
                 <Grid ClipToBounds="False">
+                  <Polygon x:Name="FooterActionAura"
+                           Points="8,0.75 212,0.75 219.25,8 219.25,28 212,35.25 8,35.25 0.75,28 0.75,8"
+                           Stretch="Fill"
+                           Fill="Transparent"
+                           Stroke="{DynamicResource CurrentSystemAccentBrush}"
+                           StrokeThickness="1.5"
+                           Opacity=".46"
+                           IsHitTestVisible="False">
+                    <Polygon.Effect>
+                      <DropShadowEffect x:Name="FooterActionAuraGlow"
+                                        Color="{DynamicResource CurrentSystemAccentColor}"
+                                        BlurRadius="10"
+                                        ShadowDepth="0"
+                                        Opacity=".82"
+                                        RenderingBias="Quality" />
+                    </Polygon.Effect>
+                  </Polygon>
                   <Polygon x:Name="FooterActionShell"
                            Points="8,0.75 212,0.75 219.25,8 219.25,28 212,35.25 8,35.25 0.75,28 0.75,8"
                            Stretch="Fill"
                            Fill="{TemplateBinding Control.Background}"
                            Stroke="{TemplateBinding Control.BorderBrush}"
                            StrokeThickness="1.5"
+                           StrokeLineJoin="Miter"
+                           IsHitTestVisible="False" />
+                  <Polygon x:Name="FooterActionInnerFrame"
+                           Points="10,4 210,4 216,10 216,26 210,32 10,32 4,26 4,10"
+                           Stretch="Fill"
+                           Fill="Transparent"
+                           Stroke="#46FFFFFF"
+                           StrokeThickness=".75"
                            StrokeLineJoin="Miter"
                            IsHitTestVisible="False" />
                   <Rectangle x:Name="FooterActionLed"
@@ -337,15 +357,34 @@
                              Margin="8,8,0,8"
                              RadiusX="1.5"
                              RadiusY="1.5"
-                             Fill="#FFFF4964"
-                             Opacity=".72"
+                             Fill="{DynamicResource CurrentSystemBrightBrush}"
+                             Opacity=".82"
                              IsHitTestVisible="False">
                     <Rectangle.Effect>
                       <DropShadowEffect x:Name="FooterActionLedGlow"
-                                        Color="#FFFF183B"
+                                        Color="{DynamicResource CurrentSystemAccentColor}"
+                                        BlurRadius="10"
+                                        ShadowDepth="0"
+                                        Opacity=".86"
+                                        RenderingBias="Quality" />
+                    </Rectangle.Effect>
+                  </Rectangle>
+                  <Rectangle x:Name="FooterActionCoreGlow"
+                             Width="86"
+                             Height="1.5"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Bottom"
+                             Margin="0,0,0,3"
+                             RadiusX=".75"
+                             RadiusY=".75"
+                             Fill="{DynamicResource CurrentSystemBrightBrush}"
+                             Opacity=".64"
+                             IsHitTestVisible="False">
+                    <Rectangle.Effect>
+                      <DropShadowEffect Color="{DynamicResource CurrentSystemAccentColor}"
                                         BlurRadius="8"
                                         ShadowDepth="0"
-                                        Opacity=".70"
+                                        Opacity=".82"
                                         RenderingBias="Quality" />
                     </Rectangle.Effect>
                   </Rectangle>
@@ -368,6 +407,15 @@
                         <DoubleAnimation Storyboard.TargetName="FooterActionLedGlow"
                                          Storyboard.TargetProperty="Opacity"
                                          From=".56" To="1" Duration="0:0:1.05" />
+                        <DoubleAnimation Storyboard.TargetName="FooterActionAura"
+                                         Storyboard.TargetProperty="Opacity"
+                                         From=".30" To=".72" Duration="0:0:1.05" />
+                        <DoubleAnimation Storyboard.TargetName="FooterActionAuraGlow"
+                                         Storyboard.TargetProperty="BlurRadius"
+                                         From="8" To="16" Duration="0:0:1.05" />
+                        <DoubleAnimation Storyboard.TargetName="FooterActionCoreGlow"
+                                         Storyboard.TargetProperty="Opacity"
+                                         From=".46" To=".92" Duration="0:0:1.05" />
                       </Storyboard>
                     </BeginStoryboard>
                   </Trigger.EnterActions>
@@ -376,8 +424,11 @@
                   </Trigger.ExitActions>
                 </Trigger>
                 <Trigger Property="UIElement.IsMouseOver" Value="True">
-                  <Setter TargetName="FooterActionShell" Property="Shape.Fill" Value="#FF1A0A10" />
-                  <Setter TargetName="FooterActionShell" Property="Shape.Stroke" Value="#FFFF7185" />
+                  <Setter TargetName="FooterActionShell" Property="Shape.Fill" Value="#FF121820" />
+                  <Setter TargetName="FooterActionShell" Property="Shape.Stroke" Value="{DynamicResource CurrentSystemBrightBrush}" />
+                  <Setter TargetName="FooterActionInnerFrame" Property="Shape.Stroke" Value="#A8FFFFFF" />
+                  <Setter TargetName="FooterActionAura" Property="UIElement.Opacity" Value="1" />
+                  <Setter TargetName="FooterActionCoreGlow" Property="UIElement.Opacity" Value="1" />
                   <Setter Property="Foreground" Value="#FFFFFFFF" />
                 </Trigger>
                 <Trigger Property="UIElement.IsKeyboardFocused" Value="True">
@@ -387,7 +438,8 @@
                   <Setter TargetName="FooterActionSurface" Property="UIElement.Opacity" Value=".82" />
                 </Trigger>
                 <Trigger Property="IsEnabled" Value="False">
-                  <Setter TargetName="FooterActionSurface" Property="UIElement.Opacity" Value=".38" />
+                  <Setter TargetName="FooterActionSurface" Property="UIElement.Opacity" Value=".36" />
+                  <Setter TargetName="FooterActionAura" Property="UIElement.Visibility" Value="Collapsed" />
                 </Trigger>
               </ControlTemplate.Triggers>
             </ControlTemplate>
@@ -2362,8 +2414,8 @@
                           VerticalAlignment="Stretch"
                           IsHitTestVisible="False"
                           Panel.ZIndex="1" />
-                    <Border x:Name="RetroNintendoVideoTint"
-                            Background="{DynamicResource NintendoVideoRedTintBrush}"
+                    <Border x:Name="RetroSystemVideoTint"
+                            Background="{DynamicResource CurrentSystemVideoTintBrush}"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
                             IsHitTestVisible="False"
@@ -2386,7 +2438,6 @@
                           ClipToBounds="True">
                     <Grid x:Name="RetroCarouselInfoPanel"
                            Width="710"
-                           Background="{DynamicResource CurrentSystemTextOverlayBrush}"
                            HorizontalAlignment="Right"
                           VerticalAlignment="Bottom"
                           Margin="0,0,0,26"
@@ -2483,7 +2534,7 @@
                     </Grid>
                     <Canvas x:Name="RetroCarouselTrack" Width="1060" Height="504" Panel.ZIndex="10">
                       <ContentControl x:Name="RetroCarouselCurrent"
-                                      Canvas.Left="0"
+                                      Canvas.Left="10"
                                       Canvas.Top="0"
                                       Width="336"
                                       Height="504"
@@ -2491,7 +2542,7 @@
                                       Panel.ZIndex="40"
                                       ContentTemplate="{StaticResource RetroCarouselPosterTemplate}" />
                       <ContentControl x:Name="RetroCarouselMini1"
-                                      Canvas.Left="344"
+                                      Canvas.Left="351"
                                       Canvas.Top="0"
                                       Width="136"
                                       Height="204"
@@ -2499,7 +2550,7 @@
                                       Panel.ZIndex="25"
                                       ContentTemplate="{StaticResource RetroCarouselPosterTemplate}" />
                       <ContentControl x:Name="RetroCarouselMini2"
-                                      Canvas.Left="489"
+                                      Canvas.Left="492"
                                       Canvas.Top="0"
                                       Width="136"
                                       Height="204"
@@ -2507,7 +2558,7 @@
                                       Panel.ZIndex="24"
                                       ContentTemplate="{StaticResource RetroCarouselPosterTemplate}" />
                       <ContentControl x:Name="RetroCarouselMini3"
-                                      Canvas.Left="634"
+                                      Canvas.Left="633"
                                       Canvas.Top="0"
                                       Width="136"
                                       Height="204"
@@ -2515,7 +2566,7 @@
                                       Panel.ZIndex="23"
                                       ContentTemplate="{StaticResource RetroCarouselPosterTemplate}" />
                       <ContentControl x:Name="RetroCarouselMini4"
-                                      Canvas.Left="779"
+                                      Canvas.Left="774"
                                       Canvas.Top="0"
                                       Width="136"
                                       Height="204"
@@ -2523,7 +2574,7 @@
                                       Panel.ZIndex="22"
                                       ContentTemplate="{StaticResource RetroCarouselPosterTemplate}" />
                       <ContentControl x:Name="RetroCarouselMini5"
-                                      Canvas.Left="924"
+                                      Canvas.Left="914"
                                       Canvas.Top="0"
                                       Width="136"
                                       Height="204"
@@ -2532,7 +2583,7 @@
                                       ContentTemplate="{StaticResource RetroCarouselPosterTemplate}" />
                       <!-- This recycled control is rebound only while fully outside the viewport. -->
                       <ContentControl x:Name="RetroCarouselIncoming"
-                                      Canvas.Left="1069"
+                                      Canvas.Left="1055"
                                       Canvas.Top="0"
                                       Width="136"
                                       Height="204"

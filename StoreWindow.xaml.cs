@@ -36,7 +36,11 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     private const string RetroGamesCategoryId = "retro-games";
     private const string LibraryBackgroundVideoContextId = "library";
     private const string CatalogBackgroundVideoContextPrefix = "catalog:";
+    private const string SharedPspBackgroundVideoFileName = "Turborama-background-psp.mp4";
+    private const string XboxBackgroundVideoFileName = "Turborama-background-xbox-one-x.mp4";
+    private const byte SharedBackgroundVideoTintAlpha = 56;
     private const double RetroCarouselLogicalWidth = 1060d;
+    private const double RetroCarouselHorizontalSafeInset = 10d;
     private const double RetroCarouselPrimaryPosterWidth = 336d;
     private const double RetroCarouselVideoFadeLogicalWidth = 190.8d;
     private const int MaximumRetroSystemVideoManifestBytes = 256 * 1024;
@@ -1482,11 +1486,6 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         };
 
         ApplyThemeAccent(accent);
-        SetCategoryThemeBrush(
-            "NintendoVideoRedTintBrush",
-            UsesNintendoVideoRedTint(categoryId)
-                ? Color.FromArgb(64, 220, 20, 32)
-                : Colors.Transparent);
     }
 
     private void ApplyThemeAccent(Color accent)
@@ -1523,15 +1522,22 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         SetCategoryThemeBrush(
             "CurrentSystemSidebarSelectionBrush",
             Color.FromArgb(28, accent.R, accent.G, accent.B));
+        SetCategoryThemeBrush(
+            "CurrentSystemVideoTintBrush",
+            UsesCurrentSystemVideoTint(SelectedCategory?.Id)
+                ? Color.FromArgb(
+                    SharedBackgroundVideoTintAlpha,
+                    accent.R,
+                    accent.G,
+                    accent.B)
+                : Colors.Transparent);
     }
 
-    private static bool UsesNintendoVideoRedTint(string? categoryId) =>
-        categoryId?.ToLowerInvariant() is
-            "nintendo-3ds" or
-            "gamecube" or
-            "nintendo-switch" or
-            "nintendo-wii" or
-            "nintendo-wii-u";
+    private static bool UsesCurrentSystemVideoTint(string? categoryId) =>
+        !string.IsNullOrWhiteSpace(categoryId)
+        && ResolveRetroUniversalVideoFileName(categoryId).Equals(
+            SharedPspBackgroundVideoFileName,
+            StringComparison.OrdinalIgnoreCase);
 
     private void SetCategoryThemeBrush(string key, Color color)
     {
@@ -1819,7 +1825,9 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                 return;
 
             var primaryPosterCenter = viewportBounds.Left
-                                      + RetroCarouselPrimaryPosterWidth * viewportScale / 2;
+                                      + (RetroCarouselHorizontalSafeInset
+                                         + RetroCarouselPrimaryPosterWidth / 2)
+                                      * viewportScale;
             var useCompactNavigation = viewportScale < .8;
             SetVisibility("RetroCarouselMouseHint", !useCompactNavigation);
             SetVisibility("RetroCarouselEnterHint", !useCompactNavigation);
@@ -1843,7 +1851,9 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                 .TransformBounds(new Rect(viewport.RenderSize));
             var videoViewportScale = videoViewportBounds.Width / RetroCarouselLogicalWidth;
             var primaryPosterFadeStart = videoViewportBounds.Left
-                                         + RetroCarouselPrimaryPosterWidth * videoViewportScale / 2;
+                                         + (RetroCarouselHorizontalSafeInset
+                                            + RetroCarouselPrimaryPosterWidth / 2)
+                                         * videoViewportScale;
             var solidOffset = Math.Clamp(primaryPosterFadeStart / videoOverlay.ActualWidth, 0, 1);
             var transparentOffset = Math.Clamp(
                 (primaryPosterFadeStart + RetroCarouselVideoFadeLogicalWidth * videoViewportScale)
@@ -2110,6 +2120,30 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             && IsPlayerUsingLease(active, activeLease))
         {
             try { active.Play(); }
+            catch (InvalidOperationException) { StopRetroUniversalVideo(); }
+            return;
+        }
+
+        // Several catalog categories intentionally share one approved family
+        // video. Reuse its verified lease/player and only update the context and
+        // color wash instead of hashing and reopening the same large file.
+        var requestedVideoFileName = ResolveRetroUniversalVideoFileName(categoryId);
+        if (_retroUniversalVideoPlayer is { Source: not null } reusable
+            && _retroUniversalVideoLease is { IsActive: true } reusableLease
+            && _activeRetroUniversalVideoContextId.StartsWith(
+                CatalogBackgroundVideoContextPrefix,
+                StringComparison.OrdinalIgnoreCase)
+            && contextId.StartsWith(
+                CatalogBackgroundVideoContextPrefix,
+                StringComparison.OrdinalIgnoreCase)
+            && Path.GetFileName(reusableLease.Path).Equals(
+                requestedVideoFileName,
+                StringComparison.OrdinalIgnoreCase)
+            && IsPlayerUsingLease(reusable, reusableLease))
+        {
+            _activeRetroUniversalVideoCategoryId = categoryId;
+            _activeRetroUniversalVideoContextId = contextId;
+            try { reusable.Play(); }
             catch (InvalidOperationException) { StopRetroUniversalVideo(); }
             return;
         }
@@ -2898,16 +2932,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                 AppContext.BaseDirectory,
                 "Assets",
                 "BackgroundVideos"));
-            var lease = OpenBackgroundVideoCandidate(root, fileName, cancellationToken);
-            if (lease is null
-                && !fileName.Equals("Turborama-background.mp4", StringComparison.OrdinalIgnoreCase))
-            {
-                lease = OpenBackgroundVideoCandidate(
-                    root,
-                    "Turborama-background.mp4",
-                    cancellationToken);
-            }
-            return lease;
+            return OpenBackgroundVideoCandidate(root, fileName, cancellationToken);
         }
         catch (Exception exception) when (exception is IOException
                                            or UnauthorizedAccessException
@@ -2919,21 +2944,16 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     }
 
     private static string ResolveRetroUniversalVideoFileName(string? categoryId) =>
-        categoryId?.ToLowerInvariant() switch
-        {
-            "playstation-1" or
-            "playstation-2" or
-            "playstation-2-br" or
-            "playstation-3" or
-            "playstation-4" or
-            "playstation-5" or
-            "psp" or
-            "ps-vita" => "Turborama-background-playstation.mp4",
-            "xbox" or "xbox-360" or "xbox-one" or "xbox-series"
-                => "Turborama-background-xbox-one-x.mp4",
-            "nintendo-switch" => "Turborama-background-nintendo-switch.mp4",
-            _ => "Turborama-background-psp.mp4"
-        };
+        IsXboxVideoCategory(categoryId)
+            ? XboxBackgroundVideoFileName
+            : SharedPspBackgroundVideoFileName;
+
+    private static bool IsXboxVideoCategory(string? categoryId) =>
+        categoryId?.ToLowerInvariant() is
+            "xbox" or
+            "xbox-360" or
+            "xbox-one" or
+            "xbox-series";
 
     private static string? GetRetroSystemVideoRoot()
     {
@@ -3579,14 +3599,14 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         var compactHeight = UsesPortraitCarouselCovers ? 204 : 102;
         return offset switch
         {
-            -1 => new RetroCarouselSlot(-346, 0, 336, selectedHeight, 1, 35),
-            0 => new RetroCarouselSlot(0, 0, 336, selectedHeight, 1, 40),
-            1 => new RetroCarouselSlot(344, 0, 136, compactHeight, .95, 25),
-            2 => new RetroCarouselSlot(489, 0, 136, compactHeight, .90, 24),
-            3 => new RetroCarouselSlot(634, 0, 136, compactHeight, .85, 23),
-            4 => new RetroCarouselSlot(779, 0, 136, compactHeight, .80, 22),
-            5 => new RetroCarouselSlot(924, 0, 136, compactHeight, .75, 21),
-            6 => new RetroCarouselSlot(1069, 0, 136, compactHeight, 1, 20),
+            -1 => new RetroCarouselSlot(-331, 0, 336, selectedHeight, 1, 35),
+            0 => new RetroCarouselSlot(10, 0, 336, selectedHeight, 1, 40),
+            1 => new RetroCarouselSlot(351, 0, 136, compactHeight, .95, 25),
+            2 => new RetroCarouselSlot(492, 0, 136, compactHeight, .90, 24),
+            3 => new RetroCarouselSlot(633, 0, 136, compactHeight, .85, 23),
+            4 => new RetroCarouselSlot(774, 0, 136, compactHeight, .80, 22),
+            5 => new RetroCarouselSlot(914, 0, 136, compactHeight, .75, 21),
+            6 => new RetroCarouselSlot(1055, 0, 136, compactHeight, 1, 20),
             _ => throw new ArgumentOutOfRangeException(nameof(offset))
         };
     }

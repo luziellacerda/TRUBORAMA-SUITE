@@ -254,10 +254,7 @@ internal static class WpfTemplateVerifier
                     || FindVisualDescendants<System.Windows.Shapes.Rectangle>(catalogHudHeader).Any()
                     || catalogHudFieldsGrid.ColumnDefinitions.Count != 3
                     || Grid.GetColumn(hudSearchPanel) != 2
-                    || retroCarouselInfoPanel.Background is not LinearGradientBrush textOverlayBackground
-                    || !ReferenceEquals(
-                        textOverlayBackground,
-                        window.Resources["CurrentSystemTextOverlayBrush"])
+                    || retroCarouselInfoPanel.Background is not null
                     || retroSystemVideoOverlay.Background is not LinearGradientBrush videoOverlayBackground
                     || !ReferenceEquals(
                         videoOverlayBackground,
@@ -286,7 +283,7 @@ internal static class WpfTemplateVerifier
                     retroCarouselFooterContent,
                     retroFooterSeparatorLed,
                     retroFooterSeparatorGlow);
-                VerifyRetroFooterActionButtonStyle(retroFooterActionStyle);
+                VerifyRetroFooterActionButtonStyle(retroFooterActionStyle, window);
                 if (window.FindName("SidebarHost") is not Border sidebarHost
                     || window.FindName("HomeNavButton") is not Button homeNavButton
                     || window.FindName("LibraryNavButton") is not Button libraryNavButton
@@ -355,25 +352,22 @@ internal static class WpfTemplateVerifier
                     || overlay.GradientStops[1].Offset != .16
                     || overlay.GradientStops[2].Color != Color.FromArgb(0, 0, 0, 0)
                     || overlay.GradientStops[2].Offset != .34
-                    || window.Resources["CurrentSystemTextOverlayBrush"] is not LinearGradientBrush textOverlay
-                    || textOverlay.StartPoint != new Point(0, .5)
-                    || textOverlay.EndPoint != new Point(1, .5)
-                    || textOverlay.GradientStops.Count != 3
-                    || textOverlay.GradientStops[0].Color != Color.FromArgb(242, 0, 0, 0)
-                    || textOverlay.GradientStops[0].Offset != 0
-                    || textOverlay.GradientStops[1].Color != Color.FromArgb(232, 0, 0, 0)
-                    || textOverlay.GradientStops[1].Offset != .44
-                    || textOverlay.GradientStops[2].Color != Color.FromArgb(0, 0, 0, 0)
-                    || textOverlay.GradientStops[2].Offset != .74
-                    || window.Resources.Values.OfType<GradientBrush>().Count() != 2)
+                    || window.Resources.Contains("CurrentSystemTextOverlayBrush")
+                    || window.Resources.Values.OfType<GradientBrush>().Count() != 1)
                     throw new InvalidDataException(
-                        "O catálogo precisa manter dois fades curtos: vídeo clareando desde o centro da capa e texto transparente antes da borda.");
-                if (window.Resources.Contains("CurrentSystemVideoTintBrush")
-                    || window.FindName("RetroSystemVideoTint") is not null
-                    || window.Resources["NintendoVideoRedTintBrush"] is not SolidColorBrush videoTint
-                    || videoTint.Color.A != 0)
+                        "O catálogo precisa manter somente o fade do vídeo; a base escura atrás do texto deve ser removida.");
+                if (window.Resources.Contains("NintendoVideoRedTintBrush")
+                    || window.FindName("RetroNintendoVideoTint") is not null
+                    || window.Resources["CurrentSystemVideoTintBrush"] is not SolidColorBrush videoTint
+                    || window.Resources["CurrentSystemAccentColor"] is not Color tintAccent
+                    || videoTint.Color != Color.FromArgb(
+                        56,
+                        tintAccent.R,
+                        tintAccent.G,
+                        tintAccent.B)
+                    || window.FindName("RetroSystemVideoTint") is not Border)
                     throw new InvalidDataException(
-                        "O vídeo não pode manter a tonalidade antiga e o vermelho Nintendo deve ficar transparente fora da Nintendo.");
+                        "A camada geral precisa tonalizar o vídeo PSP do PS3 e substituir o vermelho exclusivo da Nintendo.");
 
                 var requestedThemeColors = new Dictionary<string, Color>(StringComparer.OrdinalIgnoreCase)
                 {
@@ -393,32 +387,49 @@ internal static class WpfTemplateVerifier
                             $"A paleta de {requestedTheme.Key} não corresponde à capa aprovada.");
                 }
 
-                var nintendoVideoTintCategories = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                var xboxVideoCategories = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
                 {
-                    "nintendo-3ds",
-                    "gamecube",
-                    "nintendo-switch",
-                    "nintendo-wii",
-                    "nintendo-wii-u"
+                    "xbox",
+                    "xbox-360",
+                    "xbox-one",
+                    "xbox-series"
                 };
                 foreach (var catalogCategory in window.CatalogCategories)
                 {
                     openCatalog.Invoke(window, [catalogCategory]);
-                    if (window.Resources["NintendoVideoRedTintBrush"] is not SolidColorBrush requestedTint)
+                    if (window.Resources["CurrentSystemVideoTintBrush"] is not SolidColorBrush requestedTint
+                        || window.Resources["CurrentSystemAccentColor"] is not Color requestedAccent)
                         throw new InvalidDataException(
-                            "A camada vermelha exclusiva da Nintendo deixou de ser um pincel sólido.");
-                    if (nintendoVideoTintCategories.Contains(catalogCategory.Id))
+                            "A camada geral de cor do vídeo deixou de acompanhar o acento do sistema.");
+                    if (xboxVideoCategories.Contains(catalogCategory.Id))
                     {
-                        if (requestedTint.Color != Color.FromArgb(64, 220, 20, 32))
+                        if (requestedTint.Color.A != 0)
                             throw new InvalidDataException(
-                                $"A categoria Nintendo '{catalogCategory.Id}' não recebeu o vermelho aprovado.");
+                                $"A categoria Xbox '{catalogCategory.Id}' recebeu tonalização indevida sobre seu vídeo dedicado.");
                     }
-                    else if (requestedTint.Color.A != 0)
+                    else if (requestedTint.Color != Color.FromArgb(
+                                 56,
+                                 requestedAccent.R,
+                                 requestedAccent.G,
+                                 requestedAccent.B))
                     {
                         throw new InvalidDataException(
-                            $"A categoria não Nintendo '{catalogCategory.Id}' recebeu uma tonalidade indevida.");
+                            $"A categoria '{catalogCategory.Id}' não aplicou alpha 56 com o RGB do acento atual sobre o vídeo PSP.");
                     }
                 }
+
+                var emulators = window.CatalogCategories.Single(item =>
+                    item.Id.Equals("emulators", StringComparison.OrdinalIgnoreCase));
+                openCatalog.Invoke(window, [emulators]);
+                if (window.Resources["CurrentSystemAccentColor"] is not Color emulatorAccent
+                    || window.Resources["CurrentSystemVideoTintBrush"] is not SolidColorBrush emulatorTint
+                    || emulatorTint.Color != Color.FromArgb(
+                        56,
+                        emulatorAccent.R,
+                        emulatorAccent.G,
+                        emulatorAccent.B))
+                    throw new InvalidDataException(
+                        "Emuladores precisa atualizar explicitamente a tonalidade do vídeo PSP para sua própria cor.");
 
                 var systemTools = window.CatalogCategories.Single(item =>
                     item.Id.Equals("system-tools", StringComparison.OrdinalIgnoreCase));
@@ -772,13 +783,26 @@ internal static class WpfTemplateVerifier
                 "O botão de download deve animar somente a opacidade da NeonAura, sem escala nem blur animados.");
     }
 
-    private static void VerifyRetroFooterActionButtonStyle(Style style)
+    private static void VerifyRetroFooterActionButtonStyle(Style style, StoreWindow window)
     {
+        var currentBright = window.Resources["CurrentSystemBrightBrush"] as SolidColorBrush
+                            ?? throw new InvalidDataException(
+                                "A cor clara do sistema não está disponível para o botão HUD.");
+        var currentAccent = window.Resources["CurrentSystemAccentBrush"] as SolidColorBrush
+                            ?? throw new InvalidDataException(
+                                "A cor principal do sistema não está disponível para o botão HUD.");
+        var currentAccentColor = window.Resources["CurrentSystemAccentColor"] is Color accentColor
+            ? accentColor
+            : throw new InvalidDataException(
+                "A cor do halo do sistema não está disponível para o botão HUD.");
         var probe = new Button
         {
             Content = "AÇÃO",
             Style = style
         };
+        probe.Resources["CurrentSystemBrightBrush"] = currentBright;
+        probe.Resources["CurrentSystemAccentBrush"] = currentAccent;
+        probe.Resources["CurrentSystemAccentColor"] = currentAccentColor;
         probe.ApplyTemplate();
         var template = probe.Template
                        ?? throw new InvalidDataException(
@@ -790,43 +814,72 @@ internal static class WpfTemplateVerifier
             || probe.Foreground is not SolidColorBrush foreground
             || foreground.Color != Colors.White
             || probe.Background is not SolidColorBrush background
-            || background.Color != Color.FromRgb(0x09, 0x0B, 0x0E)
+            || background.Color != Color.FromRgb(0x07, 0x0A, 0x0F)
             || probe.BorderBrush is not SolidColorBrush border
-            || border.Color != Color.FromRgb(0xFF, 0x30, 0x4F)
+            || border.Color != currentBright.Color
             || template.FindName("FooterActionSurface", probe) is not Border footerActionSurface
             || footerActionSurface.Effect is not null
             || footerActionSurface.Background is not SolidColorBrush hitSurface
             || hitSurface.Color.A != 0
+            || template.FindName("FooterActionAura", probe)
+                is not System.Windows.Shapes.Polygon footerActionAura
+            || footerActionAura.Points.Count != 8
+            || footerActionAura.Fill is not SolidColorBrush auraFill
+            || auraFill.Color.A != 0
+            || footerActionAura.Stroke is not SolidColorBrush auraStroke
+            || auraStroke.Color != currentAccent.Color
+            || footerActionAura.Effect
+                is not System.Windows.Media.Effects.DropShadowEffect footerActionAuraGlow
+            || footerActionAuraGlow.Color != currentAccentColor
+            || Math.Abs(footerActionAuraGlow.ShadowDepth) > double.Epsilon
+            || footerActionAuraGlow.BlurRadius < 10
+            || footerActionAuraGlow.Opacity < .8
             || template.FindName("FooterActionShell", probe)
                 is not System.Windows.Shapes.Polygon footerActionShell
             || footerActionShell.Points.Count != 8
             || footerActionShell.Fill is not SolidColorBrush shellFill
-            || shellFill.Color != Color.FromRgb(0x09, 0x0B, 0x0E)
+            || shellFill.Color != Color.FromRgb(0x07, 0x0A, 0x0F)
             || footerActionShell.Stroke is not SolidColorBrush shellStroke
-            || shellStroke.Color != Color.FromRgb(0xFF, 0x30, 0x4F)
+            || shellStroke.Color != currentBright.Color
             || Math.Abs(footerActionShell.StrokeThickness - 1.5) > double.Epsilon
             || footerActionShell.Effect is not null
+            || template.FindName("FooterActionInnerFrame", probe)
+                is not System.Windows.Shapes.Polygon footerActionInnerFrame
+            || footerActionInnerFrame.Points.Count != 8
+            || footerActionInnerFrame.Fill is not SolidColorBrush innerFill
+            || innerFill.Color.A != 0
+            || footerActionInnerFrame.Stroke is not SolidColorBrush innerStroke
+            || innerStroke.Color != Color.FromArgb(0x46, 0xFF, 0xFF, 0xFF)
             || template.FindName("FooterActionLed", probe)
                 is not System.Windows.Shapes.Rectangle footerActionLed
             || Math.Abs(footerActionLed.Width - 3) > double.Epsilon
             || footerActionLed.Fill is not SolidColorBrush footerActionLedFill
-            || footerActionLedFill.Color != Color.FromRgb(0xFF, 0x49, 0x64)
+            || footerActionLedFill.Color != currentBright.Color
             || footerActionLed.Effect
                 is not System.Windows.Media.Effects.DropShadowEffect footerActionLedGlow
-            || footerActionLedGlow.Color != Color.FromRgb(0xFF, 0x18, 0x3B)
+            || footerActionLedGlow.Color != currentAccentColor
             || Math.Abs(footerActionLedGlow.ShadowDepth) > double.Epsilon
-            || footerActionLedGlow.Opacity < .7)
+            || footerActionLedGlow.Opacity < .8
+            || template.FindName("FooterActionCoreGlow", probe)
+                is not System.Windows.Shapes.Rectangle footerActionCoreGlow
+            || Math.Abs(footerActionCoreGlow.Width - 86) > double.Epsilon
+            || Math.Abs(footerActionCoreGlow.Height - 1.5) > double.Epsilon
+            || footerActionCoreGlow.Fill is not SolidColorBrush footerActionCoreFill
+            || footerActionCoreFill.Color != currentBright.Color
+            || footerActionCoreGlow.Effect
+                is not System.Windows.Media.Effects.DropShadowEffect footerActionCoreShadow
+            || footerActionCoreShadow.Color != currentAccentColor
+            || Math.Abs(footerActionCoreShadow.ShadowDepth) > double.Epsilon)
             throw new InvalidDataException(
-                "A ação do rodapé precisa manter corpo XFX escuro chanfrado, contorno vermelho, texto branco e LED próprio.");
+                "A ação do rodapé precisa manter o HUD XFX 220×36, texto branco e luzes dinâmicas da plataforma.");
 
         var visualElements = FindVisualDescendants<UIElement>(probe)
             .Prepend(probe)
             .ToArray();
-        if (visualElements.Any(element =>
-                !ReferenceEquals(element, footerActionLed)
-                && element.Effect is System.Windows.Media.Effects.DropShadowEffect))
+        if (visualElements.Count(element =>
+                element.Effect is System.Windows.Media.Effects.DropShadowEffect) != 3)
             throw new InvalidDataException(
-                "O halo do botão do rodapé deve ficar restrito à barra FooterActionLed, sem aura no quadro inteiro.");
+                "O botão HUD deve limitar os halos à aura, ao LED lateral e ao núcleo inferior.");
         if (FindVisualDescendants<System.Windows.Shapes.Shape>(probe)
             .Any(shape => shape.Fill is GradientBrush || shape.Stroke is GradientBrush))
             throw new InvalidDataException(
@@ -866,7 +919,7 @@ internal static class WpfTemplateVerifier
             || !pulse.AutoReverse
             || !pulse.RepeatBehavior.Equals(RepeatBehavior.Forever))
             throw new InvalidDataException(
-                "O FooterActionLed precisa iniciar e encerrar um único pulso autorreversível e contínuo.");
+                "O botão HUD precisa iniciar e encerrar um único pulso autorreversível e contínuo.");
 
         var animations = pulse.Children.OfType<DoubleAnimation>().ToArray();
         var coreOpacity = animations.SingleOrDefault(animation =>
@@ -885,7 +938,22 @@ internal static class WpfTemplateVerifier
             && Storyboard.GetTargetProperty(animation)?.Path.Contains(
                 "BlurRadius",
                 StringComparison.Ordinal) == true);
-        if (animations.Length != 3
+        var auraOpacity = animations.SingleOrDefault(animation =>
+            Storyboard.GetTargetName(animation).Equals("FooterActionAura", StringComparison.Ordinal)
+            && Storyboard.GetTargetProperty(animation)?.Path.Equals(
+                "Opacity",
+                StringComparison.Ordinal) == true);
+        var auraRadius = animations.SingleOrDefault(animation =>
+            Storyboard.GetTargetName(animation).Equals("FooterActionAuraGlow", StringComparison.Ordinal)
+            && Storyboard.GetTargetProperty(animation)?.Path.Contains(
+                "BlurRadius",
+                StringComparison.Ordinal) == true);
+        var baseGlowOpacity = animations.SingleOrDefault(animation =>
+            Storyboard.GetTargetName(animation).Equals("FooterActionCoreGlow", StringComparison.Ordinal)
+            && Storyboard.GetTargetProperty(animation)?.Path.Equals(
+                "Opacity",
+                StringComparison.Ordinal) == true);
+        if (animations.Length != 6
             || animations.Any(animation =>
                 !animation.Duration.HasTimeSpan
                 || animation.Duration.TimeSpan < TimeSpan.FromSeconds(.65)
@@ -896,13 +964,56 @@ internal static class WpfTemplateVerifier
             || glowOpacity.To is not { } glowTo
             || glowRadius?.From is not { } radiusFrom
             || glowRadius.To is not { } radiusTo
+            || auraOpacity?.From is not { } auraFrom
+            || auraOpacity.To is not { } auraTo
+            || auraRadius?.From is not { } auraRadiusFrom
+            || auraRadius.To is not { } auraRadiusTo
+            || baseGlowOpacity?.From is not { } baseFrom
+            || baseGlowOpacity.To is not { } baseTo
             || coreFrom < .7
             || coreTo - coreFrom < .25
             || glowFrom < .55
             || glowTo - glowFrom < .25
-            || radiusTo - radiusFrom < 6)
+            || radiusTo - radiusFrom < 6
+            || auraTo - auraFrom < .4
+            || auraRadiusTo - auraRadiusFrom < 6
+            || baseTo - baseFrom < .4)
             throw new InvalidDataException(
-                "O FooterActionLed precisa pulsar perceptivelmente no núcleo, na opacidade e no alcance do halo.");
+                "O botão HUD precisa pulsar perceptivelmente no LED, na aura e no núcleo inferior.");
+
+        var hover = template.Triggers.OfType<Trigger>().SingleOrDefault(trigger =>
+            trigger.Property == UIElement.IsMouseOverProperty
+            && trigger.Value is true);
+        var focus = template.Triggers.OfType<Trigger>().SingleOrDefault(trigger =>
+            trigger.Property == UIElement.IsKeyboardFocusedProperty
+            && trigger.Value is true);
+        var pressed = template.Triggers.OfType<Trigger>().SingleOrDefault(trigger =>
+            trigger.Property == ButtonBase.IsPressedProperty
+            && trigger.Value is true);
+        var disabled = template.Triggers.OfType<Trigger>().SingleOrDefault(trigger =>
+            trigger.Property == UIElement.IsEnabledProperty
+            && trigger.Value is false);
+        if (hover is null
+            || focus is null
+            || pressed is null
+            || disabled is null
+            || !hover.Setters.OfType<Setter>().Any(setter =>
+                setter.TargetName == "FooterActionShell"
+                && setter.Property == System.Windows.Shapes.Shape.FillProperty)
+            || !hover.Setters.OfType<Setter>().Any(setter =>
+                setter.TargetName == "FooterActionAura"
+                && setter.Property == UIElement.OpacityProperty)
+            || !focus.Setters.OfType<Setter>().Any(setter =>
+                setter.TargetName == "FooterActionShell"
+                && setter.Property == System.Windows.Shapes.Shape.StrokeProperty)
+            || !pressed.Setters.OfType<Setter>().Any(setter =>
+                setter.TargetName == "FooterActionSurface"
+                && setter.Property == UIElement.OpacityProperty)
+            || !disabled.Setters.OfType<Setter>().Any(setter =>
+                setter.TargetName == "FooterActionAura"
+                && setter.Property == UIElement.VisibilityProperty))
+            throw new InvalidDataException(
+                "O botão HUD precisa manter estados profissionais de hover, foco, pressão e desabilitado.");
     }
 
     private static bool UsesStyle(Style? style, Style expected)
@@ -925,6 +1036,11 @@ internal static class WpfTemplateVerifier
             ControlTemplate expectedTemplate)
     {
         button.ApplyTemplate();
+        var currentBright = button.TryFindResource("CurrentSystemBrightBrush") as SolidColorBrush;
+        var currentAccent = button.TryFindResource("CurrentSystemAccentBrush") as SolidColorBrush;
+        var currentAccentColor = button.TryFindResource("CurrentSystemAccentColor") is Color accentColor
+            ? accentColor
+            : Colors.Transparent;
         if (!UsesStyle(button.Style, expectedStyle)
             || !ReferenceEquals(button.Template, expectedTemplate)
             || button.Effect is not null
@@ -933,13 +1049,21 @@ internal static class WpfTemplateVerifier
             || button.Foreground is not SolidColorBrush buttonForeground
             || buttonForeground.Color != Colors.White
             || button.Background is not SolidColorBrush buttonBackground
-            || buttonBackground.Color != Color.FromRgb(0x09, 0x0B, 0x0E)
+            || buttonBackground.Color != Color.FromRgb(0x07, 0x0A, 0x0F)
+            || currentBright is null
+            || currentAccent is null
             || expectedTemplate.FindName("FooterActionSurface", button)
                 is not Border
                 {
                     Background: SolidColorBrush,
                     Effect: null
                 } surface
+            || expectedTemplate.FindName("FooterActionAura", button)
+                is not System.Windows.Shapes.Polygon
+                {
+                    Stroke: SolidColorBrush,
+                    Effect: System.Windows.Media.Effects.DropShadowEffect auraGlow
+                } aura
             || expectedTemplate.FindName("FooterActionShell", button)
                 is not System.Windows.Shapes.Polygon
                 {
@@ -947,6 +1071,8 @@ internal static class WpfTemplateVerifier
                     Stroke: SolidColorBrush,
                     Effect: null
                 } shell
+            || expectedTemplate.FindName("FooterActionInnerFrame", button)
+                is not System.Windows.Shapes.Polygon innerFrame
             || expectedTemplate.FindName("FooterActionLed", button)
                 is not System.Windows.Shapes.Rectangle
                 {
@@ -954,6 +1080,12 @@ internal static class WpfTemplateVerifier
                     Fill: SolidColorBrush,
                     Effect: System.Windows.Media.Effects.DropShadowEffect glow
                 } led
+            || expectedTemplate.FindName("FooterActionCoreGlow", button)
+                is not System.Windows.Shapes.Rectangle
+                {
+                    Fill: SolidColorBrush,
+                    Effect: System.Windows.Media.Effects.DropShadowEffect coreGlow
+                } core
             || Math.Abs(glow.ShadowDepth) > double.Epsilon)
             throw new InvalidDataException(
                 $"A ação '{AutomationProperties.GetName(button)}' sobrescreveu o template sólido ou deixou de resolver o FooterActionLed comum.");
@@ -961,21 +1093,30 @@ internal static class WpfTemplateVerifier
         if (surface.Background is not SolidColorBrush surfaceBackground
             || surfaceBackground.Color.A != 0
             || shell.Fill is not SolidColorBrush shellBackground
-            || shellBackground.Color != Color.FromRgb(0x09, 0x0B, 0x0E)
+            || shellBackground.Color != Color.FromRgb(0x07, 0x0A, 0x0F)
             || shell.Stroke is not SolidColorBrush shellBorder
-            || shellBorder.Color != Color.FromRgb(0xFF, 0x30, 0x4F)
+            || shellBorder.Color != currentBright.Color
+            || aura.Stroke is not SolidColorBrush auraStroke
+            || auraStroke.Color != currentAccent.Color
+            || auraGlow.Color != currentAccentColor
+            || innerFrame.Points.Count != 8
             || led.Fill is not SolidColorBrush ledFill
-            || ledFill.Color != Color.FromRgb(0xFF, 0x49, 0x64)
-            || glow.Color != Color.FromRgb(0xFF, 0x18, 0x3B)
-            || glow.Opacity < .7)
+            || ledFill.Color != currentBright.Color
+            || glow.Color != currentAccentColor
+            || glow.Opacity < .5
+            || core.Fill is not SolidColorBrush coreFill
+            || coreFill.Color != currentBright.Color
+            || coreGlow.Color != currentAccentColor)
             throw new InvalidDataException(
-                $"A ação '{AutomationProperties.GetName(button)}' precisa manter corpo escuro, contorno vermelho vivo, LED forte e texto branco.");
+                $"A ação '{AutomationProperties.GetName(button)}' precisa acompanhar as cores da plataforma no HUD profissional. " +
+                $"bright={currentBright.Color}, shell={shell.Stroke}, led={led.Fill}, core={core.Fill}; " +
+                $"accent={currentAccent.Color}/{currentAccentColor}, aura={aura.Stroke}/{auraGlow.Color}, " +
+                $"ledGlow={glow.Color}/{glow.Opacity:0.##}, coreGlow={coreGlow.Color}.");
 
-        if (FindVisualDescendants<UIElement>(button).Any(element =>
-                !ReferenceEquals(element, led)
-                && element.Effect is System.Windows.Media.Effects.DropShadowEffect))
+        if (FindVisualDescendants<UIElement>(button).Count(element =>
+                element.Effect is System.Windows.Media.Effects.DropShadowEffect) != 3)
             throw new InvalidDataException(
-                $"A ação '{AutomationProperties.GetName(button)}' aplicou halo fora do FooterActionLed.");
+                $"A ação '{AutomationProperties.GetName(button)}' perdeu a composição de três luzes HUD.");
 
         return (surface, led, glow);
     }
@@ -1656,12 +1797,10 @@ internal static class WpfTemplateVerifier
         var pinnedVideoSignatures = new Dictionary<string, (long Length, string Sha256)>(
             StringComparer.Ordinal)
         {
-            ["Turborama-background-playstation.mp4"] =
-                (10507235, "217320c8c3ba363046f31ee3febbc7e6ac7c737fb308de7756e3db310dd418b3"),
+            ["Turborama-background-psp.mp4"] =
+                (55253726, "5f9119893cafdb35a6d9c833f2bc7f9e94d89e883d52acdb633877fb0278756a"),
             ["Turborama-background-xbox-one-x.mp4"] =
-                (10794763, "0f05f14e36a5b7260279af76334e76c9af299d783d77bed36b32a53ffd9cb4f7"),
-            ["Turborama-background-nintendo-switch.mp4"] =
-                (1747086, "26dff8c0c6d0541e6961f88891d8db42d93f09ef40556d00811bc9cb5036fb3e")
+                (10794763, "0f05f14e36a5b7260279af76334e76c9af299d783d77bed36b32a53ffd9cb4f7")
         };
         foreach (var (fileName, expectedSignature) in pinnedVideoSignatures)
         {
@@ -1673,7 +1812,7 @@ internal static class WpfTemplateVerifier
                     expectedSignature.Sha256,
                     StringComparison.Ordinal))
                 throw new InvalidDataException(
-                    $"A assinatura incorporada do novo vídeo '{fileName}' divergiu da entrega aprovada.");
+                    $"A assinatura incorporada do vídeo ativo '{fileName}' divergiu da entrega aprovada.");
         }
 
         var root = Path.Combine(AppContext.BaseDirectory, "Assets", "BackgroundVideos");
@@ -1703,14 +1842,14 @@ internal static class WpfTemplateVerifier
         {
             ["system-tools"] = "Turborama-background-psp.mp4",
             ["emulators"] = "Turborama-background-psp.mp4",
-            ["playstation-1"] = "Turborama-background-playstation.mp4",
-            ["playstation-2"] = "Turborama-background-playstation.mp4",
-            ["playstation-2-br"] = "Turborama-background-playstation.mp4",
-            ["playstation-3"] = "Turborama-background-playstation.mp4",
-            ["playstation-4"] = "Turborama-background-playstation.mp4",
-            ["playstation-5"] = "Turborama-background-playstation.mp4",
-            ["psp"] = "Turborama-background-playstation.mp4",
-            ["ps-vita"] = "Turborama-background-playstation.mp4",
+            ["playstation-1"] = "Turborama-background-psp.mp4",
+            ["playstation-2"] = "Turborama-background-psp.mp4",
+            ["playstation-2-br"] = "Turborama-background-psp.mp4",
+            ["playstation-3"] = "Turborama-background-psp.mp4",
+            ["playstation-4"] = "Turborama-background-psp.mp4",
+            ["playstation-5"] = "Turborama-background-psp.mp4",
+            ["psp"] = "Turborama-background-psp.mp4",
+            ["ps-vita"] = "Turborama-background-psp.mp4",
             ["sega-saturn"] = "Turborama-background-psp.mp4",
             ["xbox"] = "Turborama-background-xbox-one-x.mp4",
             ["xbox-360"] = "Turborama-background-xbox-one-x.mp4",
@@ -1718,7 +1857,7 @@ internal static class WpfTemplateVerifier
             ["xbox-series"] = "Turborama-background-xbox-one-x.mp4",
             ["nintendo-3ds"] = "Turborama-background-psp.mp4",
             ["gamecube"] = "Turborama-background-psp.mp4",
-            ["nintendo-switch"] = "Turborama-background-nintendo-switch.mp4",
+            ["nintendo-switch"] = "Turborama-background-psp.mp4",
             ["nintendo-wii"] = "Turborama-background-psp.mp4",
             ["nintendo-wii-u"] = "Turborama-background-psp.mp4",
             ["windows"] = "Turborama-background-psp.mp4",
@@ -1732,6 +1871,12 @@ internal static class WpfTemplateVerifier
                 throw new InvalidDataException(
                     $"A categoria '{categoryId}' não resolveu o vídeo aprovado '{expectedFile}'.");
         }
+
+        var libraryFallback = resolver.Invoke(null, ["library"]) as string;
+        if (libraryFallback is null || !libraryFallback.Equals(
+                "Turborama-background-psp.mp4",
+                StringComparison.Ordinal))
+            throw new InvalidDataException("O contexto da Biblioteca não resolveu o vídeo PSP aprovado.");
 
         var nullFallback = resolver.Invoke(null, [null]) as string;
         if (nullFallback is null || !nullFallback.Equals(
@@ -2355,10 +2500,10 @@ internal static class WpfTemplateVerifier
         if (universalPlayerField.GetValue(window) is not MediaElement playstationPlayer
             || playstationPlayer.Source is not { IsFile: true } playstationSource
             || !Path.GetFileName(playstationSource.LocalPath).Equals(
-                "Turborama-background-playstation.mp4",
+                "Turborama-background-psp.mp4",
                 StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException(
-                "A navegação não materializou o player PlayStation aprovado.");
+                "A navegação não materializou o player PSP compartilhado para PlayStation.");
         VerifyHorizontalVideoMirror(
             playstationPlayer,
             expectedMirrored: false,
@@ -2391,10 +2536,10 @@ internal static class WpfTemplateVerifier
             || universalPlayerField.GetValue(window) is not MediaElement switchPlayer
             || switchPlayer.Source is not { IsFile: true } switchSource
             || !Path.GetFileName(switchSource.LocalPath).Equals(
-                "Turborama-background-nintendo-switch.mp4",
+                "Turborama-background-psp.mp4",
                 StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException(
-                "O Nintendo Switch não manteve seu player e lease universais dedicados.");
+                "O Nintendo Switch não manteve o player e lease PSP compartilhados.");
         VerifyHorizontalVideoMirror(
             switchPlayer,
             expectedMirrored: false,
@@ -2861,12 +3006,17 @@ internal static class WpfTemplateVerifier
         if (window.FindName("RetroSystemVideoBackground") is not Grid background
             || window.FindName("RetroUniversalVideoPlayerHost") is not Grid host
             || window.FindName("RetroSystemVideoPlayerHost") is not Grid systemHost
-            || window.FindName("RetroNintendoVideoTint") is not Border nintendoVideoTint
+            || window.FindName("RetroSystemVideoTint") is not Border systemVideoTint
             || window.FindName("RetroSystemVideoOverlay") is not Border videoOverlay
             || window.FindName("RetroCarouselHost") is not Grid carouselHost
             || window.FindName("RetroCarouselScaleHost") is not Viewbox scaleHost
             || window.FindName("RetroCarouselViewport") is not Grid carouselViewport
             || window.FindName("RetroCarouselCurrent") is not ContentControl carouselCurrent
+            || window.FindName("RetroCarouselMini1") is not ContentControl carouselMini1
+            || window.FindName("RetroCarouselMini2") is not ContentControl carouselMini2
+            || window.FindName("RetroCarouselMini3") is not ContentControl carouselMini3
+            || window.FindName("RetroCarouselMini4") is not ContentControl carouselMini4
+            || window.FindName("RetroCarouselMini5") is not ContentControl carouselMini5
             || window.FindName("RetroCarouselActionBar") is not ContentControl carouselActionBar
             || window.FindName("RetroCarouselFooterRoot") is not Canvas retroCarouselFooterRoot
             || window.FindName("RetroCarouselFooterContent") is not Grid retroCarouselFooterContent
@@ -2910,25 +3060,25 @@ internal static class WpfTemplateVerifier
             || background.Children.Count != 4
             || !ReferenceEquals(background.Children[0], host)
             || !ReferenceEquals(background.Children[1], systemHost)
-            || !ReferenceEquals(background.Children[2], nintendoVideoTint)
+            || !ReferenceEquals(background.Children[2], systemVideoTint)
             || !ReferenceEquals(background.Children[3], videoOverlay)
-            || nintendoVideoTint.Background is not SolidColorBrush
+            || systemVideoTint.Background is not SolidColorBrush
             || !ReferenceEquals(
-                nintendoVideoTint.Background,
-                window.Resources["NintendoVideoRedTintBrush"])
+                systemVideoTint.Background,
+                window.Resources["CurrentSystemVideoTintBrush"])
             || videoOverlay.Background is not LinearGradientBrush
             || !ReferenceEquals(
                 videoOverlay.Background,
                 window.Resources["CurrentSystemVideoOverlayBrush"])
-            || Panel.GetZIndex(nintendoVideoTint) != 2
+            || Panel.GetZIndex(systemVideoTint) != 2
             || Panel.GetZIndex(videoOverlay) != 3
             || background.Effect is not null
             || host.Effect is not null
             || systemHost.Effect is not null
-            || nintendoVideoTint.Effect is not null
+            || systemVideoTint.Effect is not null
             || videoOverlay.Effect is not null
-            || nintendoVideoTint.HorizontalAlignment != HorizontalAlignment.Stretch
-            || nintendoVideoTint.VerticalAlignment != VerticalAlignment.Stretch
+            || systemVideoTint.HorizontalAlignment != HorizontalAlignment.Stretch
+            || systemVideoTint.VerticalAlignment != VerticalAlignment.Stretch
             || videoOverlay.HorizontalAlignment != HorizontalAlignment.Stretch
             || videoOverlay.VerticalAlignment != VerticalAlignment.Stretch
             || host.HorizontalAlignment != HorizontalAlignment.Stretch
@@ -2963,10 +3113,7 @@ internal static class WpfTemplateVerifier
             || !retroCarouselNavigationLegend.Children.OfType<TextBlock>().Any(text =>
                 text.Text.Contains("NAVEGAR", StringComparison.Ordinal))
             || Grid.GetColumnSpan(retroCarouselFooter) != 2
-            || retroCarouselInfoPanel.Background is not LinearGradientBrush
-            || !ReferenceEquals(
-                retroCarouselInfoPanel.Background,
-                window.Resources["CurrentSystemTextOverlayBrush"])
+            || retroCarouselInfoPanel.Background is not null
             || carouselCurrent.RenderTransform is not TransformGroup currentTransforms
             || currentTransforms.Children.OfType<ScaleTransform>().SingleOrDefault() is not { } currentScale
             || currentScale.ScaleX < 1.343
@@ -3101,16 +3248,42 @@ internal static class WpfTemplateVerifier
                     || renderedFooterLedGlow is null
                     || !renderedFooterLed.HasAnimatedProperties
                     || !renderedFooterLedGlow.HasAnimatedProperties
-                    || FindVisualDescendants<UIElement>(visibleCarouselAction).Any(element =>
-                        !ReferenceEquals(element, renderedFooterLed)
-                        && (element.Effect is System.Windows.Media.Effects.DropShadowEffect
-                            || element.HasAnimatedProperties)))
+                    || FindVisualDescendants<UIElement>(visibleCarouselAction).Count(element =>
+                        element.Effect is System.Windows.Media.Effects.DropShadowEffect) != 3)
                     throw new InvalidDataException(
-                        $"A ação sólida do rodapé ou seu único LED interno perdeu a composição 220×36 em {width:0}×{height:0}.");
+                        $"A ação HUD do rodapé perdeu a composição 220×36 e suas três luzes em {width:0}×{height:0}.");
 
                 var selectedCardBounds = carouselCurrent
                     .TransformToAncestor(catalogPage)
                     .TransformBounds(new Rect(carouselCurrent.RenderSize));
+                var lastMiniBounds = carouselMini5
+                    .TransformToAncestor(catalogPage)
+                    .TransformBounds(new Rect(carouselMini5.RenderSize));
+                var viewportBoundsInCatalog = carouselViewport
+                    .TransformToAncestor(catalogPage)
+                    .TransformBounds(new Rect(carouselViewport.RenderSize));
+                var viewportScaleForCovers = viewportBoundsInCatalog.Width / 1060d;
+                var expectedSafeInset = 10d * viewportScaleForCovers;
+                var renderedLeftInset = selectedCardBounds.Left - viewportBoundsInCatalog.Left;
+                var renderedRightInset = viewportBoundsInCatalog.Right - lastMiniBounds.Right;
+                const double coverGeometryTolerance = 1.5;
+                if (!double.IsFinite(viewportScaleForCovers)
+                    || viewportScaleForCovers <= 0
+                    || Math.Abs(renderedLeftInset - expectedSafeInset) > coverGeometryTolerance
+                    || Math.Abs(renderedRightInset - expectedSafeInset) > coverGeometryTolerance
+                    || Math.Abs(renderedLeftInset - renderedRightInset) > coverGeometryTolerance
+                    || Math.Abs(selectedCardBounds.Width - 336d * viewportScaleForCovers)
+                    > coverGeometryTolerance
+                    || Math.Abs(selectedCardBounds.Height - 504d * viewportScaleForCovers)
+                    > coverGeometryTolerance
+                    || Math.Abs(lastMiniBounds.Width - 136d * viewportScaleForCovers)
+                    > coverGeometryTolerance
+                    || Math.Abs(lastMiniBounds.Height - 204d * viewportScaleForCovers)
+                    > coverGeometryTolerance)
+                    throw new InvalidDataException(
+                        $"As capas perderam a margem lateral simétrica de 10 px ou a proporção em {width:0}×{height:0}: " +
+                        $"viewport={viewportBoundsInCatalog}, principal={selectedCardBounds}, última={lastMiniBounds}, " +
+                        $"margens={renderedLeftInset:0.##}/{renderedRightInset:0.##}. ");
                 var footerActionBounds = carouselActionBar
                     .TransformToAncestor(catalogPage)
                     .TransformBounds(new Rect(carouselActionBar.RenderSize));
@@ -3145,7 +3318,7 @@ internal static class WpfTemplateVerifier
                     ? maximumFooterScale
                     : Math.Min(viewportScaleInFooter, maximumFooterScale);
                 var primaryPosterCenterInFooter = viewportBoundsInFooter.Left
-                                                  + 168d * viewportScaleInFooter;
+                                                  + 178d * viewportScaleInFooter;
                 var expectedFooterLeft = primaryPosterCenterInFooter
                                          - 168d * expectedFooterScale;
                 var expectedFooterTop = Math.Max(
@@ -3204,7 +3377,7 @@ internal static class WpfTemplateVerifier
                 var renderedSolidEnd = solidStop * videoOverlay.ActualWidth;
                 var renderedFadeWidth = (transparentStop - solidStop) * videoOverlay.ActualWidth;
                 var viewportScaleInVideo = viewportBoundsInVideo.Width / 1060d;
-                var expectedSolidEnd = viewportBoundsInVideo.Left + 168d * viewportScaleInVideo;
+                var expectedSolidEnd = viewportBoundsInVideo.Left + 178d * viewportScaleInVideo;
                 var expectedFadeWidth = 190.8d * viewportScaleInVideo;
                 const double fadeGeometryTolerance = 1.5;
                 if (!double.IsFinite(solidStop)
@@ -3312,8 +3485,8 @@ internal static class WpfTemplateVerifier
                     || Math.Abs(host.ActualHeight - background.ActualHeight) > 0.5
                     || Math.Abs(systemHost.ActualWidth - background.ActualWidth) > 0.5
                     || Math.Abs(systemHost.ActualHeight - background.ActualHeight) > 0.5
-                    || Math.Abs(nintendoVideoTint.ActualWidth - background.ActualWidth) > 0.5
-                    || Math.Abs(nintendoVideoTint.ActualHeight - background.ActualHeight) > 0.5
+                    || Math.Abs(systemVideoTint.ActualWidth - background.ActualWidth) > 0.5
+                    || Math.Abs(systemVideoTint.ActualHeight - background.ActualHeight) > 0.5
                     || Math.Abs(videoOverlay.ActualWidth - background.ActualWidth) > 0.5
                     || Math.Abs(videoOverlay.ActualHeight - background.ActualHeight) > 0.5
                     || Math.Abs(background.ActualWidth - carouselHost.ActualWidth) > 0.5
@@ -3356,11 +3529,11 @@ internal static class WpfTemplateVerifier
                     height,
                     "host do vídeo do sistema");
                 AssertElementWithinAncestor(
-                    nintendoVideoTint,
+                    systemVideoTint,
                     window,
                     width,
                     height,
-                    "camada vermelha exclusiva da Nintendo sobre o vídeo");
+                    "camada de cor do sistema sobre o vídeo PSP");
                 AssertElementWithinAncestor(
                     carouselHost,
                     window,
@@ -3584,7 +3757,7 @@ internal static class WpfTemplateVerifier
                     .TransformToVisual(videoOverlay)
                     .TransformBounds(new Rect(carouselViewport.RenderSize));
                 var viewportVideoScale = viewportVideoBounds.Width / 1060d;
-                var expectedSolidEnd = viewportVideoBounds.Left + 168d * viewportVideoScale;
+                var expectedSolidEnd = viewportVideoBounds.Left + 178d * viewportVideoScale;
                 var expectedFadeWidth = 190.8d * viewportVideoScale;
                 if (videoOverlay.Background is not LinearGradientBrush recycledOverlay
                     || recycledOverlay.GradientStops.Count != 3)
