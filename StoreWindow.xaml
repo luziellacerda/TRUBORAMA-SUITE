@@ -1881,319 +1881,233 @@
           <Grid Name="CatalogPage" Visibility="Collapsed" AutomationProperties.Name="Página do catálogo">
             <Grid.RowDefinitions>
               <RowDefinition Height="Auto" />
-              <RowDefinition Height="Auto" />
               <RowDefinition Height="*" />
             </Grid.RowDefinitions>
-            <Border Grid.RowSpan="3"
+            <Border Grid.RowSpan="2"
                     Background="{DynamicResource CurrentSystemSurfaceBrush}"
                     IsHitTestVisible="False" />
             <Border x:Name="CatalogHudHeader"
                     Grid.Row="0"
-                    Margin="24,11,20,7"
-                    Padding="14,8"
+                    Height="50"
+                    Margin="24,9,20,7"
+                    Padding="8,5"
                     Background="#FF080B09"
                     BorderBrush="{DynamicResource CurrentSystemLineBrush}"
                     BorderThickness="1"
                     CornerRadius="0"
                     AutomationProperties.Name="HUD superior do catálogo">
               <Grid>
-                <Rectangle Width="86"
-                           Height="2"
+                <Rectangle Width="74"
+                           Height="1"
                            HorizontalAlignment="Left"
                            VerticalAlignment="Top"
-                           Margin="13,-9,0,0"
+                           Margin="8,-6,0,0"
                            Fill="{DynamicResource CurrentSystemAccentBrush}" />
-                <Path Data="M0,12 L0,0 L12,0"
-                      Width="13" Height="13"
+                <Path Data="M0,8 L0,0 L8,0"
+                      Width="9" Height="9"
                       HorizontalAlignment="Left" VerticalAlignment="Top"
-                      Margin="-10,-4,0,0"
+                      Margin="-5,-2,0,0"
                       Stroke="{DynamicResource CurrentSystemBrightBrush}"
-                      StrokeThickness="1.2"
+                      StrokeThickness="1"
                       IsHitTestVisible="False" />
-                <Path Data="M0,0 L12,0 L12,12"
-                      Width="13" Height="13"
+                <Path Data="M0,0 L8,0 L8,8"
+                      Width="9" Height="9"
                       HorizontalAlignment="Right" VerticalAlignment="Top"
-                      Margin="0,-4,-10,0"
-                      Stroke="{DynamicResource CurrentSystemBrightBrush}"
-                      StrokeThickness="1.2"
-                      IsHitTestVisible="False" />
-                <Path Data="M0,0 L0,12 L12,12"
-                      Width="13" Height="13"
-                      HorizontalAlignment="Left" VerticalAlignment="Bottom"
-                      Margin="-10,0,0,-4"
-                      Stroke="{DynamicResource CurrentSystemAccentBrush}"
-                      StrokeThickness="1"
-                      IsHitTestVisible="False" />
-                <Path Data="M0,12 L12,12 L12,0"
-                      Width="13" Height="13"
-                      HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                      Margin="0,0,-10,-4"
-                      Stroke="{DynamicResource CurrentSystemAccentBrush}"
-                      StrokeThickness="1"
-                      IsHitTestVisible="False" />
-                <Grid Margin="4,0">
-                  <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="20" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                  </Grid.ColumnDefinitions>
-                  <Grid Width="12" Height="42" VerticalAlignment="Center">
-                    <Rectangle Width="3"
-                               HorizontalAlignment="Left"
-                               Fill="{DynamicResource CurrentSystemAccentBrush}">
-                      <UIElement.Effect>
-                        <DropShadowEffect Color="{DynamicResource CurrentSystemAccentColor}"
-                                          BlurRadius="10"
-                                          ShadowDepth="0"
-                                          Opacity=".74" />
-                      </UIElement.Effect>
-                    </Rectangle>
-                    <Rectangle Width="6" Height="6"
-                               HorizontalAlignment="Right"
-                               VerticalAlignment="Top"
-                               Margin="0,3,0,0"
-                               Stroke="{DynamicResource CurrentSystemBrightBrush}"
-                               StrokeThickness="1" />
-                  </Grid>
-                  <StackPanel Grid.Column="1" Margin="6,0,16,0" VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal">
-                      <TextBlock Text="SISTEMA ATIVO / CATÁLOGO HUD"
-                                 Foreground="{DynamicResource CurrentSystemAccentBrush}"
-                                 FontSize="7"
-                                 FontWeight="Bold"
-                                 VerticalAlignment="Center" />
-                      <Ellipse Width="4" Height="4"
-                               Fill="{DynamicResource CurrentSystemBrightBrush}"
-                               Margin="7,0,0,0"
-                               VerticalAlignment="Center" />
-                    </StackPanel>
-                    <Grid Margin="0,1,0,0">
-                      <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                      </Grid.ColumnDefinitions>
-                      <TextBlock Name="CatalogPageTitle"
-                                 Text="Sistemas retrô"
-                                 FontSize="26"
-                                 FontWeight="Bold"
-                                 FontFamily="Bahnschrift SemiCondensed"
-                                 TextTrimming="CharacterEllipsis" />
-                      <Border Grid.Column="1"
-                              Background="#FF0B100D"
-                              BorderBrush="{DynamicResource CurrentSystemLineBrush}"
-                              BorderThickness="1"
-                              CornerRadius="2"
-                              Padding="7,2"
-                              Margin="10,3,0,2"
-                              VerticalAlignment="Center">
-                        <TextBlock Name="CatalogSystemCode"
-                                   Text="RETRO"
-                                   Foreground="{DynamicResource CurrentSystemAccentBrush}"
-                                   FontSize="8"
-                                   FontWeight="Bold" />
-                      </Border>
-                    </Grid>
-                    <TextBlock Name="CatalogPageDescription"
-                               Text="Escolha um pacote e baixe com um clique"
-                               Foreground="#FFB8C1B5"
-                               FontSize="10"
-                               Margin="0,0,0,0"
-                               TextTrimming="CharacterEllipsis" />
-                  </StackPanel>
-                  <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button x:Name="CatalogHudOpenFolderButton"
-                            Content="▣  ABRIR PASTA"
-                            AutomationProperties.Name="Abrir pasta de instalação"
-                            Style="{StaticResource CatalogHudButtonStyle}"
-                            Margin="0,0,8,0"
-                            Click="OpenInstallFolder_Click" />
-                    <Button x:Name="CatalogHudSupportButton"
-                            Content="●  SUPORTE"
-                            AutomationProperties.Name="Abrir suporte"
-                            Style="{StaticResource CatalogHudButtonStyle}"
-                            BorderBrush="{DynamicResource CurrentSystemBrightBrush}"
-                            Click="Support_Click" />
-                  </StackPanel>
-                </Grid>
-              </Grid>
-            </Border>
-            <Border Name="CatalogFolderPanel"
-                    Grid.Row="1"
-                    Margin="28,0,24,12"
-                    Padding="13,10"
-                    Background="#FF070A08"
-                    BorderBrush="{DynamicResource CurrentSystemLineBrush}"
-                    BorderThickness="1"
-                    CornerRadius="0"
-                    AutomationProperties.Name="HUD de armazenamento do catálogo">
-              <Grid>
-                <Grid.RowDefinitions>
-                  <RowDefinition Height="Auto" />
-                  <RowDefinition Height="1" />
-                  <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-                <Rectangle Width="70" Height="1"
-                           HorizontalAlignment="Left" VerticalAlignment="Top"
-                           Margin="9,-11,0,0"
-                           Fill="{DynamicResource CurrentSystemAccentBrush}" />
-                <Path Data="M0,10 L0,0 L10,0"
-                      Width="11" Height="11"
-                      HorizontalAlignment="Left" VerticalAlignment="Top"
-                      Margin="-9,-6,0,0"
-                      Stroke="{DynamicResource CurrentSystemBrightBrush}"
-                      StrokeThickness="1"
-                      IsHitTestVisible="False" />
-                <Path Data="M0,0 L10,0 L10,10"
-                      Width="11" Height="11"
-                      HorizontalAlignment="Right" VerticalAlignment="Top"
-                      Margin="0,-6,-9,0"
+                      Margin="0,-2,-5,0"
                       Stroke="{DynamicResource CurrentSystemBrightBrush}"
                       StrokeThickness="1"
                       IsHitTestVisible="False" />
                 <Grid Margin="3,0">
                   <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="30" />
-                    <ColumnDefinition />
-                    <ColumnDefinition Width="118" />
+                    <ColumnDefinition Width="1.1*" />
+                    <ColumnDefinition Width="1*" />
+                    <ColumnDefinition Width="1.1*" />
+                    <ColumnDefinition Width="1.15*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                   </Grid.ColumnDefinitions>
-                  <Grid Width="18" Height="18" HorizontalAlignment="Left" VerticalAlignment="Center">
-                    <Rectangle Stroke="{DynamicResource CurrentSystemAccentBrush}" StrokeThickness="1" />
-                    <Rectangle Width="6" Height="6" Fill="{DynamicResource CurrentSystemAccentBrush}" />
+                  <Grid Grid.Column="0" Margin="0,0,6,0">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="7" />
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Rectangle Width="3"
+                               HorizontalAlignment="Left"
+                               Margin="0,3,0,3"
+                               Fill="{DynamicResource CurrentSystemAccentBrush}">
+                      <UIElement.Effect>
+                        <DropShadowEffect Color="{DynamicResource CurrentSystemAccentColor}"
+                                          BlurRadius="8"
+                                          ShadowDepth="0"
+                                          Opacity=".72" />
+                      </UIElement.Effect>
+                    </Rectangle>
+                      <TextBlock Name="CatalogPageTitle"
+                                 Grid.Column="1"
+                                 Text="Sistemas retrô"
+                                 FontSize="20"
+                                 FontWeight="Bold"
+                                 FontFamily="Bahnschrift SemiCondensed"
+                                 VerticalAlignment="Center"
+                                 TextTrimming="CharacterEllipsis" />
+                      <Border Grid.Column="2"
+                              Background="#FF0B100D"
+                              BorderBrush="{DynamicResource CurrentSystemLineBrush}"
+                              BorderThickness="1"
+                              CornerRadius="2"
+                              Padding="5,2"
+                              Margin="5,4,0,4"
+                              VerticalAlignment="Center">
+                        <TextBlock Name="CatalogSystemCode"
+                                   Text="RETRO"
+                                   Foreground="{DynamicResource CurrentSystemAccentBrush}"
+                                   FontSize="7"
+                                   FontWeight="Bold" />
+                      </Border>
+                    <TextBlock Name="CatalogPageDescription"
+                               Text="Escolha um pacote e baixe com um clique"
+                               Visibility="Collapsed" />
                   </Grid>
-                  <StackPanel Grid.Column="1">
-                    <TextBlock Text="DIRETÓRIO PRIMÁRIO / INSTALAÇÃO" Foreground="#FFFFFFFF" FontSize="8" FontWeight="Bold" />
-                    <TextBlock Name="InstallFolderPath" Text="Documentos\Turborama" Foreground="#FFDCE4D9" FontSize="11" FontWeight="SemiBold" Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
-                  </StackPanel>
-                  <Button Grid.Column="2" Content="ALTERAR PASTA" AutomationProperties.Name="Alterar pasta de instalação" Style="{StaticResource CatalogHudButtonStyle}" Height="32" MinHeight="32" Click="ChooseInstallFolder_Click" />
-                </Grid>
-                <Rectangle Grid.Row="1" Height="1" Fill="{DynamicResource CurrentSystemLineBrush}" Margin="3,9" Opacity=".48" />
-                <Grid Row="2" Margin="3,10,3,0">
-                  <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="30" />
-                    <ColumnDefinition />
-                    <ColumnDefinition Width="96" />
-                    <ColumnDefinition Width="82" />
-                  </Grid.ColumnDefinitions>
-                  <Grid Width="18" Height="18" HorizontalAlignment="Left" VerticalAlignment="Center">
-                    <Ellipse Stroke="{DynamicResource CurrentSystemAccentBrush}" StrokeThickness="1" />
-                    <Path Data="M4,9 L14,9 M11,6 L14,9 L11,12" Stroke="{DynamicResource CurrentSystemAccentBrush}" StrokeThickness="1" />
-                  </Grid>
-                  <StackPanel Grid.Column="1">
-                    <TextBlock Text="CACHE OPERACIONAL / TEMPORÁRIOS" Foreground="#FFFFFFFF" FontSize="8" FontWeight="Bold" />
-                    <TextBlock Name="TempFolderPath" Text="(padrão do sistema)" Foreground="#FFDCE4D9" FontSize="11" FontWeight="SemiBold" Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
-                  </StackPanel>
-                  <Button Grid.Column="2" Content="ALTERAR" AutomationProperties.Name="Alterar pasta temporária" Style="{StaticResource CatalogHudButtonStyle}" Height="32" MinHeight="32" Margin="0,0,7,0" Click="ChooseTempFolder_Click" />
-                  <Button Grid.Column="3" Content="PADRÃO" AutomationProperties.Name="Usar pasta temporária padrão" Style="{StaticResource CatalogHudButtonStyle}" Height="32" MinHeight="32" Padding="9,0" Click="ResetTempFolder_Click" />
+                  <Border Grid.Column="1"
+                          Margin="0,0,6,0"
+                          Padding="4,0"
+                          Background="#FF050806"
+                          BorderBrush="{DynamicResource CurrentSystemLineBrush}"
+                          BorderThickness="1"
+                          CornerRadius="2"
+                          ToolTip="Pasta de instalação">
+                    <Grid>
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="22" />
+                      </Grid.ColumnDefinitions>
+                      <TextBlock Text="▣" Foreground="{DynamicResource CurrentSystemAccentBrush}" FontSize="12" VerticalAlignment="Center" />
+                      <TextBlock Name="InstallFolderPath"
+                                 Grid.Column="1"
+                                 Text="Documentos\Turborama"
+                                 Foreground="#FFFFFFFF"
+                                 FontSize="9"
+                                 FontWeight="SemiBold"
+                                 VerticalAlignment="Center"
+                                 TextTrimming="CharacterEllipsis"
+                                 ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
+                      <Button x:Name="CatalogHudChooseInstallButton"
+                              Grid.Column="2"
+                              Content="✎"
+                              Width="20" Height="28" MinHeight="28"
+                              Padding="0"
+                              FontSize="11"
+                              AutomationProperties.Name="Alterar pasta de instalação"
+                              Style="{StaticResource CatalogHudButtonStyle}"
+                              Click="ChooseInstallFolder_Click" />
+                    </Grid>
+                  </Border>
+                  <Border Grid.Column="2"
+                          Margin="0,0,6,0"
+                          Padding="4,0"
+                          Background="#FF050806"
+                          BorderBrush="{DynamicResource CurrentSystemLineBrush}"
+                          BorderThickness="1"
+                          CornerRadius="2"
+                          ToolTip="Pasta de temporários">
+                    <Grid>
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="22" />
+                        <ColumnDefinition Width="22" />
+                      </Grid.ColumnDefinitions>
+                      <TextBlock Text="↔" Foreground="{DynamicResource CurrentSystemAccentBrush}" FontSize="12" VerticalAlignment="Center" />
+                      <TextBlock Name="TempFolderPath"
+                                 Grid.Column="1"
+                                 Text="(padrão)"
+                                 Foreground="#FFFFFFFF"
+                                 FontSize="9"
+                                 FontWeight="SemiBold"
+                                 VerticalAlignment="Center"
+                                 TextTrimming="CharacterEllipsis"
+                                 ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
+                      <Button x:Name="CatalogHudChooseTempButton"
+                              Grid.Column="2"
+                              Content="✎"
+                              Width="20" Height="28" MinHeight="28"
+                              Padding="0"
+                              FontSize="11"
+                              AutomationProperties.Name="Alterar pasta temporária"
+                              Style="{StaticResource CatalogHudButtonStyle}"
+                              Click="ChooseTempFolder_Click" />
+                      <Button x:Name="CatalogHudResetTempButton"
+                              Grid.Column="3"
+                              Content="↺"
+                              Width="20" Height="28" MinHeight="28"
+                              Padding="0"
+                              FontSize="12"
+                              AutomationProperties.Name="Usar pasta temporária padrão"
+                              Style="{StaticResource CatalogHudButtonStyle}"
+                              Click="ResetTempFolder_Click" />
+                    </Grid>
+                  </Border>
+                  <Border x:Name="CatalogHudSearchPanel"
+                          Grid.Column="3"
+                          Margin="0,0,6,0"
+                          Padding="0"
+                          Background="#FF050806"
+                          BorderBrush="{DynamicResource CurrentSystemLineBrush}"
+                          BorderThickness="1"
+                          CornerRadius="2"
+                          AutomationProperties.Name="Pesquisa do HUD compacto">
+                    <Grid>
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                      </Grid.ColumnDefinitions>
+                      <TextBox Name="CatalogSearchBox"
+                               Height="30"
+                               BorderThickness="0"
+                               AutomationProperties.Name="Buscar no catálogo"
+                               Style="{StaticResource CatalogHudSearchBoxStyle}"
+                               TextChanged="Search_TextChanged" />
+                      <TextBlock Name="CatalogResultCount"
+                                 Grid.Column="1"
+                                 Text="0 itens"
+                                 Foreground="{DynamicResource CurrentSystemAccentBrush}"
+                                 FontSize="8"
+                                 FontWeight="Bold"
+                                 Margin="4,0,7,0"
+                                 VerticalAlignment="Center" />
+                    </Grid>
+                  </Border>
+                    <Button x:Name="CatalogHudOpenFolderButton"
+                            Grid.Column="4"
+                            Content="▣  PASTA"
+                            Width="68" Height="32" MinHeight="32"
+                            Padding="5,0"
+                            AutomationProperties.Name="Abrir pasta de instalação"
+                            Style="{StaticResource CatalogHudButtonStyle}"
+                            Margin="0,0,6,0"
+                            Click="OpenInstallFolder_Click" />
+                    <Button x:Name="CatalogHudSupportButton"
+                            Grid.Column="5"
+                            Content="●  SUPORTE"
+                            Width="70" Height="32" MinHeight="32"
+                            Padding="5,0"
+                            AutomationProperties.Name="Abrir suporte"
+                            Style="{StaticResource CatalogHudButtonStyle}"
+                            BorderBrush="{DynamicResource CurrentSystemBrightBrush}"
+                            Click="Support_Click" />
                 </Grid>
               </Grid>
             </Border>
-            <Border Name="RetroCatalogFolderBar"
-                    Grid.Row="1"
-                    Visibility="Collapsed"
-                    Margin="28,0,24,6"
-                    Padding="10,6"
-                    Background="#FF070A08"
-                    BorderBrush="{DynamicResource CurrentSystemLineBrush}"
-                    BorderThickness="1"
-                    CornerRadius="0"
-                    AutomationProperties.Name="HUD compacto de armazenamento">
-              <Grid>
-                <Rectangle Width="62" Height="1"
-                           HorizontalAlignment="Left" VerticalAlignment="Top"
-                           Margin="8,-7,0,0"
-                           Fill="{DynamicResource CurrentSystemAccentBrush}" />
-                <Path Data="M0,8 L0,0 L8,0"
-                      Width="9" Height="9"
-                      HorizontalAlignment="Left" VerticalAlignment="Top"
-                      Margin="-6,-3,0,0"
-                      Stroke="{DynamicResource CurrentSystemBrightBrush}"
-                      StrokeThickness="1"
-                      IsHitTestVisible="False" />
-                <Grid Height="32" Margin="3,0">
-                  <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="24" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="96" />
-                    <ColumnDefinition Width="25" />
-                    <ColumnDefinition Width="24" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="72" />
-                    <ColumnDefinition Width="66" />
-                  </Grid.ColumnDefinitions>
-                  <Rectangle Width="3" Height="24" HorizontalAlignment="Left" VerticalAlignment="Center" Fill="{DynamicResource CurrentSystemAccentBrush}" />
-                  <TextBlock Text="▣" Foreground="{DynamicResource CurrentSystemAccentBrush}" FontSize="14" VerticalAlignment="Center" Margin="6,0,0,0" />
-                  <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <TextBlock Text="INSTALAÇÃO / DESTINO" Foreground="#FFFFFFFF" FontSize="7" FontWeight="Bold" />
-                    <TextBlock x:Name="RetroHudInstallFolderPath" Foreground="#FFDCE4D9" FontSize="10" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Text="{Binding Text, ElementName=InstallFolderPath}" />
-                  </StackPanel>
-                  <Button Grid.Column="2" Content="ALTERAR PASTA" AutomationProperties.Name="Alterar pasta de instalação" Style="{StaticResource CatalogHudButtonStyle}" Height="30" MinHeight="30" Padding="8,0" FontSize="9" Click="ChooseInstallFolder_Click" />
-                  <Rectangle Grid.Column="3" Width="1" Height="24" Fill="{DynamicResource CurrentSystemLineBrush}" HorizontalAlignment="Center" Opacity=".55" />
-                  <TextBlock Grid.Column="4" Text="↔" Foreground="{DynamicResource CurrentSystemAccentBrush}" FontSize="14" VerticalAlignment="Center" />
-                  <StackPanel Grid.Column="5" VerticalAlignment="Center">
-                    <TextBlock Text="CACHE / TEMPORÁRIOS" Foreground="#FFFFFFFF" FontSize="7" FontWeight="Bold" />
-                    <TextBlock x:Name="RetroHudTempFolderPath" Foreground="#FFDCE4D9" FontSize="10" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Text="{Binding Text, ElementName=TempFolderPath}" />
-                  </StackPanel>
-                  <Button Grid.Column="6" Content="ALTERAR" AutomationProperties.Name="Alterar pasta temporária" Style="{StaticResource CatalogHudButtonStyle}" Height="30" MinHeight="30" Padding="7,0" FontSize="9" Margin="0,0,6,0" Click="ChooseTempFolder_Click" />
-                  <Button Grid.Column="7" Content="PADRÃO" AutomationProperties.Name="Usar pasta temporária padrão" Style="{StaticResource CatalogHudButtonStyle}" Height="30" MinHeight="30" Padding="7,0" FontSize="9" Click="ResetTempFolder_Click" />
-                </Grid>
-              </Grid>
-            </Border>
-            <Grid x:Name="CatalogContentPanel" Row="2" Margin="32,0,28,22">
+            <Grid x:Name="CatalogContentPanel" Grid.Row="1" Margin="32,0,28,22">
               <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Name="CatalogFooterRow" Height="52" />
               </Grid.RowDefinitions>
-              <Border x:Name="CatalogHudSearchPanel"
-                      Background="#FF070A08"
-                      BorderBrush="{DynamicResource CurrentSystemLineBrush}"
-                      BorderThickness="1"
-                      CornerRadius="0"
-                      Padding="8,5"
-                      AutomationProperties.Name="HUD de pesquisa do catálogo">
-                <Grid>
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="76" />
-                  <ColumnDefinition Width="*" />
-                  <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                  <StackPanel VerticalAlignment="Center" Margin="4,0,8,0">
-                    <TextBlock Text="BUSCA HUD" Foreground="#FFFFFFFF" FontSize="8" FontWeight="Bold" />
-                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                      <Ellipse Width="4" Height="4" Fill="{DynamicResource CurrentSystemAccentBrush}" VerticalAlignment="Center" />
-                      <TextBlock Text="DIGITE PARA FILTRAR" Foreground="{DynamicResource CurrentSystemAccentBrush}" FontSize="6" FontWeight="Bold" Margin="5,0,0,0" />
-                    </StackPanel>
-                  </StackPanel>
-                  <TextBox Name="CatalogSearchBox"
-                           Grid.Column="1"
-                           AutomationProperties.Name="Buscar no catálogo"
-                           Style="{StaticResource CatalogHudSearchBoxStyle}"
-                           TextChanged="Search_TextChanged" />
-                  <Border Grid.Column="2"
-                          Background="#FF0B100D"
-                          BorderBrush="{DynamicResource CurrentSystemLineBrush}"
-                          BorderThickness="1"
-                          CornerRadius="2"
-                          Padding="10,5"
-                          Margin="8,0,0,0"
-                          VerticalAlignment="Stretch">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                      <Ellipse Width="5" Height="5" Fill="{DynamicResource CurrentSystemBrightBrush}" Margin="0,0,7,0" />
-                      <TextBlock Name="CatalogResultCount" Text="0 itens" Foreground="{DynamicResource CurrentSystemAccentBrush}" FontSize="10" FontWeight="Bold" VerticalAlignment="Center" />
-                    </StackPanel>
-                  </Border>
-                  <Path Data="M0,7 L0,0 L7,0"
-                        Width="8" Height="8"
-                        HorizontalAlignment="Left" VerticalAlignment="Top"
-                        Margin="-5,-2,0,0"
-                        Stroke="{DynamicResource CurrentSystemBrightBrush}"
-                        StrokeThickness="1"
-                        IsHitTestVisible="False" />
-                </Grid>
-              </Border>
               <Border x:Name="CatalogHudActionStatusPanel"
-                      Grid.Row="1"
+                      Grid.Row="0"
                       Background="#FF0B100D"
                       BorderBrush="{DynamicResource CurrentSystemLineBrush}"
                       BorderThickness="1"
@@ -2206,7 +2120,7 @@
                   <TextBlock Name="CatalogActionStatus" Text="Ação indisponível." Visibility="Collapsed" Foreground="#FFFFB36B" FontSize="10" FontWeight="SemiBold" TextWrapping="Wrap" Margin="10,0,0,0" AutomationProperties.Name="Status da ação" />
                 </Grid>
               </Border>
-              <Grid Row="2">
+              <Grid Grid.Row="1">
                 <ScrollViewer Name="CatalogGridScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="-7,11,-3,0" Visibility="{Binding CatalogResultsVisibility}">
                   <ItemsControl Name="CatalogItemsHost" ItemTemplate="{StaticResource CatalogCardTemplate}" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True" AutomationProperties.Name="Pacotes disponíveis" ItemsSource="{Binding CatalogItems}">
                     <ItemsControl.ItemsPanel>
@@ -2247,16 +2161,16 @@
                            HorizontalAlignment="Stretch"
                            VerticalAlignment="Stretch"
                            Stretch="Uniform"
-                           StretchDirection="DownOnly"
+                           StretchDirection="Both"
                            Panel.ZIndex="10">
                     <Grid x:Name="RetroCarouselViewport"
                           Width="1060"
-                          Height="398"
+                          Height="440"
                           HorizontalAlignment="Center"
                           VerticalAlignment="Center"
                           ClipToBounds="True">
                     <Grid x:Name="RetroCarouselInfoPanel"
-                          Width="740"
+                          Width="750"
                           Height="160"
                           HorizontalAlignment="Right"
                           VerticalAlignment="Bottom"
@@ -2301,61 +2215,61 @@
                         </StackPanel>
                       </Grid>
                     </Grid>
-                    <Canvas x:Name="RetroCarouselTrack" Width="1060" Height="398" Panel.ZIndex="10">
+                    <Canvas x:Name="RetroCarouselTrack" Width="1060" Height="440" Panel.ZIndex="10">
                       <ContentControl x:Name="RetroCarouselCurrent"
-                                      Canvas.Left="30"
+                                      Canvas.Left="20"
                                       Canvas.Top="0"
-                                      Width="250"
-                                      Height="375"
+                                      Width="280"
+                                      Height="420"
                                       Opacity="1"
                                       Panel.ZIndex="40"
                                       ContentTemplate="{StaticResource RetroCarouselPosterTemplate}" />
                       <ContentControl x:Name="RetroCarouselMini1"
-                                      Canvas.Left="320"
+                                      Canvas.Left="310"
                                       Canvas.Top="0"
-                                      Width="140"
-                                      Height="210"
+                                      Width="144"
+                                      Height="216"
                                       Opacity=".95"
                                       Panel.ZIndex="25"
                                       ContentTemplate="{StaticResource RetroCarouselPosterTemplate}" />
                       <ContentControl x:Name="RetroCarouselMini2"
-                                      Canvas.Left="470"
+                                      Canvas.Left="460"
                                       Canvas.Top="0"
-                                      Width="140"
-                                      Height="210"
+                                      Width="144"
+                                      Height="216"
                                       Opacity=".90"
                                       Panel.ZIndex="24"
                                       ContentTemplate="{StaticResource RetroCarouselPosterTemplate}" />
                       <ContentControl x:Name="RetroCarouselMini3"
-                                      Canvas.Left="620"
+                                      Canvas.Left="610"
                                       Canvas.Top="0"
-                                      Width="140"
-                                      Height="210"
+                                      Width="144"
+                                      Height="216"
                                       Opacity=".85"
                                       Panel.ZIndex="23"
                                       ContentTemplate="{StaticResource RetroCarouselPosterTemplate}" />
                       <ContentControl x:Name="RetroCarouselMini4"
-                                      Canvas.Left="770"
+                                      Canvas.Left="760"
                                       Canvas.Top="0"
-                                      Width="140"
-                                      Height="210"
+                                      Width="144"
+                                      Height="216"
                                       Opacity=".80"
                                       Panel.ZIndex="22"
                                       ContentTemplate="{StaticResource RetroCarouselPosterTemplate}" />
                       <ContentControl x:Name="RetroCarouselMini5"
-                                      Canvas.Left="920"
+                                      Canvas.Left="910"
                                       Canvas.Top="0"
-                                      Width="140"
-                                      Height="210"
+                                      Width="144"
+                                      Height="216"
                                       Opacity=".75"
                                       Panel.ZIndex="21"
                                       ContentTemplate="{StaticResource RetroCarouselPosterTemplate}" />
                       <!-- This recycled control is rebound only while fully outside the viewport. -->
                       <ContentControl x:Name="RetroCarouselIncoming"
-                                      Canvas.Left="1070"
+                                      Canvas.Left="1060"
                                       Canvas.Top="0"
-                                      Width="140"
-                                      Height="210"
+                                      Width="144"
+                                      Height="216"
                                       Opacity="0"
                                       IsEnabled="False"
                                       IsHitTestVisible="False"
@@ -2366,7 +2280,7 @@
                     </Canvas>
 
                     <ContentControl x:Name="RetroCarouselActionBar"
-                                    Width="250"
+                                    Width="280"
                                     Height="20"
                                     Focusable="False"
                                     KeyboardNavigation.IsTabStop="False"
@@ -2374,7 +2288,7 @@
                                     VerticalContentAlignment="Stretch"
                                     HorizontalAlignment="Left"
                                     VerticalAlignment="Bottom"
-                                    Margin="30,0,0,0"
+                                    Margin="20,0,0,0"
                                     Panel.ZIndex="60"
                                     ContentTemplate="{StaticResource RetroCarouselActionTemplate}" />
 
@@ -2391,7 +2305,7 @@
                   </StackPanel>
                 </Border>
               </Grid>
-              <Grid Row="3" Margin="0,5,0,0" Visibility="{Binding CatalogResultsVisibility}">
+              <Grid Grid.Row="2" Margin="0,5,0,0" Visibility="{Binding CatalogResultsVisibility}">
                 <StackPanel Name="CatalogPaginationPanel" Orientation="Horizontal" HorizontalAlignment="Center">
                   <Button Name="PreviousPageButton" Content="ANTERIOR" AutomationProperties.Name="Página anterior" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0" Click="PreviousPage_Click" />
                   <ItemsControl Name="PageNumbersHost" ItemTemplate="{StaticResource PageNumberTemplate}" AutomationProperties.Name="Números de página" ItemsSource="{Binding PageNumbers}">

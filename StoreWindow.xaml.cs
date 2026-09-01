@@ -1732,8 +1732,6 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             StopRetroUniversalVideo();
         }
 
-        SetVisibility("CatalogFolderPanel", !isRetroCarousel);
-        SetVisibility("RetroCatalogFolderBar", isRetroCarousel);
         SetVisibility("CatalogGridScrollViewer", !isRetroCarousel && hasItems);
         SetVisibility("RetroCarouselHost", isRetroCarousel && hasItems);
         SetVisibility("CatalogPaginationPanel", !isRetroCarousel && hasItems);
@@ -1818,8 +1816,8 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                 ? VerticalAlignment.Bottom
                 : VerticalAlignment.Top;
             actionBar.Margin = UsesPortraitCarouselCovers
-                ? new Thickness(30, 0, 0, 0)
-                : new Thickness(30, 195, 0, 0);
+                ? new Thickness(20, 0, 0, 0)
+                : new Thickness(20, 217, 0, 0);
             SetRetroCarouselActionInteractive(actionBar, true);
         }
         StartRetroUniversalVideo();
@@ -3416,18 +3414,18 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
     private static RetroCarouselSlot GetRetroCarouselSlot(int offset)
     {
-        var selectedHeight = UsesPortraitCarouselCovers ? 375 : 188;
-        var compactHeight = UsesPortraitCarouselCovers ? 210 : 105;
+        var selectedHeight = UsesPortraitCarouselCovers ? 420 : 210;
+        var compactHeight = UsesPortraitCarouselCovers ? 216 : 108;
         return offset switch
         {
-            -1 => new RetroCarouselSlot(-270, 0, 250, selectedHeight, 1, 35),
-            0 => new RetroCarouselSlot(30, 0, 250, selectedHeight, 1, 40),
-            1 => new RetroCarouselSlot(320, 0, 140, compactHeight, .95, 25),
-            2 => new RetroCarouselSlot(470, 0, 140, compactHeight, .90, 24),
-            3 => new RetroCarouselSlot(620, 0, 140, compactHeight, .85, 23),
-            4 => new RetroCarouselSlot(770, 0, 140, compactHeight, .80, 22),
-            5 => new RetroCarouselSlot(920, 0, 140, compactHeight, .75, 21),
-            6 => new RetroCarouselSlot(1070, 0, 140, compactHeight, 1, 20),
+            -1 => new RetroCarouselSlot(-290, 0, 280, selectedHeight, 1, 35),
+            0 => new RetroCarouselSlot(20, 0, 280, selectedHeight, 1, 40),
+            1 => new RetroCarouselSlot(310, 0, 144, compactHeight, .95, 25),
+            2 => new RetroCarouselSlot(460, 0, 144, compactHeight, .90, 24),
+            3 => new RetroCarouselSlot(610, 0, 144, compactHeight, .85, 23),
+            4 => new RetroCarouselSlot(760, 0, 144, compactHeight, .80, 22),
+            5 => new RetroCarouselSlot(910, 0, 144, compactHeight, .75, 21),
+            6 => new RetroCarouselSlot(1060, 0, 144, compactHeight, 1, 20),
             _ => throw new ArgumentOutOfRangeException(nameof(offset))
         };
     }

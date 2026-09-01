@@ -139,37 +139,38 @@ internal static class WpfTemplateVerifier
                         TargetType: { } hudSearchTarget
                     } hudSearchStyle
                     || hudSearchTarget != typeof(TextBox)
+                    || window.FindName("CatalogPage") is not Grid catalogPage
                     || window.FindName("CatalogHudHeader") is not Border catalogHudHeader
                     || window.FindName("CatalogHudOpenFolderButton") is not Button hudOpenFolder
                     || window.FindName("CatalogHudSupportButton") is not Button hudSupport
-                    || window.FindName("CatalogFolderPanel") is not Border catalogFolderPanel
-                    || window.FindName("RetroCatalogFolderBar") is not Border retroFolderBar
+                    || window.FindName("CatalogHudChooseInstallButton") is not Button hudChooseInstall
+                    || window.FindName("CatalogHudChooseTempButton") is not Button hudChooseTemp
+                    || window.FindName("CatalogHudResetTempButton") is not Button hudResetTemp
                     || window.FindName("CatalogHudSearchPanel") is not Border hudSearchPanel
                     || window.FindName("CatalogHudActionStatusPanel") is not Border hudActionStatusPanel
                     || window.FindName("CatalogSearchBox") is not TextBox hudSearchBox
-                    || window.FindName("RetroHudInstallFolderPath") is not TextBlock retroInstallPath
-                    || window.FindName("RetroHudTempFolderPath") is not TextBlock retroTempPath
+                    || window.FindName("InstallFolderPath") is not TextBlock installPath
+                    || window.FindName("TempFolderPath") is not TextBlock tempPath
                     || !ReferenceEquals(hudOpenFolder.Style, hudButtonStyle)
                     || !ReferenceEquals(hudSupport.Style, hudButtonStyle)
+                    || !ReferenceEquals(hudChooseInstall.Style, hudButtonStyle)
+                    || !ReferenceEquals(hudChooseTemp.Style, hudButtonStyle)
+                    || !ReferenceEquals(hudResetTemp.Style, hudButtonStyle)
                     || !ReferenceEquals(hudSearchBox.Style, hudSearchStyle)
                     || catalogHudHeader.Background is not SolidColorBrush
-                    || catalogFolderPanel.Background is not SolidColorBrush
-                    || retroFolderBar.Background is not SolidColorBrush
                     || hudSearchPanel.Background is not SolidColorBrush
                     || hudActionStatusPanel.Background is not SolidColorBrush
                     || catalogHudHeader.CornerRadius != new CornerRadius(0)
-                    || catalogFolderPanel.CornerRadius != new CornerRadius(0)
-                    || retroFolderBar.CornerRadius != new CornerRadius(0)
-                    || hudSearchPanel.CornerRadius != new CornerRadius(0)
+                    || hudSearchPanel.CornerRadius != new CornerRadius(2)
                     || hudActionStatusPanel.CornerRadius != new CornerRadius(0)
-                    || BindingOperations.GetBindingExpression(
-                           retroInstallPath,
-                           TextBlock.TextProperty)?.ParentBinding.ElementName != "InstallFolderPath"
-                    || BindingOperations.GetBindingExpression(
-                           retroTempPath,
-                           TextBlock.TextProperty)?.ParentBinding.ElementName != "TempFolderPath")
+                    || catalogPage.RowDefinitions.Count != 2
+                    || Math.Abs(catalogHudHeader.Height - 50) > double.Epsilon
+                    || Grid.GetRow(catalogHudHeader) != 0
+                    || Grid.GetRow(hudSearchPanel) != 0
+                    || installPath.Visibility != Visibility.Visible
+                    || tempPath.Visibility != Visibility.Visible)
                     throw new InvalidDataException(
-                        "O topo do catálogo precisa manter o HUD sólido e isolado com título, ações, pastas e pesquisa.");
+                        "O topo do catálogo precisa concentrar título, pastas, pesquisa e ações em uma única barra HUD sólida.");
                 VerifyCatalogHudStyles(hudButtonStyle, hudSearchStyle);
                 if (window.FindName("SidebarHost") is not Border sidebarHost
                     || window.FindName("HomeNavButton") is not Button homeNavButton
@@ -1859,15 +1860,22 @@ internal static class WpfTemplateVerifier
             || window.FindName("RetroCarouselHost") is not Grid carouselHost
             || window.FindName("RetroCarouselScaleHost") is not Viewbox scaleHost
             || window.FindName("RetroCarouselViewport") is not Grid carouselViewport
+            || window.FindName("RetroCarouselCurrent") is not ContentControl carouselCurrent
+            || window.FindName("RetroCarouselActionBar") is not ContentControl carouselActionBar
             || window.FindName("TitleBarHost") is not Border titleBarHost
             || window.FindName("TitleBranding") is not StackPanel titleBranding
             || window.FindName("WindowChromeButtons") is not StackPanel windowChromeButtons
             || window.FindName("GlobalMusicPlayer") is not Border globalMusicPlayer
             || window.FindName("CatalogPage") is not Grid catalogPage
             || window.FindName("CatalogHudHeader") is not Border catalogHudHeader
+            || window.FindName("CatalogContentPanel") is not Grid catalogContentPanel
             || window.FindName("CatalogHudOpenFolderButton") is not Button hudOpenFolder
             || window.FindName("CatalogHudSupportButton") is not Button hudSupport
-            || window.FindName("RetroCatalogFolderBar") is not Border retroFolderBar
+            || window.FindName("CatalogHudChooseInstallButton") is not Button hudChooseInstall
+            || window.FindName("CatalogHudChooseTempButton") is not Button hudChooseTemp
+            || window.FindName("CatalogHudResetTempButton") is not Button hudResetTemp
+            || window.FindName("InstallFolderPath") is not TextBlock installPath
+            || window.FindName("TempFolderPath") is not TextBlock tempPath
             || window.FindName("CatalogHudSearchPanel") is not Border hudSearchPanel)
             throw new InvalidDataException("A área responsiva do vídeo de fundo não foi criada.");
         if (!background.ClipToBounds
@@ -1889,9 +1897,16 @@ internal static class WpfTemplateVerifier
             || systemHost.HorizontalAlignment != HorizontalAlignment.Stretch
             || systemHost.VerticalAlignment != VerticalAlignment.Stretch
             || scaleHost.Stretch != Stretch.Uniform
-            || scaleHost.StretchDirection != StretchDirection.DownOnly)
+            || scaleHost.StretchDirection != StretchDirection.Both
+            || Math.Abs(carouselViewport.Width - 1060) > double.Epsilon
+            || Math.Abs(carouselViewport.Height - 440) > double.Epsilon
+            || Math.Abs(carouselActionBar.Width - 280) > double.Epsilon
+            || carouselCurrent.RenderTransform is not TransformGroup currentTransforms
+            || currentTransforms.Children.OfType<ScaleTransform>().SingleOrDefault() is not { } currentScale
+            || currentScale.ScaleX < 1.11
+            || currentScale.ScaleY < 1.11)
             throw new InvalidDataException(
-                "O vídeo precisa ocupar a área disponível e manter apenas a máscara preta de overlay.");
+                "O vídeo precisa preencher a área e o carrossel deve aproveitar o espaço liberado com capas ampliadas.");
 
         var factory = typeof(StoreWindow).GetMethod(
                           "CreateResponsiveBackgroundVideoPlayer",
@@ -1978,29 +1993,33 @@ internal static class WpfTemplateVerifier
                 var hudHeaderBounds = catalogHudHeader
                     .TransformToAncestor(catalogPage)
                     .TransformBounds(new Rect(catalogHudHeader.RenderSize));
-                var folderBarBounds = retroFolderBar
+                var contentBounds = catalogContentPanel
                     .TransformToAncestor(catalogPage)
-                    .TransformBounds(new Rect(retroFolderBar.RenderSize));
+                    .TransformBounds(new Rect(catalogContentPanel.RenderSize));
                 var searchPanelBounds = hudSearchPanel
-                    .TransformToAncestor(catalogPage)
+                    .TransformToAncestor(catalogHudHeader)
                     .TransformBounds(new Rect(hudSearchPanel.RenderSize));
                 const double hudTolerance = 0.5;
                 if (!catalogHudHeader.IsVisible
-                    || !retroFolderBar.IsVisible
                     || !hudSearchPanel.IsVisible
+                    || !hudOpenFolder.IsVisible
+                    || !hudSupport.IsVisible
+                    || !hudChooseInstall.IsVisible
+                    || !hudChooseTemp.IsVisible
+                    || !hudResetTemp.IsVisible
                     || hudHeaderBounds.Left < -hudTolerance
                     || hudHeaderBounds.Right > catalogPage.ActualWidth + hudTolerance
-                    || folderBarBounds.Left < -hudTolerance
-                    || folderBarBounds.Right > catalogPage.ActualWidth + hudTolerance
                     || searchPanelBounds.Left < -hudTolerance
-                    || searchPanelBounds.Right > catalogPage.ActualWidth + hudTolerance
-                    || hudHeaderBounds.Bottom > folderBarBounds.Top + hudTolerance
-                    || folderBarBounds.Bottom > searchPanelBounds.Top + hudTolerance
-                    || searchPanelBounds.Bottom > catalogPage.ActualHeight + hudTolerance
-                    || hudSearchPanel.ActualWidth < 300)
+                    || searchPanelBounds.Right > catalogHudHeader.ActualWidth + hudTolerance
+                    || Math.Abs(catalogHudHeader.ActualHeight - 50) > hudTolerance
+                    || hudHeaderBounds.Bottom > contentBounds.Top + hudTolerance
+                    || contentBounds.Bottom > catalogPage.ActualHeight + hudTolerance
+                    || hudSearchPanel.ActualWidth < 70
+                    || installPath.ActualWidth < 12
+                    || tempPath.ActualWidth < 12)
                     throw new InvalidDataException(
-                        $"O HUD superior perdeu a ordem ou ultrapassou o catálogo em {width:0}×{height:0}: " +
-                        $"cabeçalho={hudHeaderBounds}, pastas={folderBarBounds}, busca={searchPanelBounds}.");
+                        $"A barra HUD única perdeu espaço ou ultrapassou o catálogo em {width:0}×{height:0}: " +
+                        $"cabeçalho={hudHeaderBounds}, conteúdo={contentBounds}, busca={searchPanelBounds}.");
 
                 if (Math.Abs(player.Width - host.ActualWidth) > 0.5
                     || Math.Abs(player.Height - host.ActualHeight) > 0.5
@@ -2070,47 +2089,50 @@ internal static class WpfTemplateVerifier
                     height,
                     "cabeçalho HUD do catálogo");
                 AssertElementWithinAncestor(
-                    hudOpenFolder,
-                    catalogHudHeader,
-                    width,
-                    height,
-                    "ação abrir pasta do HUD");
-                AssertElementWithinAncestor(
-                    hudSupport,
-                    catalogHudHeader,
-                    width,
-                    height,
-                    "ação suporte do HUD");
-                AssertHudButtonTemplateWithinButton(
-                    hudOpenFolder,
-                    width,
-                    height);
-                AssertHudButtonTemplateWithinButton(
-                    hudSupport,
-                    width,
-                    height);
-                AssertElementWithinAncestor(
-                    retroFolderBar,
+                    catalogContentPanel,
                     catalogPage,
                     width,
                     height,
-                    "barra HUD de pastas");
+                    "conteúdo ampliado abaixo do HUD");
                 AssertElementWithinAncestor(
                     hudSearchPanel,
-                    catalogPage,
+                    catalogHudHeader,
                     width,
                     height,
                     "painel HUD de pesquisa");
+                AssertElementWithinAncestor(
+                    installPath,
+                    catalogHudHeader,
+                    width,
+                    height,
+                    "caminho de instalação no HUD");
+                AssertElementWithinAncestor(
+                    tempPath,
+                    catalogHudHeader,
+                    width,
+                    height,
+                    "caminho temporário no HUD");
 
-                foreach (var hudButton in FindVisualDescendants<Button>(retroFolderBar)
-                             .Where(candidate => candidate.IsVisible
-                                                 && ReferenceEquals(
-                                                     candidate.Style,
-                                                     window.Resources["CatalogHudButtonStyle"])))
+                foreach (var hudButton in new[]
+                         {
+                             hudChooseInstall,
+                             hudChooseTemp,
+                             hudResetTemp,
+                             hudOpenFolder,
+                             hudSupport
+                         })
+                {
+                    AssertElementWithinAncestor(
+                        hudButton,
+                        catalogHudHeader,
+                        width,
+                        height,
+                        $"ação '{AutomationProperties.GetName(hudButton)}' do HUD");
                     AssertHudButtonTemplateWithinButton(
                         hudButton,
                         width,
                         height);
+                }
 
                 foreach (var button in FindVisualDescendants<Button>(carouselViewport)
                              .Where(candidate => candidate.IsVisible
