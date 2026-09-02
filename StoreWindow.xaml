@@ -2437,7 +2437,7 @@
                           VerticalAlignment="Center"
                           ClipToBounds="True">
                     <Grid x:Name="RetroCarouselInfoPanel"
-                           Width="710"
+                           Width="680"
                            HorizontalAlignment="Right"
                           VerticalAlignment="Bottom"
                           Margin="0,0,0,26"
@@ -2495,7 +2495,14 @@
                         </UIElement.Effect>
                       </Rectangle>
                       <Grid Margin="20,7,10,7">
-                        <StackPanel HorizontalAlignment="Stretch"
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition Width="158" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel x:Name="RetroCarouselTextPanel"
+                                    Grid.Column="0"
+                                    Margin="0,0,18,0"
+                                    HorizontalAlignment="Stretch"
                                     VerticalAlignment="Center">
                           <TextBlock Name="RetroCarouselTitle"
                                      Text="Sistema retrô"
@@ -2530,6 +2537,20 @@
                                      TextOptions.TextRenderingMode="ClearType"
                                      TextTrimming="None" />
                         </StackPanel>
+                        <Image x:Name="RetroCarouselConsoleImage"
+                               Grid.Column="1"
+                               Width="146"
+                               Height="126"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Source="{Binding SelectedCategory.MenuIconSource}"
+                               Stretch="Uniform"
+                               Opacity=".98"
+                               IsHitTestVisible="False"
+                               SnapsToDevicePixels="True"
+                               UseLayoutRounding="True"
+                               RenderOptions.BitmapScalingMode="HighQuality"
+                               AutomationProperties.Name="{Binding SelectedCategory.DisplayName}" />
                       </Grid>
                     </Grid>
                     <Canvas x:Name="RetroCarouselTrack" Width="1060" Height="504" Panel.ZIndex="10">

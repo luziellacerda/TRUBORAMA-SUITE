@@ -106,8 +106,15 @@ internal static class WpfTemplateVerifier
                 window.Height = 728;
                 window.Opacity = 0;
 
-                var category = window.CatalogCategories.Single(item =>
+                var category = window.CatalogCategories.SingleOrDefault(item =>
                     item.Id.Equals(categoryId, StringComparison.OrdinalIgnoreCase));
+                if (category is null)
+                {
+                    var catalogStatus = (window.FindName("CatalogStatusText") as TextBlock)?.Text;
+                    throw new InvalidDataException(
+                        $"A categoria WPF '{categoryId}' não foi carregada entre as " +
+                        $"{window.CatalogCategories.Count} categorias. Estado: {catalogStatus}");
+                }
                 var openCatalog = typeof(StoreWindow).GetMethod(
                                       "OpenCatalog",
                                       BindingFlags.Instance | BindingFlags.NonPublic)
@@ -191,6 +198,8 @@ internal static class WpfTemplateVerifier
                     || window.FindName("RetroCarouselInfoPanel") is not Grid retroCarouselInfoPanel
                     || window.FindName("RetroCarouselInfoAccentRail") is not System.Windows.Shapes.Rectangle retroCarouselInfoAccentRail
                     || retroCarouselInfoAccentRail.Effect is not System.Windows.Media.Effects.DropShadowEffect retroCarouselInfoAccentGlow
+                    || window.FindName("RetroCarouselTextPanel") is not StackPanel retroCarouselTextPanel
+                    || window.FindName("RetroCarouselConsoleImage") is not Image retroCarouselConsoleImage
                     || window.FindName("RetroCarouselFooter") is not Border retroCarouselFooter
                     || window.FindName("RetroCarouselFooterRoot") is not Canvas retroCarouselFooterRoot
                     || window.FindName("RetroCarouselFooterContent") is not Grid retroCarouselFooterContent
@@ -261,6 +270,7 @@ internal static class WpfTemplateVerifier
                         window.Resources["CurrentSystemVideoOverlayBrush"])
                     || FindVisualDescendants<Border>(retroCarouselInfoPanel).Any()
                     || !double.IsNaN(retroCarouselInfoPanel.Height)
+                    || Math.Abs(retroCarouselInfoPanel.Width - 680) > double.Epsilon
                     || Math.Abs(retroCarouselInfoAccentRail.Width - 3) > double.Epsilon
                     || !double.IsNaN(retroCarouselInfoAccentRail.Height)
                     || retroCarouselInfoAccentRail.VerticalAlignment != VerticalAlignment.Stretch
@@ -268,6 +278,19 @@ internal static class WpfTemplateVerifier
                     || Math.Abs(retroCarouselInfoAccentGlow.ShadowDepth) > double.Epsilon
                     || retroCarouselInfoAccentGlow.BlurRadius < 6
                     || retroCarouselInfoAccentGlow.Opacity < .5
+                    || Grid.GetColumn(retroCarouselTextPanel) != 0
+                    || retroCarouselTextPanel.Margin != new Thickness(0, 0, 18, 0)
+                    || Grid.GetColumn(retroCarouselConsoleImage) != 1
+                    || Math.Abs(retroCarouselConsoleImage.Width - 146) > double.Epsilon
+                    || Math.Abs(retroCarouselConsoleImage.Height - 126) > double.Epsilon
+                    || retroCarouselConsoleImage.Stretch != Stretch.Uniform
+                    || retroCarouselConsoleImage.IsHitTestVisible
+                    || RenderOptions.GetBitmapScalingMode(retroCarouselConsoleImage)
+                    != BitmapScalingMode.HighQuality
+                    || BindingOperations.GetBindingExpression(
+                           retroCarouselConsoleImage,
+                           Image.SourceProperty)?.ParentBinding.Path.Path
+                       != "SelectedCategory.MenuIconSource"
                     || titleCurrentPlatform.TextTrimming != TextTrimming.CharacterEllipsis
                     || installPath.Visibility != Visibility.Visible
                     || tempPath.Visibility != Visibility.Visible)
@@ -417,7 +440,6 @@ internal static class WpfTemplateVerifier
                             $"A categoria '{catalogCategory.Id}' não aplicou alpha 56 com o RGB do acento atual sobre o vídeo PS3 compartilhado.");
                     }
                 }
-
                 var emulators = window.CatalogCategories.Single(item =>
                     item.Id.Equals("emulators", StringComparison.OrdinalIgnoreCase));
                 openCatalog.Invoke(window, [emulators]);
@@ -482,6 +504,34 @@ internal static class WpfTemplateVerifier
                 VerifyResponsiveBackgroundVideo(window);
                 VerifyResponsiveLibraryBackgroundVideo(window);
                 VerifyVideoLeaseLifecycle(window);
+                var categoryConsoleSources = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var catalogCategory in window.CatalogCategories)
+                {
+                    openCatalog.Invoke(window, [catalogCategory]);
+                    window.Dispatcher.Invoke(
+                        () => window.UpdateLayout(),
+                        DispatcherPriority.DataBind);
+                    BindingOperations.GetBindingExpression(
+                        retroCarouselConsoleImage,
+                        Image.SourceProperty)?.UpdateTarget();
+                    var renderedConsoleSource = retroCarouselConsoleImage.Source?
+                        .ToString()
+                        .Replace('\\', '/');
+                    var expectedConsoleSuffix =
+                        $"/Assets/Catalog/MenuIcons/{catalogCategory.Id}.png";
+                    if (string.IsNullOrWhiteSpace(renderedConsoleSource)
+                        || !renderedConsoleSource.EndsWith(
+                            expectedConsoleSuffix,
+                            StringComparison.OrdinalIgnoreCase))
+                        throw new InvalidDataException(
+                            $"A foto do console não acompanhou a categoria '{catalogCategory.Id}': " +
+                            $"fonte renderizada '{renderedConsoleSource ?? "<nula>"}', " +
+                            $"esperado final '{expectedConsoleSuffix}'.");
+                    categoryConsoleSources.Add(renderedConsoleSource);
+                }
+                if (categoryConsoleSources.Count != window.CatalogCategories.Count)
+                    throw new InvalidDataException(
+                        "A foto no canto do texto não mudou de forma única entre as 22 categorias.");
                 VerifyRevocationCancelsStoreOperations(window);
                 if (window.IsVisible) window.Close();
                 window = null;
@@ -3157,6 +3207,8 @@ internal static class WpfTemplateVerifier
             || window.FindName("RetroCarouselInfoPanel") is not Grid retroCarouselInfoPanel
             || window.FindName("RetroCarouselInfoAccentRail") is not System.Windows.Shapes.Rectangle retroCarouselInfoAccentRail
             || retroCarouselInfoAccentRail.Effect is not System.Windows.Media.Effects.DropShadowEffect retroCarouselInfoAccentGlow
+            || window.FindName("RetroCarouselTextPanel") is not StackPanel retroCarouselTextPanel
+            || window.FindName("RetroCarouselConsoleImage") is not Image retroCarouselConsoleImage
             || window.FindName("RetroCarouselTitle") is not TextBlock retroCarouselTitle
             || window.FindName("RetroCarouselPackageType") is not TextBlock retroCarouselPackageType
             || window.FindName("RetroCarouselPackageDescription") is not TextBlock retroCarouselPackageDescription
@@ -3374,6 +3426,17 @@ internal static class WpfTemplateVerifier
                 var expectedSafeInset = 10d * viewportScaleForCovers;
                 var renderedLeftInset = selectedCardBounds.Left - viewportBoundsInCatalog.Left;
                 var renderedRightInset = viewportBoundsInCatalog.Right - lastMiniBounds.Right;
+                var infoBounds = retroCarouselInfoPanel
+                    .TransformToAncestor(catalogPage)
+                    .TransformBounds(new Rect(retroCarouselInfoPanel.RenderSize));
+                var textPanelBounds = retroCarouselTextPanel
+                    .TransformToAncestor(catalogPage)
+                    .TransformBounds(new Rect(retroCarouselTextPanel.RenderSize));
+                var consoleImageBounds = retroCarouselConsoleImage
+                    .TransformToAncestor(catalogPage)
+                    .TransformBounds(new Rect(retroCarouselConsoleImage.RenderSize));
+                var renderedInfoGap = infoBounds.Left - selectedCardBounds.Right;
+                var expectedInfoGap = 34d * viewportScaleForCovers;
                 const double coverGeometryTolerance = 1.5;
                 if (!double.IsFinite(viewportScaleForCovers)
                     || viewportScaleForCovers <= 0
@@ -3387,11 +3450,15 @@ internal static class WpfTemplateVerifier
                     || Math.Abs(lastMiniBounds.Width - 136d * viewportScaleForCovers)
                     > coverGeometryTolerance
                     || Math.Abs(lastMiniBounds.Height - 204d * viewportScaleForCovers)
-                    > coverGeometryTolerance)
+                    > coverGeometryTolerance
+                    || Math.Abs(renderedInfoGap - expectedInfoGap) > coverGeometryTolerance
+                    || textPanelBounds.IntersectsWith(consoleImageBounds)
+                    || consoleImageBounds.Right > infoBounds.Right + coverGeometryTolerance)
                     throw new InvalidDataException(
-                        $"As capas perderam a margem lateral simétrica de 10 px ou a proporção em {width:0}×{height:0}: " +
+                        $"As capas, o texto ou a foto do console perderam a geometria em {width:0}×{height:0}: " +
                         $"viewport={viewportBoundsInCatalog}, principal={selectedCardBounds}, última={lastMiniBounds}, " +
-                        $"margens={renderedLeftInset:0.##}/{renderedRightInset:0.##}. ");
+                        $"margens={renderedLeftInset:0.##}/{renderedRightInset:0.##}, " +
+                        $"separação={renderedInfoGap:0.##}/{expectedInfoGap:0.##}. ");
                 var footerActionBounds = carouselActionBar
                     .TransformToAncestor(catalogPage)
                     .TransformBounds(new Rect(carouselActionBar.RenderSize));
@@ -3505,10 +3572,13 @@ internal static class WpfTemplateVerifier
                     || !retroCarouselInfoAccentGlow.HasAnimatedProperties)
                     throw new InvalidDataException(
                         "O LED fino da descrição não animou simultaneamente seu núcleo e seu halo.");
-                var expectedInfoHeight = retroCarouselTitle.ActualHeight
-                                         + retroCarouselPackageType.ActualHeight
-                                         + retroCarouselPackageDescription.ActualHeight
-                                         + 25;
+                var expectedTextInfoHeight = retroCarouselTitle.ActualHeight
+                                             + retroCarouselPackageType.ActualHeight
+                                             + retroCarouselPackageDescription.ActualHeight
+                                             + 25;
+                var expectedInfoHeight = Math.Max(
+                    expectedTextInfoHeight,
+                    retroCarouselConsoleImage.ActualHeight + 14);
                 if (Math.Abs(retroCarouselInfoPanel.ActualHeight - expectedInfoHeight) > 1.5
                     || Math.Abs(
                         retroCarouselInfoAccentRail.ActualHeight
@@ -3754,6 +3824,18 @@ internal static class WpfTemplateVerifier
                     width,
                     height,
                     "trilho de destaque da descrição livre");
+                AssertElementWithinAncestor(
+                    retroCarouselTextPanel,
+                    retroCarouselInfoPanel,
+                    width,
+                    height,
+                    "texto separado da capa principal");
+                AssertElementWithinAncestor(
+                    retroCarouselConsoleImage,
+                    retroCarouselInfoPanel,
+                    width,
+                    height,
+                    "foto do console ao lado do texto");
                 AssertElementWithinAncestor(
                     retroCarouselTitle,
                     retroCarouselInfoPanel,
