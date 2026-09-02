@@ -359,10 +359,15 @@ internal static class WpfTemplateVerifier
                 if (window.Resources.Contains("NintendoVideoRedTintBrush")
                     || window.FindName("RetroNintendoVideoTint") is not null
                     || window.Resources["CurrentSystemVideoTintBrush"] is not SolidColorBrush videoTint
-                    || videoTint.Color.A != 0
+                    || window.Resources["CurrentSystemAccentColor"] is not Color ps3Accent
+                    || videoTint.Color != Color.FromArgb(
+                        56,
+                        ps3Accent.R,
+                        ps3Accent.G,
+                        ps3Accent.B)
                     || window.FindName("RetroSystemVideoTint") is not Border)
                     throw new InvalidDataException(
-                        "O PS3 precisa usar seu vídeo dedicado sem tonalização e a camada geral deve substituir o vermelho exclusivo da Nintendo.");
+                        "O PS3 precisa usar o vídeo azul compartilhado com a tonalização de sua própria paleta.");
 
                 var requestedThemeColors = new Dictionary<string, Color>(StringComparer.OrdinalIgnoreCase)
                 {
@@ -387,15 +392,7 @@ internal static class WpfTemplateVerifier
                     "xbox",
                     "xbox-360",
                     "xbox-one",
-                    "xbox-series",
-                    "playstation-1",
-                    "playstation-2",
-                    "playstation-2-br",
-                    "playstation-3",
-                    "playstation-4",
-                    "playstation-5",
-                    "psp",
-                    "ps-vita"
+                    "xbox-series"
                 };
                 foreach (var catalogCategory in window.CatalogCategories)
                 {
@@ -417,7 +414,7 @@ internal static class WpfTemplateVerifier
                                  requestedAccent.B))
                     {
                         throw new InvalidDataException(
-                            $"A categoria '{catalogCategory.Id}' não aplicou alpha 56 com o RGB do acento atual sobre o vídeo PSP.");
+                            $"A categoria '{catalogCategory.Id}' não aplicou alpha 56 com o RGB do acento atual sobre o vídeo PS3 compartilhado.");
                     }
                 }
 
@@ -432,7 +429,7 @@ internal static class WpfTemplateVerifier
                         emulatorAccent.G,
                         emulatorAccent.B))
                     throw new InvalidDataException(
-                        "Emuladores precisa atualizar explicitamente a tonalidade do vídeo PSP para sua própria cor.");
+                        "Emuladores precisa atualizar explicitamente a tonalidade do vídeo PS3 compartilhado para sua própria cor.");
 
                 var systemTools = window.CatalogCategories.Single(item =>
                     item.Id.Equals("system-tools", StringComparison.OrdinalIgnoreCase));
@@ -1845,8 +1842,8 @@ internal static class WpfTemplateVerifier
                            "ResolveRetroUniversalVideoFileName");
         var routes = new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["system-tools"] = "Turborama-background-psp.mp4",
-            ["emulators"] = "Turborama-background-psp.mp4",
+            ["system-tools"] = "Turborama-background.mp4",
+            ["emulators"] = "Turborama-background.mp4",
             ["playstation-1"] = "Turborama-background.mp4",
             ["playstation-2"] = "Turborama-background.mp4",
             ["playstation-2-br"] = "Turborama-background.mp4",
@@ -1855,19 +1852,19 @@ internal static class WpfTemplateVerifier
             ["playstation-5"] = "Turborama-background.mp4",
             ["psp"] = "Turborama-background.mp4",
             ["ps-vita"] = "Turborama-background.mp4",
-            ["sega-saturn"] = "Turborama-background-psp.mp4",
+            ["sega-saturn"] = "Turborama-background.mp4",
             ["xbox"] = "Turborama-background-xbox-one-x.mp4",
             ["xbox-360"] = "Turborama-background-xbox-one-x.mp4",
             ["xbox-one"] = "Turborama-background-xbox-one-x.mp4",
             ["xbox-series"] = "Turborama-background-xbox-one-x.mp4",
-            ["nintendo-3ds"] = "Turborama-background-psp.mp4",
-            ["gamecube"] = "Turborama-background-psp.mp4",
-            ["nintendo-switch"] = "Turborama-background-psp.mp4",
-            ["nintendo-wii"] = "Turborama-background-psp.mp4",
-            ["nintendo-wii-u"] = "Turborama-background-psp.mp4",
-            ["windows"] = "Turborama-background-psp.mp4",
-            ["retro-games"] = "Turborama-background-psp.mp4",
-            ["unknown-fallback"] = "Turborama-background-psp.mp4"
+            ["nintendo-3ds"] = "Turborama-background.mp4",
+            ["gamecube"] = "Turborama-background.mp4",
+            ["nintendo-switch"] = "Turborama-background.mp4",
+            ["nintendo-wii"] = "Turborama-background.mp4",
+            ["nintendo-wii-u"] = "Turborama-background.mp4",
+            ["windows"] = "Turborama-background.mp4",
+            ["retro-games"] = "Turborama-background.mp4",
+            ["unknown-fallback"] = "Turborama-background.mp4"
         };
         foreach (var (categoryId, expectedFile) in routes)
         {
@@ -1879,15 +1876,15 @@ internal static class WpfTemplateVerifier
 
         var libraryFallback = resolver.Invoke(null, ["library"]) as string;
         if (libraryFallback is null || !libraryFallback.Equals(
-                "Turborama-background-psp.mp4",
+                "Turborama-background.mp4",
                 StringComparison.Ordinal))
-            throw new InvalidDataException("O contexto da Biblioteca não resolveu o vídeo PSP aprovado.");
+            throw new InvalidDataException("O contexto da Biblioteca não resolveu o vídeo PS3 compartilhado aprovado.");
 
         var nullFallback = resolver.Invoke(null, [null]) as string;
         if (nullFallback is null || !nullFallback.Equals(
-                "Turborama-background-psp.mp4",
+                "Turborama-background.mp4",
                 StringComparison.Ordinal))
-            throw new InvalidDataException("O fallback nulo não resolveu o vídeo PSP aprovado.");
+            throw new InvalidDataException("O fallback nulo não resolveu o vídeo PS3 compartilhado aprovado.");
         VerifyBackgroundVideoLeaseRejectsTampering(root);
     }
 
@@ -2312,9 +2309,8 @@ internal static class WpfTemplateVerifier
             throw new InvalidDataException(
                 "O vídeo do item precisa ficar recortado acima do fallback e abaixo dos overlays.");
 
-        VerifyMediaElementCanReadRetainedLease(
-            universalHost,
-            window.SelectedCategory?.Id);
+        VerifyMediaElementCanReadRetainedLease(universalHost, "playstation-3");
+        VerifyMediaElementCanReadRetainedLease(universalHost, "xbox");
 
         var universalLeaseField = typeof(StoreWindow).GetField(
                                       "_retroUniversalVideoLease",
@@ -2407,11 +2403,11 @@ internal static class WpfTemplateVerifier
                 "Parar o vídeo do sistema também encerrou o fallback universal.");
         if (universalPlayerField.GetValue(window) is not MediaElement retroUniversalPlayer)
             throw new InvalidDataException(
-                "O fundo PSP do catálogo não manteve um player ativo.");
+                "O fundo PS3 compartilhado do catálogo não manteve um player ativo.");
         VerifyHorizontalVideoMirror(
             retroUniversalPlayer,
             expectedMirrored: false,
-            "vídeo PSP do catálogo");
+            "vídeo PS3 compartilhado do catálogo");
 
         VerifyRapidVideoNavigation(
             window,
@@ -2508,7 +2504,7 @@ internal static class WpfTemplateVerifier
                 "Turborama-background.mp4",
                 StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException(
-                "A navegação não materializou o vídeo PS3 dedicado à família PlayStation.");
+                "A navegação não materializou o vídeo PS3 azul compartilhado.");
         VerifyHorizontalVideoMirror(
             playstationPlayer,
             expectedMirrored: false,
@@ -2526,10 +2522,15 @@ internal static class WpfTemplateVerifier
             || !ReferenceEquals(playstationTask, RequireTask(universalLoadTaskField, window))
             || activeCategoryField.GetValue(window) is not string playstation5Category
             || !playstation5Category.Equals("playstation-5", StringComparison.OrdinalIgnoreCase)
+            || window.Resources["CurrentSystemAccentColor"] is not Color playstation5Accent
             || window.Resources["CurrentSystemVideoTintBrush"] is not SolidColorBrush playstationTint
-            || playstationTint.Color.A != 0)
+            || playstationTint.Color != Color.FromArgb(
+                56,
+                playstation5Accent.R,
+                playstation5Accent.G,
+                playstation5Accent.B))
             throw new InvalidDataException(
-                "PlayStation 4 → PlayStation 5 reabriu o mesmo vídeo PS3 ou aplicou tonalização indevida.");
+                "PlayStation 4 → PlayStation 5 reabriu o vídeo compartilhado ou não atualizou sua tonalização.");
 
         try
         {
@@ -2547,25 +2548,31 @@ internal static class WpfTemplateVerifier
         }
 
         openCatalog.Invoke(window, [nintendoSwitch]);
-        WaitForDispatcherTask(
-            window,
-            RequireTask(universalLoadTaskField, window),
-            "vídeo universal real do Nintendo Switch");
         if (activeCategoryField.GetValue(window) is not string switchCategory
             || !switchCategory.Equals("nintendo-switch", StringComparison.OrdinalIgnoreCase)
             || universalLeaseField.GetValue(window) is not { } switchLease
             || !IsLeaseActive(switchLease)
             || universalPlayerField.GetValue(window) is not MediaElement switchPlayer
+            || !ReferenceEquals(playstationPlayer, switchPlayer)
+            || !ReferenceEquals(playstationLease, switchLease)
+            || !ReferenceEquals(playstationTask, RequireTask(universalLoadTaskField, window))
             || switchPlayer.Source is not { IsFile: true } switchSource
             || !Path.GetFileName(switchSource.LocalPath).Equals(
-                "Turborama-background-psp.mp4",
-                StringComparison.OrdinalIgnoreCase))
+                "Turborama-background.mp4",
+                StringComparison.OrdinalIgnoreCase)
+            || window.Resources["CurrentSystemAccentColor"] is not Color switchAccent
+            || window.Resources["CurrentSystemVideoTintBrush"] is not SolidColorBrush switchTint
+            || switchTint.Color != Color.FromArgb(
+                56,
+                switchAccent.R,
+                switchAccent.G,
+                switchAccent.B))
             throw new InvalidDataException(
-                "O Nintendo Switch não manteve o player e lease PSP compartilhados.");
+                "PlayStation → Nintendo Switch não reutilizou o vídeo PS3 compartilhado ou não atualizou sua cor.");
         VerifyHorizontalVideoMirror(
             switchPlayer,
             expectedMirrored: false,
-            "vídeo Nintendo Switch real do catálogo");
+            "vídeo PS3 compartilhado no Nintendo Switch");
 
         var switchTask = RequireTask(universalLoadTaskField, window);
         var windows = window.CatalogCategories.Single(category =>
@@ -2584,7 +2591,7 @@ internal static class WpfTemplateVerifier
                 windowsAccent.G,
                 windowsAccent.B))
             throw new InvalidDataException(
-                "Nintendo Switch → Windows não reutilizou o genérico azul ou não atualizou apenas sua cor.");
+                "Nintendo Switch → Windows não reutilizou o vídeo PS3 azul ou não atualizou apenas sua cor.");
 
         var xbox = window.CatalogCategories.Single(category =>
             category.Id.Equals("xbox", StringComparison.OrdinalIgnoreCase));
@@ -2598,6 +2605,17 @@ internal static class WpfTemplateVerifier
         var xboxLease = universalLeaseField.GetValue(window)
                         ?? throw new InvalidDataException("O lease Xbox não foi criado.");
         var xboxTask = RequireTask(universalLoadTaskField, window);
+        if (ReferenceEquals(switchPlayer, xboxPlayer)
+            || ReferenceEquals(switchLease, xboxLease)
+            || ReferenceEquals(switchTask, xboxTask)
+            || xboxPlayer.Source is not { IsFile: true } xboxSource
+            || !Path.GetFileName(xboxSource.LocalPath).Equals(
+                "Turborama-background-xbox-one-x.mp4",
+                StringComparison.OrdinalIgnoreCase)
+            || window.Resources["CurrentSystemVideoTintBrush"] is not SolidColorBrush initialXboxTint
+            || initialXboxTint.Color.A != 0)
+            throw new InvalidDataException(
+                "Windows → Xbox não trocou do vídeo PS3 compartilhado para o Xbox One X sem tonalização.");
         openCatalog.Invoke(window, [xboxSeries]);
         if (!ReferenceEquals(xboxPlayer, universalPlayerField.GetValue(window))
             || !ReferenceEquals(xboxLease, universalLeaseField.GetValue(window))
@@ -2608,6 +2626,32 @@ internal static class WpfTemplateVerifier
             || xboxTint.Color.A != 0)
             throw new InvalidDataException(
                 "Xbox → Xbox Series reabriu o mesmo vídeo Xbox One X ou aplicou tonalização indevida.");
+
+        openCatalog.Invoke(window, [playstation4]);
+        var returnedSharedTask = RequireTask(universalLoadTaskField, window);
+        WaitForDispatcherTask(
+            window,
+            returnedSharedTask,
+            "retorno do Xbox ao vídeo PS3 compartilhado");
+        if (ReferenceEquals(xboxPlayer, universalPlayerField.GetValue(window))
+            || ReferenceEquals(xboxLease, universalLeaseField.GetValue(window))
+            || ReferenceEquals(xboxTask, returnedSharedTask)
+            || activeCategoryField.GetValue(window) is not string returnedPlayStationCategory
+            || !returnedPlayStationCategory.Equals("playstation-4", StringComparison.OrdinalIgnoreCase)
+            || universalPlayerField.GetValue(window) is not MediaElement returnedSharedPlayer
+            || returnedSharedPlayer.Source is not { IsFile: true } returnedSharedSource
+            || !Path.GetFileName(returnedSharedSource.LocalPath).Equals(
+                "Turborama-background.mp4",
+                StringComparison.OrdinalIgnoreCase)
+            || window.Resources["CurrentSystemAccentColor"] is not Color returnedPlayStationAccent
+            || window.Resources["CurrentSystemVideoTintBrush"] is not SolidColorBrush returnedPlayStationTint
+            || returnedPlayStationTint.Color != Color.FromArgb(
+                56,
+                returnedPlayStationAccent.R,
+                returnedPlayStationAccent.G,
+                returnedPlayStationAccent.B))
+            throw new InvalidDataException(
+                "Xbox Series → PlayStation não trocou para o vídeo PS3 compartilhado com a cor do tema.");
     }
 
     private static Task RequireTask(FieldInfo field, StoreWindow window) =>
@@ -2923,7 +2967,7 @@ internal static class WpfTemplateVerifier
             || playerHost.HorizontalAlignment != HorizontalAlignment.Stretch
             || playerHost.VerticalAlignment != VerticalAlignment.Stretch)
             throw new InvalidDataException(
-                "O host do vídeo PSP precisa ser o primeiro plano da Biblioteca, recortado, esticado e atrás do conteúdo.");
+                "O host do vídeo PS3 compartilhado precisa ser o primeiro plano da Biblioteca, recortado, esticado e atrás do conteúdo.");
 
         var factory = typeof(StoreWindow).GetMethod(
                           "CreateResponsiveLibraryVideoPlayer",
@@ -2965,11 +3009,11 @@ internal static class WpfTemplateVerifier
             || player.IsHitTestVisible
             || player.Effect is not null)
             throw new InvalidDataException(
-                "O vídeo PSP da Biblioteca precisa cobrir o fundo integralmente, proporcional, mudo e sem filtros.");
+                "O vídeo PS3 compartilhado da Biblioteca precisa cobrir o fundo integralmente, proporcional, mudo e sem filtros.");
         VerifyHorizontalVideoMirror(
             player,
             expectedMirrored: false,
-            "vídeo PSP criado para a Biblioteca");
+            "vídeo PS3 compartilhado criado para a Biblioteca");
 
         var originalLibraryVisibility = libraryPage.Visibility;
         var catalogPage = window.FindName("CatalogPage") as Grid
@@ -3002,13 +3046,13 @@ internal static class WpfTemplateVerifier
                     || Math.Abs(player.Width - playerHost.ActualWidth) > .5
                     || Math.Abs(player.Height - playerHost.ActualHeight) > .5)
                     throw new InvalidDataException(
-                        $"O vídeo PSP não ocupou todo o fundo útil da Biblioteca em {width:0}×{height:0}.");
+                        $"O vídeo PS3 compartilhado não ocupou todo o fundo útil da Biblioteca em {width:0}×{height:0}.");
                 AssertElementWithinAncestor(
                     videoBackground,
                     libraryPage,
                     width,
                     height,
-                    "fundo PSP integral da Biblioteca");
+                    "fundo PS3 compartilhado integral da Biblioteca");
                 AssertElementWithinAncestor(
                     contentScrollViewer,
                     libraryPage,
@@ -3034,7 +3078,7 @@ internal static class WpfTemplateVerifier
                 window,
                 () => playerHost.Children.OfType<MediaElement>().Any(candidate =>
                     candidate.Source is not null),
-                "o vídeo PSP da Biblioteca iniciar");
+                "o vídeo PS3 compartilhado da Biblioteca iniciar");
             if (!libraryHeaderLed.HasAnimatedProperties
                 || !libraryHeaderLedGlow.HasAnimatedProperties)
                 throw new InvalidDataException(
@@ -3044,19 +3088,19 @@ internal static class WpfTemplateVerifier
             if (activePlayer?.Source is not { IsFile: true } source
                 || !string.Equals(
                     Path.GetFileName(source.LocalPath),
-                    "Turborama-background-psp.mp4",
+                    "Turborama-background.mp4",
                     StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException(
-                    "A Biblioteca iniciou um vídeo diferente do fundo PSP aprovado.");
+                    "A Biblioteca iniciou um vídeo diferente do fundo PS3 compartilhado aprovado.");
             VerifyHorizontalVideoMirror(
                 activePlayer!,
                 expectedMirrored: false,
-                "vídeo PSP da Biblioteca");
+                "vídeo PS3 compartilhado da Biblioteca");
             showPage.Invoke(window, ["Catalog"]);
             WaitForDispatcherCondition(
                 window,
                 () => !playerHost.Children.OfType<MediaElement>().Any(),
-                "o vídeo PSP da Biblioteca parar ao sair da página");
+                "o vídeo PS3 compartilhado da Biblioteca parar ao sair da página");
         }
         finally
         {
@@ -3597,7 +3641,7 @@ internal static class WpfTemplateVerifier
                     window,
                     width,
                     height,
-                    "camada de cor do sistema sobre o vídeo PSP");
+                    "camada de cor do sistema sobre o vídeo PS3 compartilhado");
                 AssertElementWithinAncestor(
                     carouselHost,
                     window,

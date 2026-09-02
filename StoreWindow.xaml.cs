@@ -36,8 +36,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     private const string RetroGamesCategoryId = "retro-games";
     private const string LibraryBackgroundVideoContextId = "library";
     private const string CatalogBackgroundVideoContextPrefix = "catalog:";
-    private const string SharedPspBackgroundVideoFileName = "Turborama-background-psp.mp4";
-    private const string PlayStationBackgroundVideoFileName = "Turborama-background.mp4";
+    private const string SharedThemeBackgroundVideoFileName = "Turborama-background.mp4";
     private const string XboxBackgroundVideoFileName = "Turborama-background-xbox-one-x.mp4";
     private const byte SharedBackgroundVideoTintAlpha = 56;
     private const double RetroCarouselLogicalWidth = 1060d;
@@ -1537,7 +1536,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     private static bool UsesCurrentSystemVideoTint(string? categoryId) =>
         !string.IsNullOrWhiteSpace(categoryId)
         && ResolveRetroUniversalVideoFileName(categoryId).Equals(
-            SharedPspBackgroundVideoFileName,
+            SharedThemeBackgroundVideoFileName,
             StringComparison.OrdinalIgnoreCase);
 
     private void SetCategoryThemeBrush(string key, Color color)
@@ -2947,20 +2946,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     private static string ResolveRetroUniversalVideoFileName(string? categoryId) =>
         IsXboxVideoCategory(categoryId)
             ? XboxBackgroundVideoFileName
-            : IsPlayStationVideoCategory(categoryId)
-                ? PlayStationBackgroundVideoFileName
-                : SharedPspBackgroundVideoFileName;
-
-    private static bool IsPlayStationVideoCategory(string? categoryId) =>
-        categoryId?.ToLowerInvariant() is
-            "playstation-1" or
-            "playstation-2" or
-            "playstation-2-br" or
-            "playstation-3" or
-            "playstation-4" or
-            "playstation-5" or
-            "psp" or
-            "ps-vita";
+            : SharedThemeBackgroundVideoFileName;
 
     private static bool IsXboxVideoCategory(string? categoryId) =>
         categoryId?.ToLowerInvariant() is
