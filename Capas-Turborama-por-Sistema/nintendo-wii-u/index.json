@@ -10,90 +10,90 @@
       "title": "Batman™ Arkham Origins [AZEPWR]",
       "fileName": "ff11865fe0b66b0ab1418410b3893769.jpg",
       "catalogImage": "../../Assets/Catalog/Images/ff11865fe0b66b0ab1418410b3893769.jpg",
-      "organizedImage": null,
+      "organizedImage": "ff11865fe0b66b0ab1418410b3893769.jpg",
       "sourceImage": null,
-      "bytes": 811718,
-      "sha256": "a4040efde7ced1ab7a0c1980ec0f487966962379c9f9f5046959f13d7d7673a1"
+      "bytes": 903494,
+      "sha256": "2b8ed43b25644d7f7ffbc9a73089ba865d7012e6dc733e5bfffadf79cffd517f"
     },
     {
       "id": "66daab5305f10e66e1f8b1894f4b6023",
       "title": "Bayonetta 2 (USA) (En,Ja,Fr,De,Es,It)",
       "fileName": "66daab5305f10e66e1f8b1894f4b6023.jpg",
       "catalogImage": "../../Assets/Catalog/Images/66daab5305f10e66e1f8b1894f4b6023.jpg",
-      "organizedImage": null,
+      "organizedImage": "66daab5305f10e66e1f8b1894f4b6023.jpg",
       "sourceImage": null,
-      "bytes": 915187,
-      "sha256": "708dcb77375c93854c6ed6a19ceac798e480d0b956af1d3ce19716e5b75a82ef"
+      "bytes": 1013787,
+      "sha256": "051e16689bff42c74d4dd5f8f8888003ac19c59c4799796cdd7623c31c71d769"
     },
     {
       "id": "ef066e274b2abe853887e513c3b48697",
       "title": "Donkey Kong Country - Tropical Freeze (USA) (En,Fr,Es) (Rev 1)",
       "fileName": "ef066e274b2abe853887e513c3b48697.jpg",
       "catalogImage": "../../Assets/Catalog/Images/ef066e274b2abe853887e513c3b48697.jpg",
-      "organizedImage": null,
+      "organizedImage": "ef066e274b2abe853887e513c3b48697.jpg",
       "sourceImage": null,
-      "bytes": 949885,
-      "sha256": "4ac8bb75c42cc9ce933dbbbaeb851a21858aba3d3de70b1adafaec09589301de"
+      "bytes": 1039458,
+      "sha256": "19a2ad4e0580869b5d84731dce6deec45ed25543bb4af5dbd6a2dd2ef50e0c18"
     },
     {
       "id": "2dcbf6b24a8f74c540f0a8ab8be8a7ab",
       "title": "MARIO KART 8 [AMKE01]",
       "fileName": "2dcbf6b24a8f74c540f0a8ab8be8a7ab.jpg",
       "catalogImage": "../../Assets/Catalog/Images/2dcbf6b24a8f74c540f0a8ab8be8a7ab.jpg",
-      "organizedImage": null,
+      "organizedImage": "2dcbf6b24a8f74c540f0a8ab8be8a7ab.jpg",
       "sourceImage": null,
-      "bytes": 868088,
-      "sha256": "edc961cc83eacd768be59776dc166537ca3f12f20a307b184de307f03fefe454"
+      "bytes": 970179,
+      "sha256": "feafa4ff3a86fdcf65666257c1cf27e54c7980bf7bdd1e2797a886664eba7630"
     },
     {
       "id": "0a506cfbb839c39dd58a60bdcd66a30b",
       "title": "Mario Tennis Ultra Smash [AVXP01]",
       "fileName": "0a506cfbb839c39dd58a60bdcd66a30b.jpg",
       "catalogImage": "../../Assets/Catalog/Images/0a506cfbb839c39dd58a60bdcd66a30b.jpg",
-      "organizedImage": null,
+      "organizedImage": "0a506cfbb839c39dd58a60bdcd66a30b.jpg",
       "sourceImage": null,
-      "bytes": 908870,
-      "sha256": "2a4c64653427fe3d747bbcb60d63c6e1a421b3877b948a4a5b3d1d0c7348983d"
+      "bytes": 1017177,
+      "sha256": "13300a083eb841f3933c5edab812fa522b93311271abf47049527b5c839b446f"
     },
     {
       "id": "64423918fafd81a281d93a950d6fbb27",
       "title": "New Super Luigi U (USA) (En,Fr,Es)",
       "fileName": "64423918fafd81a281d93a950d6fbb27.jpg",
       "catalogImage": "../../Assets/Catalog/Images/64423918fafd81a281d93a950d6fbb27.jpg",
-      "organizedImage": null,
+      "organizedImage": "64423918fafd81a281d93a950d6fbb27.jpg",
       "sourceImage": null,
-      "bytes": 650135,
-      "sha256": "41e38f2e949b0b3b7e5886ed231effb023eb5c75ae38bee45dc60002ffe08ef8"
+      "bytes": 731741,
+      "sha256": "ccc7fd41c22448286e419471e0e44b32ade59f2ad30d39b96767ed4e0c0e595b"
     },
     {
       "id": "321c159aa6809aca17f4392891da7e40",
       "title": "Ninja Gaiden 3 - Razor's Edge (USA) (En,Ja,Fr,De,Es,It)",
       "fileName": "321c159aa6809aca17f4392891da7e40.jpg",
       "catalogImage": "../../Assets/Catalog/Images/321c159aa6809aca17f4392891da7e40.jpg",
-      "organizedImage": null,
+      "organizedImage": "321c159aa6809aca17f4392891da7e40.jpg",
       "sourceImage": null,
-      "bytes": 803990,
-      "sha256": "03c7a0c592a46f08d2a58124586a1df56b812326620d6d272fd521a514eff50e"
+      "bytes": 937935,
+      "sha256": "2365d1b0886c019833b31f24bc48ca8b346de8e30a9938b67510f9a6e2590688"
     },
     {
       "id": "9cc9ffde43b73a9775ddb2944a47828a",
       "title": "Sonic Boom - Rise of Lyric (USA) (En,Fr,Es)",
       "fileName": "9cc9ffde43b73a9775ddb2944a47828a.jpg",
       "catalogImage": "../../Assets/Catalog/Images/9cc9ffde43b73a9775ddb2944a47828a.jpg",
-      "organizedImage": null,
+      "organizedImage": "9cc9ffde43b73a9775ddb2944a47828a.jpg",
       "sourceImage": null,
-      "bytes": 906382,
-      "sha256": "fdd90ff62d37f2d68d1e1402d238c88c69cdb0fa90ade6dc7459c55e22c7a38f"
+      "bytes": 1033648,
+      "sha256": "132fe624dec9cbfcef4ba1876bdca291e5c9821aff26a2d67523737d69b0b389"
     },
     {
       "id": "44224464f1d12244e4d8aff6aeda45ba",
       "title": "ZombiU (USA) (En,Fr,Es,Pt)",
       "fileName": "44224464f1d12244e4d8aff6aeda45ba.jpg",
       "catalogImage": "../../Assets/Catalog/Images/44224464f1d12244e4d8aff6aeda45ba.jpg",
-      "organizedImage": null,
+      "organizedImage": "44224464f1d12244e4d8aff6aeda45ba.jpg",
       "sourceImage": null,
-      "bytes": 740330,
-      "sha256": "3d0b2f4cd359d70a634afb8f3fb1bec7497e22c84a430c7a0d027b421021415a"
+      "bytes": 897266,
+      "sha256": "0ee726c2b38e38a087baa9e9d37473f57adc29964f58393f0595493b059dc64c"
     }
   ]
 }

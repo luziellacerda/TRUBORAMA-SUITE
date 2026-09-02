@@ -198,6 +198,7 @@ internal static class WpfTemplateVerifier
                     || window.FindName("RetroCarouselInfoPanel") is not Grid retroCarouselInfoPanel
                     || window.FindName("RetroCarouselInfoAccentRail") is not System.Windows.Shapes.Rectangle retroCarouselInfoAccentRail
                     || retroCarouselInfoAccentRail.Effect is not System.Windows.Media.Effects.DropShadowEffect retroCarouselInfoAccentGlow
+                    || window.FindName("RetroCarouselInfoContentGrid") is not Grid retroCarouselInfoContentGrid
                     || window.FindName("RetroCarouselTextPanel") is not StackPanel retroCarouselTextPanel
                     || window.FindName("RetroCarouselConsoleImage") is not Image retroCarouselConsoleImage
                     || window.FindName("RetroCarouselFooter") is not Border retroCarouselFooter
@@ -278,11 +279,16 @@ internal static class WpfTemplateVerifier
                     || Math.Abs(retroCarouselInfoAccentGlow.ShadowDepth) > double.Epsilon
                     || retroCarouselInfoAccentGlow.BlurRadius < 6
                     || retroCarouselInfoAccentGlow.Opacity < .5
+                    || retroCarouselInfoContentGrid.ColumnDefinitions.Count != 2
+                    || !retroCarouselInfoContentGrid.ColumnDefinitions[1].Width.IsAbsolute
+                    || Math.Abs(retroCarouselInfoContentGrid.ColumnDefinitions[1].Width.Value - 230) > double.Epsilon
                     || Grid.GetColumn(retroCarouselTextPanel) != 0
                     || retroCarouselTextPanel.Margin != new Thickness(0, 0, 18, 0)
                     || Grid.GetColumn(retroCarouselConsoleImage) != 1
-                    || Math.Abs(retroCarouselConsoleImage.Width - 146) > double.Epsilon
-                    || Math.Abs(retroCarouselConsoleImage.Height - 126) > double.Epsilon
+                    || Math.Abs(retroCarouselConsoleImage.Width - 220) > double.Epsilon
+                    || Math.Abs(retroCarouselConsoleImage.Height - 168) > double.Epsilon
+                    || retroCarouselConsoleImage.HorizontalAlignment != HorizontalAlignment.Center
+                    || retroCarouselConsoleImage.VerticalAlignment != VerticalAlignment.Center
                     || retroCarouselConsoleImage.Stretch != Stretch.Uniform
                     || retroCarouselConsoleImage.IsHitTestVisible
                     || RenderOptions.GetBitmapScalingMode(retroCarouselConsoleImage)
@@ -3207,6 +3213,7 @@ internal static class WpfTemplateVerifier
             || window.FindName("RetroCarouselInfoPanel") is not Grid retroCarouselInfoPanel
             || window.FindName("RetroCarouselInfoAccentRail") is not System.Windows.Shapes.Rectangle retroCarouselInfoAccentRail
             || retroCarouselInfoAccentRail.Effect is not System.Windows.Media.Effects.DropShadowEffect retroCarouselInfoAccentGlow
+            || window.FindName("RetroCarouselInfoContentGrid") is not Grid retroCarouselInfoContentGrid
             || window.FindName("RetroCarouselTextPanel") is not StackPanel retroCarouselTextPanel
             || window.FindName("RetroCarouselConsoleImage") is not Image retroCarouselConsoleImage
             || window.FindName("RetroCarouselTitle") is not TextBlock retroCarouselTitle
@@ -3435,8 +3442,15 @@ internal static class WpfTemplateVerifier
                 var consoleImageBounds = retroCarouselConsoleImage
                     .TransformToAncestor(catalogPage)
                     .TransformBounds(new Rect(retroCarouselConsoleImage.RenderSize));
+                var infoContentBounds = retroCarouselInfoContentGrid
+                    .TransformToAncestor(catalogPage)
+                    .TransformBounds(new Rect(retroCarouselInfoContentGrid.RenderSize));
                 var renderedInfoGap = infoBounds.Left - selectedCardBounds.Right;
                 var expectedInfoGap = 34d * viewportScaleForCovers;
+                var expectedConsoleCenterX = infoContentBounds.Right
+                                             - 115d * viewportScaleForCovers;
+                var renderedConsoleCenterX = consoleImageBounds.Left
+                                             + consoleImageBounds.Width / 2d;
                 const double coverGeometryTolerance = 1.5;
                 if (!double.IsFinite(viewportScaleForCovers)
                     || viewportScaleForCovers <= 0
@@ -3453,6 +3467,7 @@ internal static class WpfTemplateVerifier
                     > coverGeometryTolerance
                     || Math.Abs(renderedInfoGap - expectedInfoGap) > coverGeometryTolerance
                     || textPanelBounds.IntersectsWith(consoleImageBounds)
+                    || Math.Abs(renderedConsoleCenterX - expectedConsoleCenterX) > coverGeometryTolerance
                     || consoleImageBounds.Right > infoBounds.Right + coverGeometryTolerance)
                     throw new InvalidDataException(
                         $"As capas, o texto ou a foto do console perderam a geometria em {width:0}×{height:0}: " +

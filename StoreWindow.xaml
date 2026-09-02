@@ -2494,10 +2494,11 @@
                                             RenderingBias="Quality" />
                         </UIElement.Effect>
                       </Rectangle>
-                      <Grid Margin="20,7,10,7">
+                      <Grid x:Name="RetroCarouselInfoContentGrid"
+                            Margin="20,7,10,7">
                         <Grid.ColumnDefinitions>
                           <ColumnDefinition Width="*" />
-                          <ColumnDefinition Width="158" />
+                          <ColumnDefinition Width="230" />
                         </Grid.ColumnDefinitions>
                         <StackPanel x:Name="RetroCarouselTextPanel"
                                     Grid.Column="0"
@@ -2539,8 +2540,8 @@
                         </StackPanel>
                         <Image x:Name="RetroCarouselConsoleImage"
                                Grid.Column="1"
-                               Width="146"
-                               Height="126"
+                               Width="220"
+                               Height="168"
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"
                                Source="{Binding SelectedCategory.MenuIconSource}"
