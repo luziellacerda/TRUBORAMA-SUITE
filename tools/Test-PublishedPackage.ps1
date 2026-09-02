@@ -521,7 +521,9 @@ $exe = Join-Path $package 'Turborama.exe'
 $manifestPath = Join-Path $package 'RELEASE-MANIFEST.json'
 $sbomPath = Join-Path $package 'Turborama.spdx.json'
 $noticesPath = Join-Path $package 'THIRD-PARTY-NOTICES.txt'
-foreach ($required in @($exe, $manifestPath, $sbomPath, $noticesPath)) {
+$dotNetNoticesPath = Join-Path $package 'DOTNET-THIRD-PARTY-NOTICES.txt'
+foreach ($required in @(
+    $exe, $manifestPath, $sbomPath, $noticesPath, $dotNetNoticesPath)) {
     if (-not (Test-Path -LiteralPath $required -PathType Leaf)) {
         Add-Failure "Arquivo obrigatorio ausente: $([IO.Path]::GetFileName($required))"
     }
@@ -599,6 +601,44 @@ if ((Test-Path -LiteralPath $exe -PathType Leaf) -and
         })
         if ($sharpCompress.Count -ne 1) {
             Add-Failure 'SBOM nao fixa exatamente SharpCompress 0.50.4.'
+        }
+        $systemManagement = @($sbom.packages | Where-Object {
+            [string]$_.name -eq 'System.Management' -and
+            [string]$_.versionInfo -eq '10.0.11'
+        })
+        if ($systemManagement.Count -ne 1) {
+            Add-Failure 'SBOM nao fixa exatamente System.Management 10.0.11.'
+        }
+        else {
+            $systemManagementEntry = $systemManagement[0]
+            $expectedSystemManagementSha512 = [Convert]::ToHexString(
+                [Convert]::FromBase64String(
+                    'xyNn8KGbWI88LoUwg3rB8qcpFFST6dr8Ro/qS8GBu2GOwR0v7J82kVFHTiiPtvEKS79VbMTxs/sIKQ+Cq1Zs1g=='))
+            $systemManagementChecksums = @(
+                $systemManagementEntry.checksums | Where-Object {
+                    [string]$_.algorithm -eq 'SHA512' -and
+                    [string]$_.checksumValue -eq $expectedSystemManagementSha512
+                })
+            $systemManagementPurl = @(
+                $systemManagementEntry.externalRefs | Where-Object {
+                    [string]$_.referenceCategory -eq 'PACKAGE-MANAGER' -and
+                    [string]$_.referenceType -eq 'purl' -and
+                    [string]$_.referenceLocator -eq
+                        'pkg:nuget/System.Management@10.0.11'
+                })
+            $systemManagementRelations = @($sbom.relationships | Where-Object {
+                [string]$_.spdxElementId -eq 'SPDXRef-Package-Turborama' -and
+                [string]$_.relationshipType -eq 'DEPENDS_ON' -and
+                [string]$_.relatedSpdxElement -eq
+                    'SPDXRef-Package-System.Management'
+            })
+            if ([string]$systemManagementEntry.licenseDeclared -ne 'MIT' -or
+                [string]$systemManagementEntry.licenseConcluded -ne 'MIT' -or
+                $systemManagementChecksums.Count -ne 1 -or
+                $systemManagementPurl.Count -ne 1 -or
+                $systemManagementRelations.Count -ne 1) {
+                Add-Failure 'SBOM de System.Management nao preserva licença, hash, purl e relacao DEPENDS_ON esperados.'
+            }
         }
         foreach ($runtimePackage in @(
             'Microsoft.NETCore.App.Runtime.win-x64',
@@ -874,7 +914,7 @@ elseif (Test-Path -LiteralPath $backgroundDirectory -PathType Container) {
     }
 }
 
-$allowedPackagePath = '^(?:Turborama\.exe|Turborama\.spdx\.json|THIRD-PARTY-NOTICES\.txt|RELEASE-MANIFEST\.json|Assets/Catalog/catalog\.json|Assets/Catalog/Images/[A-Za-z0-9._-]+\.jpg|Assets/Catalog/MenuIcons/[A-Za-z0-9._-]+\.png|Assets/Catalog/SystemIcons/[A-Za-z0-9._-]+\.png|Assets/Catalog/GameDescriptions/[A-Za-z0-9._-]+\.xml|Assets/Catalog/SystemVideos/[A-Za-z0-9._-]+\.mp4|Assets/BackgroundVideos/[A-Za-z0-9._-]+\.mp4)$'
+$allowedPackagePath = '^(?:Turborama\.exe|Turborama\.spdx\.json|THIRD-PARTY-NOTICES\.txt|DOTNET-THIRD-PARTY-NOTICES\.txt|RELEASE-MANIFEST\.json|Assets/Catalog/catalog\.json|Assets/Catalog/Images/[A-Za-z0-9._-]+\.jpg|Assets/Catalog/MenuIcons/[A-Za-z0-9._-]+\.png|Assets/Catalog/SystemIcons/[A-Za-z0-9._-]+\.png|Assets/Catalog/GameDescriptions/[A-Za-z0-9._-]+\.xml|Assets/Catalog/SystemVideos/[A-Za-z0-9._-]+\.mp4|Assets/BackgroundVideos/[A-Za-z0-9._-]+\.mp4)$'
 foreach ($entry in Get-ChildItem -LiteralPath $package -Recurse -Force) {
     if (($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
         Add-Failure "Reparse point proibido no pacote: $([IO.Path]::GetRelativePath($package, $entry.FullName))"
@@ -898,8 +938,15 @@ foreach ($entry in Get-ChildItem -LiteralPath $package -Recurse -Force) {
 
 if ((Test-Path -LiteralPath $noticesPath -PathType Leaf) -and
     ((Get-Item -LiteralPath $noticesPath).Length -lt 100 -or
-     (Get-Content -LiteralPath $noticesPath -Raw) -notmatch '(?i)SharpCompress[\s\S]+MIT')) {
-    Add-Failure 'THIRD-PARTY-NOTICES esta vazio ou nao declara SharpCompress/MIT.'
+     (Get-Content -LiteralPath $noticesPath -Raw) -notmatch '(?i)SharpCompress[\s\S]+MIT' -or
+     (Get-Content -LiteralPath $noticesPath -Raw) -notmatch
+        '(?is)System\.Management 10\.0\.11.{0,300}Microsoft Corporation.{0,120}License: MIT')) {
+    Add-Failure 'THIRD-PARTY-NOTICES esta vazio ou nao declara SharpCompress/System.Management sob MIT.'
+}
+if ((Test-Path -LiteralPath $dotNetNoticesPath -PathType Leaf) -and
+    (Get-FileHash -LiteralPath $dotNetNoticesPath -Algorithm SHA256).Hash -ne
+        '6D15E10A101C6BFFF2AB4429ED061BF76C456FC4B23AD6B03E0D0F8377148A21') {
+    Add-Failure 'DOTNET-THIRD-PARTY-NOTICES nao corresponde ao notice upstream de System.Management 10.0.11.'
 }
 
 $forbiddenNames = @('key.txt', 'drawers.json', 'config.json', 'catalog.full.json', 'private-catalog.bin')

@@ -29,6 +29,8 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="SharpCompress" Version="0.50.4" />
+    <PackageReference Include="System.Management" Version="10.0.11"
+                      GeneratePathProperty="true" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="CatalogVerifier" />
@@ -63,6 +65,12 @@
       <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </Content>
     <Content Include="Assets\BackgroundVideos\*.mp4">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </Content>
+    <Content Include="$(PkgSystem_Management)\THIRD-PARTY-NOTICES.TXT"
+             Link="DOTNET-THIRD-PARTY-NOTICES.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
       <ExcludeFromSingleFile>true</ExcludeFromSingleFile>

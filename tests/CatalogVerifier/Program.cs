@@ -118,6 +118,14 @@ if (args is ["--verify-wpf"])
     return;
 }
 
+if (args is ["--verify-device-inventory"])
+{
+    await SuiteDeviceInventoryVerifier.RunAsync();
+    Console.WriteLine(
+        "PASS: inventario auxiliar de placa-mae, canonicalizacao, provas e cache verificados.");
+    return;
+}
+
 if (args is ["--verify-local-library"])
 {
     var localLibraryRoot = Path.Combine(
@@ -545,10 +553,11 @@ finally
 
 WpfTemplateVerifier.Run("xbox-series");
 SuiteProtocolVerifier.Run();
+await SuiteDeviceInventoryVerifier.RunAsync();
 Assert(suiteConfigExistedBeforeTests || !File.Exists(TurboBoxManager.LocalDataPaths.ConfigFile),
     "Os verificadores não podem criar suite-config.json como efeito colateral.");
 
-Console.WriteLine("PASS: catálogo, carrossel universal, templates WPF reais e responsivos, Biblioteca 22/902, 902 capas, 902 textos XML, 45 descrições retrô, 38 vídeos de sistema e 15 vídeos de fundo íntegros, 45 pôsteres, 45 ícones retrô, 22 ícones de menu, pasta TruboRoms\\roms, protocolo de licença fail-closed, retomada, pausa, descarte e extração segura verificados.");
+Console.WriteLine("PASS: catálogo, carrossel universal, templates WPF reais e responsivos, Biblioteca 22/902, 902 capas, 902 textos XML, 45 descrições retrô, 38 vídeos de sistema e 15 vídeos de fundo íntegros, 45 pôsteres, 45 ícones retrô, 22 ícones de menu, pasta TruboRoms\\roms, protocolo de licença fail-closed, inventário auxiliar assinado, retomada, pausa, descarte e extração segura verificados.");
 
 static (int Width, int Height) ReadImageDimensions(Stream stream)
 {

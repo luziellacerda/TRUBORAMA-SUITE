@@ -13,6 +13,8 @@ internal interface ISuiteMachineIdentity
     SuiteDeviceDescriptor Describe();
     string Sign(SuiteChallengeResponse challenge, string licenseId, string sessionId,
         string action, string contextHash);
+    string SignDeviceInventory(SuiteChallengeResponse challenge, string licenseId,
+        string sessionId, string inventoryHash);
 }
 
 internal sealed class SuiteCngMachineIdentity : ISuiteMachineIdentity
@@ -70,6 +72,34 @@ internal sealed class SuiteCngMachineIdentity : ISuiteMachineIdentity
             {
                 CryptographicOperations.ZeroMemory(message);
                 if (signature.Length != 0) CryptographicOperations.ZeroMemory(signature);
+            }
+        }
+    }
+
+    public string SignDeviceInventory(SuiteChallengeResponse challenge,
+        string licenseId, string sessionId, string inventoryHash)
+    {
+        lock (_gate)
+        {
+            using var selected = OpenExistingSelectedKey();
+            ValidateKey(selected.Key, selected.Profile, selected.Provider);
+            using var rsa = new RSACng(selected.Key);
+            var descriptor = DescribeWithOpenKey(rsa, selected.Profile);
+            var message = SuiteDeviceInventoryProtocol.BuildProofSigningMessage(
+                challenge, licenseId, descriptor.DeviceId, sessionId,
+                inventoryHash);
+            byte[] signature = Array.Empty<byte>();
+            try
+            {
+                signature = rsa.SignData(message, HashAlgorithmName.SHA256,
+                    RSASignaturePadding.Pss);
+                return Convert.ToBase64String(signature);
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(message);
+                if (signature.Length != 0)
+                    CryptographicOperations.ZeroMemory(signature);
             }
         }
     }

@@ -27,7 +27,7 @@ public sealed class SuiteActivationIndeterminateException : Exception
         : base(message, innerException) { }
 }
 
-internal sealed class SuiteLicenseClient : IDisposable
+internal sealed partial class SuiteLicenseClient : IDisposable
 {
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(20);
 
@@ -36,13 +36,26 @@ internal sealed class SuiteLicenseClient : IDisposable
     private readonly TimeProvider _timeProvider;
     private readonly string _onlineAssertionKeyId;
     private readonly byte[] _onlineAssertionSpki;
+    private readonly ISuiteMotherboardInventorySource? _inventorySource;
+    private readonly ISuiteInventoryPublicationStateStore? _inventoryStateStore;
     private readonly object _challengeGate = new();
     private readonly Dictionary<string, long> _activeChallengeExpirations =
         new(StringComparer.Ordinal);
 
     internal SuiteLicenseClient(SuiteAuthorityConfiguration authority,
         ISuiteMachineIdentity identity, TimeProvider? timeProvider = null)
-        : this(authority, identity, handler: null, timeProvider)
+        : this(authority, identity, handler: null, timeProvider,
+            inventorySource: null, inventoryStateStore: null)
+    {
+    }
+
+    internal SuiteLicenseClient(SuiteAuthorityConfiguration authority,
+        ISuiteMachineIdentity identity,
+        ISuiteMotherboardInventorySource inventorySource,
+        ISuiteInventoryPublicationStateStore inventoryStateStore,
+        TimeProvider? timeProvider = null)
+        : this(authority, identity, handler: null, timeProvider,
+            inventorySource, inventoryStateStore)
     {
     }
 
@@ -53,18 +66,38 @@ internal sealed class SuiteLicenseClient : IDisposable
         TimeProvider? timeProvider = null)
     {
         ArgumentNullException.ThrowIfNull(handler);
-        return new SuiteLicenseClient(authority, identity, handler, timeProvider);
+        return new SuiteLicenseClient(authority, identity, handler, timeProvider,
+            inventorySource: null, inventoryStateStore: null);
+    }
+
+    internal static SuiteLicenseClient CreateForInventoryVerifier(
+        SuiteAuthorityConfiguration authority,
+        ISuiteMachineIdentity identity,
+        HttpMessageHandler handler,
+        ISuiteMotherboardInventorySource inventorySource,
+        ISuiteInventoryPublicationStateStore inventoryStateStore,
+        TimeProvider? timeProvider = null)
+    {
+        ArgumentNullException.ThrowIfNull(handler);
+        ArgumentNullException.ThrowIfNull(inventorySource);
+        ArgumentNullException.ThrowIfNull(inventoryStateStore);
+        return new SuiteLicenseClient(authority, identity, handler, timeProvider,
+            inventorySource, inventoryStateStore);
     }
 
     private SuiteLicenseClient(SuiteAuthorityConfiguration authority,
         ISuiteMachineIdentity identity, HttpMessageHandler? handler,
-        TimeProvider? timeProvider)
+        TimeProvider? timeProvider,
+        ISuiteMotherboardInventorySource? inventorySource,
+        ISuiteInventoryPublicationStateStore? inventoryStateStore)
     {
         ArgumentNullException.ThrowIfNull(authority);
         _identity = identity ?? throw new ArgumentNullException(nameof(identity));
         _timeProvider = timeProvider ?? TimeProvider.System;
         _onlineAssertionKeyId = authority.OnlineAssertionKeyId;
         _onlineAssertionSpki = authority.ExportOnlineAssertionSpki();
+        _inventorySource = inventorySource;
+        _inventoryStateStore = inventoryStateStore;
         _http = handler is null
             ? new HttpClient(CreateHandler(authority.TlsServerSpkiSha256),
                 disposeHandler: true)

@@ -1,3 +1,4 @@
+using System.IO;
 using System.Net.Http;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -145,6 +146,7 @@ public sealed class SuiteLicensingRuntime : IAsyncDisposable
 
     private CancellationTokenSource? _sessionCancellation;
     private Task? _sessionTask;
+    private Task? _inventoryTask;
     private AuthorizedStoreContext? _currentContext;
     private EventHandler<SuiteAuthorizationRevokedEventArgs>? _authorizationRevoked;
     private int _authorityExpired;
@@ -506,7 +508,29 @@ public sealed class SuiteLicensingRuntime : IAsyncDisposable
 
         _sessionTask = MaintainSessionAsync(state, response,
             sessionCancellation.Token);
+        _inventoryTask = PublishMotherboardInventoryBestEffortAsync(
+            context, sessionCancellation.Token);
         return context;
+    }
+
+    private async Task PublishMotherboardInventoryBestEffortAsync(
+        AuthorizedStoreContext context,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            _ = await _client!.PublishMotherboardInventoryAsync(
+                    context, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch
+        {
+            // Inventory is auxiliary evidence only. The signed session and its
+            // heartbeat remain the sole authority for the active capability.
+        }
     }
 
     private async Task MaintainSessionAsync(SuiteAuthorizationState state,
@@ -659,12 +683,18 @@ public sealed class SuiteLicensingRuntime : IAsyncDisposable
     {
         var cancellation = Interlocked.Exchange(ref _sessionCancellation, null);
         var task = Interlocked.Exchange(ref _sessionTask, null);
+        var inventoryTask = Interlocked.Exchange(ref _inventoryTask, null);
         if (cancellation is not null)
         {
             CancelNoThrow(cancellation);
             if (task is not null)
             {
                 try { await task.ConfigureAwait(false); }
+                catch (OperationCanceledException) { }
+            }
+            if (inventoryTask is not null)
+            {
+                try { await inventoryTask.ConfigureAwait(false); }
                 catch (OperationCanceledException) { }
             }
             cancellation.Dispose();
@@ -802,7 +832,37 @@ public static class SuiteLicensingFactory
         {
             var identity = new SuiteCngMachineIdentity(
                 loaded.Configuration.IdentityPolicy);
-            var client = new SuiteLicenseClient(loaded.Configuration, identity);
+            ISuiteMotherboardInventorySource? inventorySource = null;
+            ISuiteInventoryPublicationStateStore? inventoryStateStore = null;
+            try
+            {
+                inventorySource = new SuiteWindowsMotherboardInventorySource();
+                inventoryStateStore = new SuiteInventoryPublicationStateStore();
+            }
+            catch (Exception ex) when (ex is PlatformNotSupportedException
+                or SecurityException or UnauthorizedAccessException
+                or NotSupportedException or InvalidOperationException
+                or IOException or ArgumentException)
+            {
+                // Auxiliary hardware inventory must never disable the existing
+                // activation/session capability when local collection or its
+                // protected cache cannot be initialized.
+                inventorySource = null;
+                inventoryStateStore = null;
+            }
+
+            var client = inventorySource is not null
+                && inventoryStateStore is not null
+                ? new SuiteLicenseClient(
+                    loaded.Configuration,
+                    identity,
+                    inventorySource,
+                    inventoryStateStore,
+                    time)
+                : new SuiteLicenseClient(
+                    loaded.Configuration,
+                    identity,
+                    time);
             return new SuiteLicensingRuntime(
                 client,
                 loaded.Configuration,

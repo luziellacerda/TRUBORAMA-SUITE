@@ -37,8 +37,10 @@ if ($LASTEXITCODE -ne 0 -or $commit -notmatch '^[0-9a-f]{40}$') {
 }
 
 $lock = Get-Content -LiteralPath $lockPath -Raw | ConvertFrom-Json -Depth 32
-$framework = @($lock.dependencies.PSObject.Properties) | Select-Object -First 1
-if ($null -eq $framework) { throw 'O lock file nao contem um framework.' }
+$framework = $lock.dependencies.PSObject.Properties['net10.0-windows7.0']
+if ($null -eq $framework) {
+    throw 'O lock file nao contem o target base net10.0-windows7.0.'
+}
 
 $packages = [System.Collections.Generic.List[object]]::new()
 $relationships = [System.Collections.Generic.List[object]]::new()
@@ -67,7 +69,9 @@ foreach ($dependency in @($framework.Value.PSObject.Properties | Sort-Object Nam
     }
     $safeId = ($name -replace '[^A-Za-z0-9.-]', '-')
     $dependencyId = "SPDXRef-Package-$safeId"
-    $license = if ($name -eq 'SharpCompress') { 'MIT' } else { 'NOASSERTION' }
+    $license = if ($name -in @('SharpCompress', 'System.Management')) {
+        'MIT'
+    } else { 'NOASSERTION' }
     $entry = [ordered]@{
         name = $name
         SPDXID = $dependencyId

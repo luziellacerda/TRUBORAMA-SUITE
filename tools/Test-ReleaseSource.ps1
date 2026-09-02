@@ -7,6 +7,8 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path -LiteralPath $RepositoryRoot).Path
+$GitPath = (Get-Command -Name $GitPath -CommandType Application `
+    -ErrorAction Stop | Select-Object -First 1).Source
 $trustedGitConfiguration = @(
     '-c', 'core.fsmonitor=false',
     '-c', 'core.untrackedCache=false',
@@ -896,20 +898,35 @@ else {
     $targetFramework = [string]$project.Project.PropertyGroup.TargetFramework | Select-Object -First 1
     $version = [string]$project.Project.PropertyGroup.Version | Select-Object -First 1
     $packageReferences = @($project.SelectNodes('/Project/ItemGroup/PackageReference'))
-    $sharpCompress = $packageReferences |
-        Where-Object { $_.Include -eq 'SharpCompress' -and $_.Version -eq '0.50.4' }
+    $sharpCompress = @($packageReferences |
+        Where-Object { $_.Include -eq 'SharpCompress' -and $_.Version -eq '0.50.4' })
+    $systemManagement = @($packageReferences |
+        Where-Object { $_.Include -eq 'System.Management' -and $_.Version -eq '10.0.11' })
+    $systemManagementNotices = @($project.SelectNodes('/Project/ItemGroup/Content') |
+        Where-Object {
+            $_.Include -eq '$(PkgSystem_Management)\THIRD-PARTY-NOTICES.TXT' -and
+            $_.Link -eq 'DOTNET-THIRD-PARTY-NOTICES.txt' -and
+            $_.CopyToOutputDirectory -eq 'PreserveNewest' -and
+            $_.CopyToPublishDirectory -eq 'PreserveNewest' -and
+            $_.ExcludeFromSingleFile -eq 'true'
+        })
     if ($targetFramework -ne 'net10.0-windows') {
         Add-Failure $failures "TargetFramework de producao inesperado: '$targetFramework'."
     }
     if ($version -ne '2.0.0') {
         Add-Failure $failures "Versao de producao inesperada: '$version'."
     }
-    if ($packageReferences.Count -ne 1 -or $sharpCompress.Count -ne 1) {
-        Add-Failure $failures 'A Release permite somente SharpCompress fixado como PackageReference 0.50.4.'
+    if ($packageReferences.Count -ne 2 -or $sharpCompress.Count -ne 1 -or
+        $systemManagement.Count -ne 1 -or
+        $systemManagement[0].GeneratePathProperty -ne 'true') {
+        Add-Failure $failures 'A Release permite somente SharpCompress 0.50.4 e System.Management 10.0.11 como PackageReference fixos.'
+    }
+    if ($systemManagementNotices.Count -ne 1) {
+        Add-Failure $failures 'O notice upstream fixado de System.Management precisa acompanhar a Release fora do single-file.'
     }
     if (@($project.SelectNodes('/Project/ItemGroup/Reference') |
-            Where-Object { $_.Include -eq 'SharpCompress' }).Count -ne 0) {
-        Add-Failure $failures 'Referencia binaria local de SharpCompress nao e permitida.'
+            Where-Object { $_.Include -in @('SharpCompress', 'System.Management') }).Count -ne 0) {
+        Add-Failure $failures 'Referencias binarias locais de SharpCompress/System.Management nao sao permitidas.'
     }
 }
 
@@ -962,17 +979,62 @@ if (-not (Test-Path -LiteralPath $lockPath -PathType Leaf)) {
 }
 else {
     $lock = Get-Content -LiteralPath $lockPath -Raw | ConvertFrom-Json -Depth 32
-    $framework = @($lock.dependencies.PSObject.Properties) | Select-Object -First 1
-    $lockedSharpCompress = if ($null -ne $framework) {
-        $framework.Value.PSObject.Properties['SharpCompress'].Value
+    $frameworks = @($lock.dependencies.PSObject.Properties)
+    $baseFramework = @($frameworks | Where-Object {
+        $_.Name -eq 'net10.0-windows7.0'
+    })
+    $ridFramework = @($frameworks | Where-Object {
+        $_.Name -eq 'net10.0-windows7.0/win-x64'
+    })
+    if ($frameworks.Count -ne 2 -or $baseFramework.Count -ne 1 -or
+        $ridFramework.Count -ne 1) {
+        Add-Failure $failures 'O lock principal nao possui exatamente os targets base e win-x64 esperados.'
+    }
+    $lockedSharpCompress = if ($baseFramework.Count -eq 1) {
+        $baseFramework[0].Value.PSObject.Properties['SharpCompress'].Value
     } else { $null }
-    if ($null -eq $lockedSharpCompress -or [string]$lockedSharpCompress.resolved -ne '0.50.4') {
+    if ($null -eq $lockedSharpCompress -or
+        [string]$lockedSharpCompress.type -ne 'Direct' -or
+        [string]$lockedSharpCompress.requested -ne '[0.50.4, )' -or
+        [string]$lockedSharpCompress.resolved -ne '0.50.4' -or
+        [string]$lockedSharpCompress.contentHash -ne
+            '/hxjUR7DEX6mky8/LQXyrnrKioOL6D6veAID1EZpro+q4s02x5dHEYBV3qjEN6lDYYilDoQQ76BcmQj+lRx51w==') {
         Add-Failure $failures 'O lock file nao fixa SharpCompress 0.50.4.'
+    }
+    $lockedSystemManagement = @($frameworks | ForEach-Object {
+        $_.Value.PSObject.Properties['System.Management'].Value
+    } | Where-Object { $null -ne $_ })
+    if ($lockedSystemManagement.Count -ne 2 -or
+        @($lockedSystemManagement | Where-Object {
+            [string]$_.type -ne 'Direct' -or
+            [string]$_.requested -ne '[10.0.11, )' -or
+            [string]$_.resolved -ne '10.0.11' -or
+            [string]$_.contentHash -ne
+                'xyNn8KGbWI88LoUwg3rB8qcpFFST6dr8Ro/qS8GBu2GOwR0v7J82kVFHTiiPtvEKS79VbMTxs/sIKQ+Cq1Zs1g=='
+        }).Count -ne 0) {
+        Add-Failure $failures 'O lock file nao fixa integralmente System.Management 10.0.11 nos targets base e win-x64.'
     }
 }
 
 if (-not (Test-Path -LiteralPath $testLockPath -PathType Leaf)) {
     Add-Failure $failures 'Lock file do verificador ausente.'
+}
+else {
+    $testLock = Get-Content -LiteralPath $testLockPath -Raw | ConvertFrom-Json -Depth 32
+    $testFrameworks = @($testLock.dependencies.PSObject.Properties)
+    $testFramework = @($testFrameworks | Where-Object {
+        $_.Name -eq 'net10.0-windows7.0'
+    })
+    $testSystemManagement = if ($testFramework.Count -eq 1) {
+        $testFramework[0].Value.PSObject.Properties['System.Management'].Value
+    } else { $null }
+    if ($testFrameworks.Count -ne 1 -or $null -eq $testSystemManagement -or
+        [string]$testSystemManagement.type -ne 'Transitive' -or
+        [string]$testSystemManagement.resolved -ne '10.0.11' -or
+        [string]$testSystemManagement.contentHash -ne
+            'xyNn8KGbWI88LoUwg3rB8qcpFFST6dr8Ro/qS8GBu2GOwR0v7J82kVFHTiiPtvEKS79VbMTxs/sIKQ+Cq1Zs1g==') {
+        Add-Failure $failures 'O lock file do verificador nao fixa integralmente System.Management 10.0.11 transitivo.'
+    }
 }
 
 if (-not (Test-Path -LiteralPath $nugetConfigPath -PathType Leaf)) {

@@ -1183,6 +1183,16 @@ public static class SuiteProtocolVerifier
             _ = contextHash;
             return Convert.ToBase64String(new byte[256]);
         }
+
+        public string SignDeviceInventory(SuiteChallengeResponse challenge,
+            string licenseId, string sessionId, string inventoryHash)
+        {
+            _ = challenge;
+            _ = licenseId;
+            _ = sessionId;
+            _ = inventoryHash;
+            return Convert.ToBase64String(new byte[256]);
+        }
     }
 
     private sealed class ThrowingMachineIdentity : ISuiteMachineIdentity
@@ -1193,6 +1203,10 @@ public static class SuiteProtocolVerifier
         public string Sign(SuiteChallengeResponse challenge, string licenseId,
             string sessionId, string action, string contextHash)
             => throw new CryptographicException("Synthetic late CNG failure.");
+
+        public string SignDeviceInventory(SuiteChallengeResponse challenge,
+            string licenseId, string sessionId, string inventoryHash)
+            => throw new CryptographicException("Synthetic late CNG failure.");
     }
 
     private sealed class SignThrowingMachineIdentity : ISuiteMachineIdentity
@@ -1202,6 +1216,11 @@ public static class SuiteProtocolVerifier
         public string Sign(SuiteChallengeResponse challenge, string licenseId,
             string sessionId, string action, string contextHash)
             => throw new CryptographicException("Synthetic late CNG signing failure.");
+
+        public string SignDeviceInventory(SuiteChallengeResponse challenge,
+            string licenseId, string sessionId, string inventoryHash)
+            => throw new CryptographicException(
+                "Synthetic late CNG inventory signing failure.");
     }
 
     private sealed class TestOnlineAssertionSigner : IDisposable
