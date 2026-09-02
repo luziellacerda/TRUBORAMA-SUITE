@@ -37,6 +37,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     private const string LibraryBackgroundVideoContextId = "library";
     private const string CatalogBackgroundVideoContextPrefix = "catalog:";
     private const string SharedPspBackgroundVideoFileName = "Turborama-background-psp.mp4";
+    private const string PlayStationBackgroundVideoFileName = "Turborama-background.mp4";
     private const string XboxBackgroundVideoFileName = "Turborama-background-xbox-one-x.mp4";
     private const byte SharedBackgroundVideoTintAlpha = 56;
     private const double RetroCarouselLogicalWidth = 1060d;
@@ -2946,7 +2947,20 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     private static string ResolveRetroUniversalVideoFileName(string? categoryId) =>
         IsXboxVideoCategory(categoryId)
             ? XboxBackgroundVideoFileName
-            : SharedPspBackgroundVideoFileName;
+            : IsPlayStationVideoCategory(categoryId)
+                ? PlayStationBackgroundVideoFileName
+                : SharedPspBackgroundVideoFileName;
+
+    private static bool IsPlayStationVideoCategory(string? categoryId) =>
+        categoryId?.ToLowerInvariant() is
+            "playstation-1" or
+            "playstation-2" or
+            "playstation-2-br" or
+            "playstation-3" or
+            "playstation-4" or
+            "playstation-5" or
+            "psp" or
+            "ps-vita";
 
     private static bool IsXboxVideoCategory(string? categoryId) =>
         categoryId?.ToLowerInvariant() is
@@ -5338,6 +5352,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         var isDownloads = normalizedPage.Equals("Downloads", StringComparison.OrdinalIgnoreCase);
         var isCatalog = normalizedPage.Equals("Catalog", StringComparison.OrdinalIgnoreCase)
                         || normalizedPage.Equals("Retro", StringComparison.OrdinalIgnoreCase);
+        var catalogWasVisible = FindNamed<UIElement>("CatalogPage")?.IsVisible == true;
 
         if (!isCatalog)
         {
@@ -5347,7 +5362,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
 
         if (FindNamed<UIElement>("LibraryPage")?.IsVisible == true)
             StopLibraryBackgroundVideo();
-        else
+        else if (!isCatalog || !catalogWasVisible)
             StopRetroUniversalVideo();
 
         SetVisibility("HomePage", isHome);

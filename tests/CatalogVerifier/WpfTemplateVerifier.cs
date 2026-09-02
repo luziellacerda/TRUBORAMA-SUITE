@@ -359,15 +359,10 @@ internal static class WpfTemplateVerifier
                 if (window.Resources.Contains("NintendoVideoRedTintBrush")
                     || window.FindName("RetroNintendoVideoTint") is not null
                     || window.Resources["CurrentSystemVideoTintBrush"] is not SolidColorBrush videoTint
-                    || window.Resources["CurrentSystemAccentColor"] is not Color tintAccent
-                    || videoTint.Color != Color.FromArgb(
-                        56,
-                        tintAccent.R,
-                        tintAccent.G,
-                        tintAccent.B)
+                    || videoTint.Color.A != 0
                     || window.FindName("RetroSystemVideoTint") is not Border)
                     throw new InvalidDataException(
-                        "A camada geral precisa tonalizar o vídeo PSP do PS3 e substituir o vermelho exclusivo da Nintendo.");
+                        "O PS3 precisa usar seu vídeo dedicado sem tonalização e a camada geral deve substituir o vermelho exclusivo da Nintendo.");
 
                 var requestedThemeColors = new Dictionary<string, Color>(StringComparer.OrdinalIgnoreCase)
                 {
@@ -387,12 +382,20 @@ internal static class WpfTemplateVerifier
                             $"A paleta de {requestedTheme.Key} não corresponde à capa aprovada.");
                 }
 
-                var xboxVideoCategories = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                var dedicatedVideoCategories = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
                 {
                     "xbox",
                     "xbox-360",
                     "xbox-one",
-                    "xbox-series"
+                    "xbox-series",
+                    "playstation-1",
+                    "playstation-2",
+                    "playstation-2-br",
+                    "playstation-3",
+                    "playstation-4",
+                    "playstation-5",
+                    "psp",
+                    "ps-vita"
                 };
                 foreach (var catalogCategory in window.CatalogCategories)
                 {
@@ -401,11 +404,11 @@ internal static class WpfTemplateVerifier
                         || window.Resources["CurrentSystemAccentColor"] is not Color requestedAccent)
                         throw new InvalidDataException(
                             "A camada geral de cor do vídeo deixou de acompanhar o acento do sistema.");
-                    if (xboxVideoCategories.Contains(catalogCategory.Id))
+                    if (dedicatedVideoCategories.Contains(catalogCategory.Id))
                     {
                         if (requestedTint.Color.A != 0)
                             throw new InvalidDataException(
-                                $"A categoria Xbox '{catalogCategory.Id}' recebeu tonalização indevida sobre seu vídeo dedicado.");
+                                $"A categoria com vídeo dedicado '{catalogCategory.Id}' recebeu tonalização indevida.");
                     }
                     else if (requestedTint.Color != Color.FromArgb(
                                  56,
@@ -1799,8 +1802,10 @@ internal static class WpfTemplateVerifier
         {
             ["Turborama-background-psp.mp4"] =
                 (55253726, "5f9119893cafdb35a6d9c833f2bc7f9e94d89e883d52acdb633877fb0278756a"),
+            ["Turborama-background.mp4"] =
+                (4630712, "c9a6ab773b8cbe367bc65523a93005f88b90044b422522c0936da8dc69965aed"),
             ["Turborama-background-xbox-one-x.mp4"] =
-                (10794763, "0f05f14e36a5b7260279af76334e76c9af299d783d77bed36b32a53ffd9cb4f7")
+                (1939575, "6418a2f52355e69a7111968f731baae2466045b875b5c08f9bf304f501a6698a")
         };
         foreach (var (fileName, expectedSignature) in pinnedVideoSignatures)
         {
@@ -1842,14 +1847,14 @@ internal static class WpfTemplateVerifier
         {
             ["system-tools"] = "Turborama-background-psp.mp4",
             ["emulators"] = "Turborama-background-psp.mp4",
-            ["playstation-1"] = "Turborama-background-psp.mp4",
-            ["playstation-2"] = "Turborama-background-psp.mp4",
-            ["playstation-2-br"] = "Turborama-background-psp.mp4",
-            ["playstation-3"] = "Turborama-background-psp.mp4",
-            ["playstation-4"] = "Turborama-background-psp.mp4",
-            ["playstation-5"] = "Turborama-background-psp.mp4",
-            ["psp"] = "Turborama-background-psp.mp4",
-            ["ps-vita"] = "Turborama-background-psp.mp4",
+            ["playstation-1"] = "Turborama-background.mp4",
+            ["playstation-2"] = "Turborama-background.mp4",
+            ["playstation-2-br"] = "Turborama-background.mp4",
+            ["playstation-3"] = "Turborama-background.mp4",
+            ["playstation-4"] = "Turborama-background.mp4",
+            ["playstation-5"] = "Turborama-background.mp4",
+            ["psp"] = "Turborama-background.mp4",
+            ["ps-vita"] = "Turborama-background.mp4",
             ["sega-saturn"] = "Turborama-background-psp.mp4",
             ["xbox"] = "Turborama-background-xbox-one-x.mp4",
             ["xbox-360"] = "Turborama-background-xbox-one-x.mp4",
@@ -2500,14 +2505,31 @@ internal static class WpfTemplateVerifier
         if (universalPlayerField.GetValue(window) is not MediaElement playstationPlayer
             || playstationPlayer.Source is not { IsFile: true } playstationSource
             || !Path.GetFileName(playstationSource.LocalPath).Equals(
-                "Turborama-background-psp.mp4",
+                "Turborama-background.mp4",
                 StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException(
-                "A navegação não materializou o player PSP compartilhado para PlayStation.");
+                "A navegação não materializou o vídeo PS3 dedicado à família PlayStation.");
         VerifyHorizontalVideoMirror(
             playstationPlayer,
             expectedMirrored: false,
             "vídeo PlayStation real do catálogo");
+
+        var playstationLease = universalLeaseField.GetValue(window)
+                               ?? throw new InvalidDataException(
+                                   "A família PlayStation perdeu o lease antes do teste de reutilização.");
+        var playstationTask = RequireTask(universalLoadTaskField, window);
+        var playstation5 = window.CatalogCategories.Single(category =>
+            category.Id.Equals("playstation-5", StringComparison.OrdinalIgnoreCase));
+        openCatalog.Invoke(window, [playstation5]);
+        if (!ReferenceEquals(playstationPlayer, universalPlayerField.GetValue(window))
+            || !ReferenceEquals(playstationLease, universalLeaseField.GetValue(window))
+            || !ReferenceEquals(playstationTask, RequireTask(universalLoadTaskField, window))
+            || activeCategoryField.GetValue(window) is not string playstation5Category
+            || !playstation5Category.Equals("playstation-5", StringComparison.OrdinalIgnoreCase)
+            || window.Resources["CurrentSystemVideoTintBrush"] is not SolidColorBrush playstationTint
+            || playstationTint.Color.A != 0)
+            throw new InvalidDataException(
+                "PlayStation 4 → PlayStation 5 reabriu o mesmo vídeo PS3 ou aplicou tonalização indevida.");
 
         try
         {
@@ -2544,6 +2566,48 @@ internal static class WpfTemplateVerifier
             switchPlayer,
             expectedMirrored: false,
             "vídeo Nintendo Switch real do catálogo");
+
+        var switchTask = RequireTask(universalLoadTaskField, window);
+        var windows = window.CatalogCategories.Single(category =>
+            category.Id.Equals("windows", StringComparison.OrdinalIgnoreCase));
+        openCatalog.Invoke(window, [windows]);
+        if (!ReferenceEquals(switchPlayer, universalPlayerField.GetValue(window))
+            || !ReferenceEquals(switchLease, universalLeaseField.GetValue(window))
+            || !ReferenceEquals(switchTask, RequireTask(universalLoadTaskField, window))
+            || activeCategoryField.GetValue(window) is not string windowsCategory
+            || !windowsCategory.Equals("windows", StringComparison.OrdinalIgnoreCase)
+            || window.Resources["CurrentSystemAccentColor"] is not Color windowsAccent
+            || window.Resources["CurrentSystemVideoTintBrush"] is not SolidColorBrush windowsTint
+            || windowsTint.Color != Color.FromArgb(
+                56,
+                windowsAccent.R,
+                windowsAccent.G,
+                windowsAccent.B))
+            throw new InvalidDataException(
+                "Nintendo Switch → Windows não reutilizou o genérico azul ou não atualizou apenas sua cor.");
+
+        var xbox = window.CatalogCategories.Single(category =>
+            category.Id.Equals("xbox", StringComparison.OrdinalIgnoreCase));
+        openCatalog.Invoke(window, [xbox]);
+        WaitForDispatcherTask(
+            window,
+            RequireTask(universalLoadTaskField, window),
+            "vídeo Xbox real antes da reutilização por família");
+        var xboxPlayer = universalPlayerField.GetValue(window) as MediaElement
+                         ?? throw new InvalidDataException("O player Xbox não foi criado.");
+        var xboxLease = universalLeaseField.GetValue(window)
+                        ?? throw new InvalidDataException("O lease Xbox não foi criado.");
+        var xboxTask = RequireTask(universalLoadTaskField, window);
+        openCatalog.Invoke(window, [xboxSeries]);
+        if (!ReferenceEquals(xboxPlayer, universalPlayerField.GetValue(window))
+            || !ReferenceEquals(xboxLease, universalLeaseField.GetValue(window))
+            || !ReferenceEquals(xboxTask, RequireTask(universalLoadTaskField, window))
+            || activeCategoryField.GetValue(window) is not string xboxSeriesCategory
+            || !xboxSeriesCategory.Equals("xbox-series", StringComparison.OrdinalIgnoreCase)
+            || window.Resources["CurrentSystemVideoTintBrush"] is not SolidColorBrush xboxTint
+            || xboxTint.Color.A != 0)
+            throw new InvalidDataException(
+                "Xbox → Xbox Series reabriu o mesmo vídeo Xbox One X ou aplicou tonalização indevida.");
     }
 
     private static Task RequireTask(FieldInfo field, StoreWindow window) =>
