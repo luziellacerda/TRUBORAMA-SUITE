@@ -71,7 +71,12 @@ $commit = (& $GitPath @gitArguments -C $root rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0 -or $commit -notmatch '^[0-9a-f]{40}$') {
     throw 'Nao foi possivel identificar o commit do pacote.'
 }
-$detectedBranch = (& $GitPath @gitArguments -C $root branch --show-current).Trim()
+$detectedBranchOutput = @(& $GitPath @gitArguments -C $root branch --show-current)
+$detectedBranch = if ($detectedBranchOutput.Count -eq 0) {
+    [string]::Empty
+} else {
+    ([string]$detectedBranchOutput[0]).Trim()
+}
 $branch = if ([string]::IsNullOrWhiteSpace($SourceBranch)) {
     $detectedBranch
 } else {
