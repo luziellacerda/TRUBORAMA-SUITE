@@ -19,7 +19,7 @@
 
 | Camada | Repositório/artefato | Revisão observada |
 |---|---|---|
-| Cliente Windows | `luziellacerda/TRUBORAMA-SUITE` | branch `codex/cliente-r25-inventario-placa-mae-20260902`, commit `c2d41a96417454e715ee666a58c3c04727079c4d` |
+| Cliente Windows | `luziellacerda/TRUBORAMA-SUITE` | branch canônica `main`; baseline funcional do EXE auditado `c2d41a96417454e715ee666a58c3c04727079c4d`; a revisão final da fonte é o commit que contém este documento após a promoção |
 | Servidor | `luziellacerda/Servidor-pix` | branch `codex/turborama-suite-vendas-producao-20260828`, referência remota `56b55b5571422ba7d16974bb8b0af28c28d07d8c` |
 | Correção da sessão | migration `021_suite_inventory_challenge_session_history` | commit histórico `63c112b256d79954c034fee16f1da65e861d8ff5` |
 | Catálogo visual do cliente | `Assets/Catalog/catalog.json` | 22 categorias, 902 itens, SHA-256 `f4792aa4d52cdceb99b7f257e73bae974626ac433a8bac4d38d08920b6de7e83` |
@@ -459,7 +459,7 @@ Chaves privadas, peppers, keyring de URL, credenciais de BFF, chave de inventár
 11. **Processos do mesmo usuário.** “Não exportável” impede exportar os bytes da chave, mas não isola seu uso/remoção de todo processo com os mesmos direitos do perfil.
 12. **Política de enrollment atual.** O servidor inspecionado exige `SOFTWARE_ONLY` no enrollment prebound; habilitar autoridade `TPM_REQUIRED`/`TPM_PREFERRED` sem mudar e testar o servidor causará incompatibilidade.
 13. **Cobertura de migration/CI do servidor.** O workflow `suite-candidate.yml` inspecionado aplica a lista de migrations somente até 014, `apply-suite-content-migrations.sh` termina em 016 e o gatilho de push não cobre nominalmente a branch atual de vendas. A auditoria também não encontrou execução do projeto `TurboRamaSuitePostgres.Tests` nesse workflow. As migrations 017–021 e a branch efetivamente implantada precisam entrar no gate contínuo. Isso é crítico porque a gravação transacional de sessão também escreve presença/outbox, cujas tabelas e permissões surgem na migration 020; binário novo sobre banco até 016 pode resultar em HTTP 500. O `/ready` atual apenas confirma o kill switch e não prova banco/schema/grants; `/ready/content` não cobre presence/outbox.
-14. **Documentação antiga está desatualizada.** `docs/PRODUCTION-READINESS.md` ainda descreve catálogo/backend como não implementados. Use seus critérios de release, mas use este documento para o estado funcional de 03/09/2026.
+14. **Estado e critérios são documentos diferentes.** Este documento registra a evidência funcional ponta a ponta de 03/09/2026; `docs/PRODUCTION-READINESS.md` registra os gates adicionais exigidos para transformar a fonte homologada em pacote comercial assinado.
 15. **Aceites finais independentes.** Ainda precisam de evidência registrada: download real completo/Range após o último deploy, presença/outbox idempotente, instalação/upgrade/rollback em Windows limpo, carga/soak e pentest. Os testes existentes não substituem E2E HTTP real de sessão expirada, transação sessão+presença+outbox, catálogo 902 e grant+307.
 16. **Privilégio do worker de WhatsApp.** O desenho inspecionado entrega ao worker um token administrativo amplo e o usa via argumento de `curl`. Deve existir credencial separada, limitada somente a lease/complete da outbox, e nenhum token deve aparecer em argv.
 17. **Recovery/PITR ainda é gate documental.** Não há evidência consolidada de restore automatizado nem de ensaio completo com RPO/RTO medidos.

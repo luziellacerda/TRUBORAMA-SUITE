@@ -75,6 +75,19 @@ $buildProductionPath = Join-Path $root 'tools\Build-Production.ps1'
 $sourceEntries = @(& $GitPath @trustedGitConfiguration -C $root `
     ls-files --cached --others --exclude-standard)
 if ($LASTEXITCODE -ne 0) { throw 'Nao foi possivel enumerar o snapshot de Release.' }
+$trackedEntries = @(& $GitPath @trustedGitConfiguration -C $root ls-files --cached)
+if ($LASTEXITCODE -ne 0) { throw 'Nao foi possivel enumerar os arquivos versionados.' }
+$trackedEntrySet = [Collections.Generic.HashSet[string]]::new(
+    [StringComparer]::OrdinalIgnoreCase)
+foreach ($trackedEntry in $trackedEntries) {
+    [void]$trackedEntrySet.Add($trackedEntry.Replace('\', '/'))
+    $trackedName = [IO.Path]::GetFileName($trackedEntry)
+    $trackedExtension = [IO.Path]::GetExtension($trackedEntry)
+    if ($trackedExtension -in @('.pfx', '.p12', '.key', '.pem', '.snk', '.env') -or
+        $trackedName -in @('.env', 'secrets.json', 'credentials.json')) {
+        Add-Failure $failures "Material sensivel proibido no Git: $trackedEntry"
+    }
+}
 foreach ($relativePath in $sourceEntries) {
     $sourcePath = Join-Path $root $relativePath
     if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) { continue }
@@ -910,6 +923,25 @@ else {
             $_.CopyToPublishDirectory -eq 'PreserveNewest' -and
             $_.ExcludeFromSingleFile -eq 'true'
         })
+    $runtimeManifestResources = @{
+        'Assets\Catalog\platform-descriptions.json' = 'Turborama.PlatformDescriptions.json'
+        'Assets\Catalog\SystemVideos\system-videos.json' = 'Turborama.SystemVideos.json'
+        'Assets\Catalog\SystemVideos\system-video-integrity.json' = 'Turborama.SystemVideoIntegrity.json'
+        'Assets\BackgroundVideos\background-video-integrity.json' = 'Turborama.BackgroundVideoIntegrity.json'
+    }
+    $contentIncludes = @($project.SelectNodes('/Project/ItemGroup/Content') |
+        ForEach-Object { ([string]$_.Include).Split(';', [StringSplitOptions]::RemoveEmptyEntries) })
+    foreach ($runtimeManifest in $runtimeManifestResources.GetEnumerator()) {
+        $embeddedMatch = @($project.SelectNodes('/Project/ItemGroup/EmbeddedResource') |
+            Where-Object {
+                [string]$_.Include -ceq $runtimeManifest.Key -and
+                [string]$_.LogicalName -ceq $runtimeManifest.Value
+            })
+        if ($embeddedMatch.Count -ne 1 -or $contentIncludes -ccontains $runtimeManifest.Key) {
+            Add-Failure $failures `
+                "Manifesto de runtime deve existir uma vez como EmbeddedResource e nao ser publicado externamente: $($runtimeManifest.Key)"
+        }
+    }
     if ($targetFramework -ne 'net10.0-windows') {
         Add-Failure $failures "TargetFramework de producao inesperado: '$targetFramework'."
     }
@@ -1158,6 +1190,38 @@ $coverDirectory = Join-Path $root 'Assets\Catalog\Images'
 $coverCount = @(Get-ChildItem -LiteralPath $coverDirectory -File -Force -ErrorAction SilentlyContinue).Count
 if ($coverCount -ne 903) {
     Add-Failure $failures "Conjunto de capas incompleto: $coverCount (esperado 903)."
+}
+
+$requiredTrackedAssetFiles = @(
+    (Join-Path $root 'Assets\Catalog\catalog.json'),
+    (Join-Path $root 'Assets\Catalog\platform-descriptions.json'),
+    (Join-Path $root 'Assets\f15-turborama-user-original-v13.png'),
+    (Join-Path $root 'Assets\turborama-logo-v3.png'),
+    (Join-Path $root 'Assets\turborama-app-icon.ico'),
+    (Join-Path $root 'THIRD-PARTY-NOTICES.txt')
+)
+foreach ($assetPattern in @(
+        'Assets\Catalog\Images\*.jpg',
+        'Assets\Catalog\MenuIcons\*.png',
+        'Assets\Catalog\SystemIcons\*.png',
+        'Assets\Catalog\GameDescriptions\*.xml',
+        'Assets\Catalog\SystemVideos\*.mp4',
+        'Assets\Catalog\SystemVideos\*.json',
+        'Assets\BackgroundVideos\*.mp4',
+        'Assets\BackgroundVideos\*.json',
+        'Assets\Music\*.mp3')) {
+    $requiredTrackedAssetFiles += @(Get-ChildItem -Path (Join-Path $root $assetPattern) `
+        -File -Force -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName)
+}
+foreach ($requiredTrackedAsset in $requiredTrackedAssetFiles) {
+    if (-not (Test-Path -LiteralPath $requiredTrackedAsset -PathType Leaf)) {
+        Add-Failure $failures "Asset obrigatorio ausente: $requiredTrackedAsset"
+        continue
+    }
+    $requiredRelativePath = [IO.Path]::GetRelativePath($root, $requiredTrackedAsset).Replace('\', '/')
+    if (-not $trackedEntrySet.Contains($requiredRelativePath)) {
+        Add-Failure $failures "Asset obrigatorio nao versionado no Git: $requiredRelativePath"
+    }
 }
 
 $organizedCoverRoot = Join-Path $root 'Capas-Turborama-por-Sistema'

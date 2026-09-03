@@ -12,4 +12,5 @@
 *.jpg binary
 *.ico binary
 *.mp4 binary
+*.mp3 binary
 *.zip binary

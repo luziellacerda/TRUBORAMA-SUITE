@@ -2,6 +2,14 @@
 
 Aplicativo desktop WPF para Windows que reúne catálogo, biblioteca e gerenciamento de conteúdo da Turborama.
 
+## Fonte final homologada R25
+
+A branch `main` é a fonte canônica e autocontida do cliente 2.0.0. Ela reúne todo o histórico, código, catálogo, capas, vídeos, músicas, testes, lock files e scripts necessários; não é preciso buscar arquivos em branches anteriores.
+
+O procedimento único, desde um clone limpo até staging, candidato assinado, aceite, publicação e rollback, está em [docs/TUTORIAL-FINAL-COMPILACAO-E-RELEASE-R25.md](docs/TUTORIAL-FINAL-COMPILACAO-E-RELEASE-R25.md).
+
+“Fonte homologada” e “pacote comercial assinado” são estados distintos. Artefatos gerados, caches e chaves privadas não pertencem ao Git; o EXE distribuível deve ser produzido pelo pipeline Signed e identificado pelo manifesto e SHA-256.
+
 ## Documentação mestre R25
 
 A arquitetura completa do cliente, servidor, páginas, banco, licenciamento, catálogo, downloads, build, implantação, testes, segurança e estado comprovado em 03/09/2026 está em [docs/TURBORAMA-SUITE-R25-DOCUMENTACAO-MESTRA-PONTA-A-PONTA-20260903.md](docs/TURBORAMA-SUITE-R25-DOCUMENTACAO-MESTRA-PONTA-A-PONTA-20260903.md).
@@ -10,7 +18,7 @@ Essa referência distingue o fluxo servidor-cliente já validado dos requisitos 
 
 ## Estado da versão 2.0.0
 
-Esta árvore produz um **staging local não assinável para distribuição** e contém o pipeline de um **candidato assinado**. Nenhum dos dois deve ser anunciado como Release de produção enquanto os bloqueios de [prontidão de produção](docs/PRODUCTION-READINESS.md) permanecerem abertos.
+Esta árvore produz um **staging local não assinado e não distribuível** e contém o pipeline de um **candidato assinado**. A fonte R25 está funcionalmente homologada; um pacote só deve ser anunciado como release comercial quando os gates de [prontidão de produção](docs/PRODUCTION-READINESS.md) forem comprovados para seu commit e SHA-256 exatos.
 
 O cliente opera de forma fail-closed:
 

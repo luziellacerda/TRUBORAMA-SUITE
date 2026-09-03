@@ -1831,6 +1831,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             var useCompactNavigation = viewportScale < .8;
             SetVisibility("RetroCarouselMouseHint", !useCompactNavigation);
             SetVisibility("RetroCarouselEnterHint", !useCompactNavigation);
+            SetVisibility("RetroCarouselPositionSeparator", !useCompactNavigation);
             var maximumFooterScale = Math.Min(1, footerRoot.ActualHeight / footerContent.Height);
             var footerScale = useCompactNavigation
                 ? maximumFooterScale

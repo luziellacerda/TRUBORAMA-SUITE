@@ -3189,6 +3189,7 @@ internal static class WpfTemplateVerifier
             || window.FindName("RetroCarouselNavigationHint") is not TextBlock retroCarouselNavigationHint
             || window.FindName("RetroCarouselMouseHint") is not TextBlock retroCarouselMouseHint
             || window.FindName("RetroCarouselEnterHint") is not TextBlock retroCarouselEnterHint
+            || window.FindName("RetroCarouselPositionSeparator") is not TextBlock retroCarouselPositionSeparator
             || window.FindName("RetroFooterSeparatorLed") is not System.Windows.Shapes.Rectangle retroFooterSeparatorLed
             || retroFooterSeparatorLed.Effect is not System.Windows.Media.Effects.DropShadowEffect retroFooterSeparatorGlow
             || window.Resources["RetroFooterActionButtonStyle"] is not Style retroFooterActionStyle
@@ -3536,6 +3537,8 @@ internal static class WpfTemplateVerifier
                     || retroCarouselMouseHint.Visibility
                     != (useCompactNavigation ? Visibility.Collapsed : Visibility.Visible)
                     || retroCarouselEnterHint.Visibility
+                    != (useCompactNavigation ? Visibility.Collapsed : Visibility.Visible)
+                    || retroCarouselPositionSeparator.Visibility
                     != (useCompactNavigation ? Visibility.Collapsed : Visibility.Visible)
                     || Math.Abs(retroCarouselFooterTransform.ScaleX - expectedFooterScale)
                     > footerScaleTolerance

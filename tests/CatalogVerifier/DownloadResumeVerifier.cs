@@ -436,7 +436,7 @@ internal static class DownloadResumeVerifier
         var sentinel = Enumerable.Repeat((byte)0xA7, pauseOffset).ToArray();
         await File.WriteAllBytesAsync(sentinelPath, sentinel);
         File.Delete(partialPath);
-        Check(CreateHardLink(partialPath, sentinelPath, IntPtr.Zero),
+        Check(CreateHardLink(ToExtendedPath(partialPath), ToExtendedPath(sentinelPath), IntPtr.Zero),
             $"O teste não conseguiu criar o hardlink hostil (Win32 {Marshal.GetLastWin32Error()}).");
 
         using var handler = new PayloadHandler(bytes);
@@ -537,6 +537,16 @@ internal static class DownloadResumeVerifier
         for (var index = 0; index < bytes.Length; index++)
             bytes[index] = (byte)((index * 31 + 17) % 251);
         return bytes;
+    }
+
+    private static string ToExtendedPath(string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        if (fullPath.StartsWith(@"\\?\", StringComparison.Ordinal))
+            return fullPath;
+        return fullPath.StartsWith(@"\\", StringComparison.Ordinal)
+            ? @"\\?\UNC\" + fullPath[2..]
+            : @"\\?\" + fullPath;
     }
 
     private static void Check(bool condition, string message)

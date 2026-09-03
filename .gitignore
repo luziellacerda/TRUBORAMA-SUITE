@@ -23,3 +23,11 @@ SHA256SUMS.txt
 *.log
 .env
 .env.*
+*.env
+*.pfx
+*.p12
+*.key
+*.pem
+*.snk
+secrets.json
+credentials.json

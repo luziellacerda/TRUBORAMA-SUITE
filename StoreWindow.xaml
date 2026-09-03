@@ -2740,7 +2740,11 @@
                           <TextBlock x:Name="RetroCarouselNavigationHint" Text="← →  NAVEGAR" Foreground="#FFFFFFFF" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center" />
                           <TextBlock x:Name="RetroCarouselMouseHint" Text="   •   RODA DO MOUSE  ALTERNAR" Foreground="#FFFFFFFF" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center" />
                           <TextBlock x:Name="RetroCarouselEnterHint" Text="   •   ENTER  SELECIONAR" Foreground="#FFFFFFFF" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center" />
-                          <TextBlock Text="   •   " Foreground="#FFFFFFFF" FontSize="9" VerticalAlignment="Center" />
+                          <TextBlock x:Name="RetroCarouselPositionSeparator"
+                                     Text="   •   "
+                                     Foreground="#FFFFFFFF"
+                                     FontSize="9"
+                                     VerticalAlignment="Center" />
                           <TextBlock Name="RetroCarouselPosition" Text="1 / 45" Foreground="{DynamicResource CurrentSystemAccentBrush}" FontSize="10" FontWeight="Bold" VerticalAlignment="Center" />
                         </StackPanel>
                       </Grid>

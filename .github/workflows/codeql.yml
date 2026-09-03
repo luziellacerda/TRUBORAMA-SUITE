@@ -20,13 +20,14 @@ concurrency:
 env:
   DOTNET_CLI_TELEMETRY_OPTOUT: "1"
   DOTNET_NOLOGO: "1"
-  NUGET_PACKAGES: "${{ runner.temp }}\\turborama-nuget-packages"
-  NUGET_HTTP_CACHE_PATH: "${{ runner.temp }}\\turborama-nuget-http-cache"
 
 jobs:
   analyze:
     runs-on: windows-2025
     timeout-minutes: 45
+    env:
+      NUGET_PACKAGES: "${{ runner.temp }}\\turborama-nuget-packages"
+      NUGET_HTTP_CACHE_PATH: "${{ runner.temp }}\\turborama-nuget-http-cache"
     steps:
       - name: Checkout immutable source
         uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3

@@ -75,11 +75,6 @@
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
       <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </Content>
-    <Content Include="Assets\Catalog\platform-descriptions.json;Assets\Catalog\SystemVideos\system-videos.json;Assets\Catalog\SystemVideos\system-video-integrity.json;Assets\BackgroundVideos\background-video-integrity.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-    </Content>
     <Resource Include="Assets\f15-turborama-user-original-v13.png" />
     <Resource Include="Assets\turborama-logo-v3.png" />
     <Resource Include="Assets\turborama-app-icon.ico" />

@@ -1,6 +1,12 @@
 # Changelog
 
-## 2.0.0 — candidato em 2026-08-27
+## 2.0.0 R25 — fonte homologada em 2026-09-03
+
+- consolidado em `main` todo o histórico funcional da R25, sem depender de branches anteriores;
+- incluídos tutorial final reproduzível e documentação mestre ponta a ponta;
+- corrigida a publicação duplicada dos manifests internos de interface/vídeo, preservando-os somente como resources incorporados;
+- corrigido o escopo de `runner.temp` no workflow CodeQL;
+- mantida a separação explícita entre fonte homologada, staging unsigned e pacote comercial Signed;
 
 - removidos login demonstrativo, catálogo privado reversível, URL permanente e arquivo de chave incorporado;
 - introduzido protocolo de licença Suite fail-closed com configuração de autoridade assinada, identidade CNG e sessões curtas;
