@@ -1144,8 +1144,12 @@ if ($LASTEXITCODE -ne 0 -or $commit -notmatch '^[0-9a-f]{40}$') {
     throw 'HEAD Git invalido.'
 }
 $shortCommit = $commit.Substring(0, 12)
-$sourceBranch = [string](& $GitPath @trustedGitConfiguration -C $root branch --show-current)
-$sourceBranch = $sourceBranch.Trim()
+$sourceBranchOutput = @(& $GitPath @trustedGitConfiguration -C $root branch --show-current)
+$sourceBranch = if ($sourceBranchOutput.Count -eq 0) {
+    [string]::Empty
+} else {
+    ([string]$sourceBranchOutput[0]).Trim()
+}
 if (-not $isUnsigned -and
     ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($sourceBranch))) {
     throw 'A branch Git de origem nao pode estar destacada.'
