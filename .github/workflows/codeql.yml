@@ -25,9 +25,6 @@ jobs:
   analyze:
     runs-on: windows-2025
     timeout-minutes: 45
-    env:
-      NUGET_PACKAGES: "${{ runner.temp }}\\turborama-nuget-packages"
-      NUGET_HTTP_CACHE_PATH: "${{ runner.temp }}\\turborama-nuget-http-cache"
     steps:
       - name: Checkout immutable source
         uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
@@ -53,10 +50,16 @@ jobs:
 
       - name: Restore locked dependencies
         shell: pwsh
+        env:
+          NUGET_PACKAGES: "${{ runner.temp }}\\turborama-nuget-packages"
+          NUGET_HTTP_CACHE_PATH: "${{ runner.temp }}\\turborama-nuget-http-cache"
         run: dotnet restore .\TurboBoxManager.csproj -r win-x64 --locked-mode --no-http-cache --packages $env:NUGET_PACKAGES -p:Configuration=Release --source https://api.nuget.org/v3/index.json
 
       - name: Build analyzed Release
         shell: pwsh
+        env:
+          NUGET_PACKAGES: "${{ runner.temp }}\\turborama-nuget-packages"
+          NUGET_HTTP_CACHE_PATH: "${{ runner.temp }}\\turborama-nuget-http-cache"
         run: dotnet build .\TurboBoxManager.csproj -c Release --no-restore
 
       - name: Analyze
