@@ -2,6 +2,12 @@
 
 Aplicativo desktop WPF para Windows que reúne catálogo, biblioteca e gerenciamento de conteúdo da Turborama.
 
+## Documentação mestre R25
+
+A arquitetura completa do cliente, servidor, páginas, banco, licenciamento, catálogo, downloads, build, implantação, testes, segurança e estado comprovado em 03/09/2026 está em [docs/TURBORAMA-SUITE-R25-DOCUMENTACAO-MESTRA-PONTA-A-PONTA-20260903.md](docs/TURBORAMA-SUITE-R25-DOCUMENTACAO-MESTRA-PONTA-A-PONTA-20260903.md).
+
+Essa referência distingue o fluxo servidor-cliente já validado dos requisitos que ainda bloqueiam a distribuição comercial do EXE.
+
 ## Estado da versão 2.0.0
 
 Esta árvore produz um **staging local não assinável para distribuição** e contém o pipeline de um **candidato assinado**. Nenhum dos dois deve ser anunciado como Release de produção enquanto os bloqueios de [prontidão de produção](docs/PRODUCTION-READINESS.md) permanecerem abertos.
