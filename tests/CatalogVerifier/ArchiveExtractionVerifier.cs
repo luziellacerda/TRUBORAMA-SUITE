@@ -10,6 +10,7 @@ internal static class ArchiveExtractionVerifier
     public static async Task RunAsync(string root)
     {
         Directory.CreateDirectory(root);
+        VerifyRecognizedArchiveOverride();
         await VerifySuccessfulZipAsync(root);
         await VerifySamboxTextCleanupAsync(root);
         await VerifyRestartAndRedownloadRecoversWithRetainedMarkerAsync(root);
@@ -32,6 +33,34 @@ internal static class ArchiveExtractionVerifier
         await VerifyExtractPolicyNoneIsRejectedAsync(root);
         await VerifyForgedRecoveryMarkerIsRejectedAsync(root);
         await VerifyLongPathSegmentsAreBlockedAsync(root);
+    }
+
+    private static void VerifyRecognizedArchiveOverride()
+    {
+        var directRar = new CatalogArtifactDescriptor
+        {
+            ArtifactId = new string('a', 32),
+            ArtifactVersion = 1,
+            ContentLength = 123,
+            Sha256 = new string('b', 64),
+            SafeFileName = "jogo.rar",
+            FileExtension = ".rar",
+            ExtractPolicy = CatalogExtractPolicy.None,
+            ManifestIdentity = new string('c', 64)
+        };
+        Check(CatalogArchivePolicy.IsRecognizedArchive(directRar),
+            "Um RAR autorizado como download direto não foi reconhecido como pacote.");
+        Check(CatalogArchivePolicy.ForExtraction(directRar).ExtractPolicy
+              == CatalogExtractPolicy.ExtractArchive,
+            "O RAR reconhecido não recebeu a política local de extração.");
+
+        var executable = directRar with
+        {
+            SafeFileName = "jogo.exe",
+            FileExtension = ".exe"
+        };
+        Check(!CatalogArchivePolicy.IsRecognizedArchive(executable),
+            "Um download executável foi tratado indevidamente como pacote compactado.");
     }
 
     private static async Task VerifySamboxTextCleanupAsync(string root)

@@ -164,10 +164,10 @@ if (args is ["--verify-music"])
 {
     var tracks = EmbeddedMusicLibrary.PreparePlaylist(CancellationToken.None);
     Assert(tracks.Count == 9, "A playlist interna deve possuir nove faixas.");
-    var newTrack = tracks.Single(path => Path.GetFileName(path).Equals("Aperta Start.m4a", StringComparison.Ordinal));
-    Assert(new FileInfo(newTrack).Length == 3_274_433, "A faixa Aperta Start possui tamanho inesperado.");
+    var newTrack = tracks.Single(path => Path.GetFileName(path).Equals("Aperta Start.mp3", StringComparison.Ordinal));
+    Assert(new FileInfo(newTrack).Length == 4_601_143, "A faixa Aperta Start possui tamanho inesperado.");
     Assert(Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(newTrack))).Equals(
-        "0ECA8F163386DC3590BBDA679F7998892406BB89A0FDF41C2398BFB8C8FE7A2C", StringComparison.Ordinal),
+        "DC034CC88E8E567FE553EE5829F45CEB9BD353E1A1D4F278AE20B87CFE45311A", StringComparison.Ordinal),
         "A faixa Aperta Start falhou na verificação SHA-256.");
     Console.WriteLine("PASS: Aperta Start incorporada e validada na playlist interna.");
     return;

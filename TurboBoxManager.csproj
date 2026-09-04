@@ -102,7 +102,7 @@
                       LogicalName="Turborama.Music.Track07.mp3" />
     <EmbeddedResource Include="Assets\Music\Turborama - Faixa 08.mp3"
                       LogicalName="Turborama.Music.Track08.mp3" />
-    <EmbeddedResource Include="Assets\Music\Aperta Start.m4a"
-                      LogicalName="Turborama.Music.ApertaStart.m4a" />
+    <EmbeddedResource Include="Assets\Music\Aperta Start.mp3"
+                      LogicalName="Turborama.Music.ApertaStart.mp3" />
   </ItemGroup>
 </Project>

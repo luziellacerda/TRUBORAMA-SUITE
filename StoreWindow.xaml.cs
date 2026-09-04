@@ -4203,7 +4203,8 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                     ThrowIfOperationUnauthorized();
                     if (savedDownload.ArchiveReady && File.Exists(savedDownload.ArchiveFilePath))
                     {
-                        if (artifact.ExtractPolicy == CatalogExtractPolicy.ExtractArchive)
+                        if (artifact.ExtractPolicy == CatalogExtractPolicy.ExtractArchive
+                            || IsGameItem(item) && CatalogArchivePolicy.IsRecognizedArchive(artifact))
                         {
                             ThrowIfOperationUnauthorized();
                             item.MarkArchiveReady(savedDownload.ArchiveFilePath);
@@ -4275,14 +4276,15 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         {
             ThrowIfOperationUnauthorized();
             var artifact = RequireAuthorizedArtifact(item);
-            var shouldExtract = artifact.ExtractPolicy == CatalogExtractPolicy.ExtractArchive;
+            var isGameItem = IsGameItem(item);
+            var shouldExtract = artifact.ExtractPolicy == CatalogExtractPolicy.ExtractArchive
+                                || isGameItem && CatalogArchivePolicy.IsRecognizedArchive(artifact);
             if (_downloadService.IsActive(item.Id))
             {
                 SetCatalogStatus($"{item.Title}: o download ainda está ativo; aguarde a operação atual.");
                 return;
             }
 
-            var isGameItem = IsGameItem(item);
             string? gameLibraryRoot = null;
             if (isGameItem)
             {
@@ -4444,9 +4446,14 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     {
         ThrowIfOperationUnauthorized();
         var artifact = RequireAuthorizedArtifact(item);
-        if (artifact.ExtractPolicy != CatalogExtractPolicy.ExtractArchive)
-            throw new InvalidDataException(
-                "A política autorizada deste artefato não permite extração.");
+        var recognizedArchiveOverride = artifact.ExtractPolicy == CatalogExtractPolicy.None
+                                        && IsGameItem(item)
+                                        && CatalogArchivePolicy.IsRecognizedArchive(artifact);
+        var extractionArtifact = recognizedArchiveOverride
+            ? CatalogArchivePolicy.ForExtraction(artifact)
+            : artifact;
+        if (extractionArtifact.ExtractPolicy != CatalogExtractPolicy.ExtractArchive)
+            throw new InvalidDataException("O arquivo autorizado não é um pacote compactado suportado.");
         if (string.IsNullOrWhiteSpace(archivePath) || !File.Exists(archivePath))
         {
             item.FailExtraction("O pacote compactado não foi encontrado. Baixe-o novamente.");
@@ -4466,7 +4473,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             destinationBase,
             category,
             item.Title,
-            artifact,
+            extractionArtifact,
             baseDirectoryIsGameLibrary: isGameItem,
             itemId: item.Id,
             cancellationToken: _storeOperationCancellation.Token));
@@ -4483,6 +4490,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                     item,
                     downloadRoot,
                     archivePath,
+                    recognizedArchiveOverride,
                     _storeOperationCancellation.Token))
             {
                 item.FailExtraction(

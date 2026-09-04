@@ -276,6 +276,7 @@ public sealed class CatalogDownloadService : IDisposable
         CatalogItem item,
         string installationRoot,
         string archivePath,
+        bool recognizedArchiveOverride = false,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(item);
@@ -283,7 +284,9 @@ public sealed class CatalogDownloadService : IDisposable
         try
         {
             var artifact = RequireValidArtifact(item);
-            if (artifact.ExtractPolicy != CatalogExtractPolicy.ExtractArchive) return false;
+            if (artifact.ExtractPolicy != CatalogExtractPolicy.ExtractArchive
+                && !(recognizedArchiveOverride
+                     && CatalogArchivePolicy.IsRecognizedArchive(artifact))) return false;
             var canonicalRoot = ValidateInstallationRoot(installationRoot);
             var canonicalArchivePath = Path.GetFullPath(archivePath);
             if (!IsWithinRoot(canonicalArchivePath, canonicalRoot)) return false;
@@ -375,7 +378,7 @@ public sealed class CatalogDownloadService : IDisposable
         var canonicalRoot = Path.GetFullPath(installationRoot);
         var authorized = new Dictionary<
             string,
-            (string ItemId, CatalogArtifactDescriptor Artifact, string DestinationPath)>(
+            (CatalogItem Item, CatalogArtifactDescriptor Artifact, string DestinationPath)>(
             StringComparer.Ordinal);
         foreach (var item in authorizedItems)
         {
@@ -384,8 +387,8 @@ public sealed class CatalogDownloadService : IDisposable
             try
             {
                 ValidateArtifact(item.Artifact);
-                authorized[CreateArtifactIdentity(item.Artifact)] = (
-                    item.Id,
+                authorized[CreateArtifactResumeIdentity(item.Artifact)] = (
+                    item,
                     item.Artifact,
                     BuildSafeDestinationPath(canonicalRoot, item));
             }
@@ -405,7 +408,7 @@ public sealed class CatalogDownloadService : IDisposable
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                var identity = CreateArtifactIdentity(saved.Metadata);
+                var identity = CreateArtifactResumeIdentity(saved.Metadata);
                 var isAuthorized = authorized.TryGetValue(identity, out var authorization)
                                    && MetadataMatchesArtifact(
                                        saved.Metadata,
@@ -414,20 +417,37 @@ public sealed class CatalogDownloadService : IDisposable
                                        saved.DestinationPath,
                                        authorization.DestinationPath);
                 if (requireAuthorizedDescriptor && !isAuthorized) continue;
-                var itemId = isAuthorized ? authorization.ItemId : saved.Metadata.ItemId;
+                var itemId = isAuthorized ? authorization.Item.Id : saved.Metadata.ItemId;
+                var verificationArtifact = isAuthorized ? authorization.Artifact : null;
+                if (isAuthorized
+                    && verificationArtifact is not null
+                    && IsDeferredSha256(verificationArtifact.Sha256)
+                    && TryGetAttestedDescriptor(
+                        canonicalRoot,
+                        saved,
+                        saved.DestinationPath,
+                        out var attestedItemId,
+                        out var attestedArtifact)
+                    && attestedItemId.Equals(itemId, StringComparison.Ordinal)
+                    && MetadataMatchesArtifact(saved.Metadata, attestedArtifact))
+                {
+                    verificationArtifact = attestedArtifact;
+                    authorization.Item.ResolveDeferredArtifactHash(attestedArtifact.Sha256);
+                }
                 var ready = isAuthorized
                             && saved.Metadata.ArchiveReady
                             && !File.Exists(saved.PartialPath)
+                            && verificationArtifact is not null
                             && ValidateFile(
                                 saved.DestinationPath,
-                                authorization.Artifact,
+                                verificationArtifact,
                                 cancellationToken);
                 if (ready)
                 {
                     records.Add(new CatalogResumableDownload(
                         itemId,
-                        authorization.Artifact.ContentLength,
-                        authorization.Artifact.ContentLength,
+                        verificationArtifact!.ContentLength,
+                        verificationArtifact.ContentLength,
                         true,
                         true,
                         saved.DestinationPath));
@@ -1523,6 +1543,7 @@ public sealed class CatalogDownloadService : IDisposable
             partial.Position = 0;
             item.ResolveDeferredArtifactHash(resolvedHash);
             artifact = artifact with { Sha256 = resolvedHash };
+            active.Metadata.Sha256 = resolvedHash;
         }
         if (!await ValidateOpenFileAsync(partial, artifact, active.Cancellation.Token))
             throw new InvalidDataException("A integridade ou o tamanho do pacote não confere.");
@@ -1840,7 +1861,8 @@ public sealed class CatalogDownloadService : IDisposable
         && attestation.ArtifactId.Equals(metadata.ArtifactId, StringComparison.Ordinal)
         && attestation.ArtifactVersion == metadata.ArtifactVersion
         && attestation.ContentLength == metadata.ContentLength
-        && attestation.Sha256.Equals(metadata.Sha256, StringComparison.Ordinal)
+        && (IsDeferredSha256(metadata.Sha256)
+            || attestation.Sha256.Equals(metadata.Sha256, StringComparison.Ordinal))
         && attestation.ManifestIdentity.Equals(metadata.ManifestIdentity, StringComparison.Ordinal)
         && attestation.ExtractPolicy == metadata.ExtractPolicy
         && attestation.SafeFileName.Equals(metadata.SafeFileName, StringComparison.Ordinal)
@@ -2388,28 +2410,35 @@ public sealed class CatalogDownloadService : IDisposable
         && metadata.ArtifactId.Equals(artifact.ArtifactId, StringComparison.Ordinal)
         && metadata.ArtifactVersion == artifact.ArtifactVersion
         && (artifact.ContentLength == 0 || metadata.ContentLength == artifact.ContentLength)
-        && (IsDeferredSha256(artifact.Sha256) ||
-            metadata.Sha256.Equals(artifact.Sha256, StringComparison.Ordinal))
+        && (IsDeferredSha256(artifact.Sha256)
+            || IsDeferredSha256(metadata.Sha256)
+            || metadata.Sha256.Equals(artifact.Sha256, StringComparison.Ordinal))
         && metadata.ManifestIdentity.Equals(artifact.ManifestIdentity, StringComparison.Ordinal)
         && metadata.ExtractPolicy == artifact.ExtractPolicy
         && metadata.SafeFileName.Equals(artifact.SafeFileName, StringComparison.Ordinal)
         && metadata.FileExtension.Equals(artifact.FileExtension, StringComparison.Ordinal);
 
-    private static string CreateArtifactIdentity(CatalogArtifactDescriptor artifact) =>
+    private static string CreateArtifactResumeIdentity(CatalogArtifactDescriptor artifact) =>
         string.Join('\u001F',
             artifact.ProductId,
             artifact.ArtifactId,
             artifact.ArtifactVersion.ToString(CultureInfo.InvariantCulture),
-            artifact.Sha256,
-            artifact.ContentLength.ToString(CultureInfo.InvariantCulture));
+            artifact.ContentLength.ToString(CultureInfo.InvariantCulture),
+            artifact.ManifestIdentity,
+            artifact.SafeFileName,
+            artifact.FileExtension,
+            artifact.ExtractPolicy.ToString());
 
-    private static string CreateArtifactIdentity(DownloadResumeMetadata metadata) =>
+    private static string CreateArtifactResumeIdentity(DownloadResumeMetadata metadata) =>
         string.Join('\u001F',
             metadata.ProductId,
             metadata.ArtifactId,
             metadata.ArtifactVersion.ToString(CultureInfo.InvariantCulture),
-            metadata.Sha256,
-            metadata.ContentLength.ToString(CultureInfo.InvariantCulture));
+            metadata.ContentLength.ToString(CultureInfo.InvariantCulture),
+            metadata.ManifestIdentity,
+            metadata.SafeFileName,
+            metadata.FileExtension,
+            metadata.ExtractPolicy.ToString());
 
     private static async Task<bool> ValidateFileAsync(
         string path,

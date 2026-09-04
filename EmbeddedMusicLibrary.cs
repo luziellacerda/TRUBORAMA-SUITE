@@ -53,7 +53,7 @@ internal sealed class EmbeddedMusicTrackLease : IDisposable
 internal static class EmbeddedMusicLibrary
 {
     private const int CopyBufferSize = 128 * 1024;
-    private const string CacheVersion = "built-in-v2";
+    private const string CacheVersion = "built-in-v3";
     private static readonly ReadOnlyCollection<EmbeddedMusicTrack> BuiltInTracks =
         Array.AsReadOnly<EmbeddedMusicTrack>(
     [
@@ -107,10 +107,10 @@ internal static class EmbeddedMusicLibrary
             "a3de2a48c6622d2786afc77c53bbcc75c774ded68c7c4260b73d540fa789c4e7"),
         new(
             "Aperta Start",
-            "Aperta Start.m4a",
-            "Turborama.Music.ApertaStart.m4a",
-            3_274_433,
-            "0eca8f163386dc3590bbda679f7998892406bb89a0fdf41c2398bfb8c8fe7a2c")
+            "Aperta Start.mp3",
+            "Turborama.Music.ApertaStart.mp3",
+            4_601_143,
+            "dc034cc88e8e567fe553ee5829f45ceb9bd353e1a1d4f278ae20b87cfe45311a")
     ]);
 
     internal static IReadOnlyList<EmbeddedMusicTrack> Tracks => BuiltInTracks;
@@ -379,8 +379,7 @@ internal static class EmbeddedMusicLibrary
         if (string.IsNullOrWhiteSpace(track.DisplayName)
             || string.IsNullOrWhiteSpace(track.ResourceName)
             || !Path.GetFileName(track.FileName).Equals(track.FileName, StringComparison.Ordinal)
-            || !(track.FileName.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase)
-                 || track.FileName.EndsWith(".m4a", StringComparison.OrdinalIgnoreCase))
+            || !track.FileName.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase)
             || track.Length <= 0
             || track.Sha256.Length != 64)
             throw new InvalidDataException("A playlist interna possui uma definição inválida.");

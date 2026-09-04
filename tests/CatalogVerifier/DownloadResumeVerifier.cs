@@ -20,11 +20,44 @@ internal static class DownloadResumeVerifier
             Path.Combine(root, "sidecar-authorization"));
         await VerifySidecarCannotChooseDestinationAsync(Path.Combine(root, "sidecar-path"));
         await VerifyRotatingGrantResumesWithoutPersistenceAsync(Path.Combine(root, "rotating-grant"));
+        await VerifyDeferredHashCompletedArtifactRestoresAsync(
+            Path.Combine(root, "deferred-completed"));
         await VerifyReadySidecarIsRehashedAsync(Path.Combine(root, "ready-rehash"));
         await VerifyRedirectIsDeniedAsync(Path.Combine(root, "redirect"));
         await VerifyInvalidRangeIsDeniedBeforeNetworkAsync(Path.Combine(root, "invalid-range"));
         await VerifyHardLinkedPartialCannotModifyTargetAsync(Path.Combine(root, "hardlink-partial"));
         await VerifyExactResponseLengthIsRequiredAsync(Path.Combine(root, "response-length"));
+    }
+
+    private static async Task VerifyDeferredHashCompletedArtifactRestoresAsync(string root)
+    {
+        Directory.CreateDirectory(root);
+        var bytes = CreatePayload(72_000);
+        var downloadedItem = CreateItem("deferred-completed", bytes);
+
+        using (var handler = new PayloadHandler(bytes))
+        using (var client = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan })
+        using (var service = new CatalogDownloadService(
+                   client,
+                   new RotatingGrantProvider(),
+                   CreateOptions()))
+        {
+            var completed = await service.DownloadAsync(downloadedItem, root);
+            Check(completed.Succeeded, completed.Message);
+        }
+
+        var deferredItem = WithArtifact(downloadedItem, artifact => artifact with
+        {
+            Sha256 = new string('0', 64)
+        });
+        using var verifier = new CatalogDownloadService(CreateOptions());
+        var restored = verifier.DiscoverResumableDownloads(root, [deferredItem]).Single();
+        Check(restored.ArchiveReady,
+            "Um download direto concluído não foi restaurado com o hash protegido localmente.");
+        Check(deferredItem.Artifact!.Sha256.Equals(
+                  Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant(),
+                  StringComparison.Ordinal),
+            "O hash diferido não foi recuperado da atestação local protegida.");
     }
 
     private static async Task VerifyUnauthorizedSidecarCannotAutoResumeAsync(string root)
