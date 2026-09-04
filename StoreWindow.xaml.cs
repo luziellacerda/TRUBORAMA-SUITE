@@ -4421,15 +4421,31 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         }
         catch (OperationCanceledException)
         {
-            if (File.Exists(archivePath))
-                item.FailExtraction("Extração cancelada; o pacote verificado foi preservado.");
+            item.FailExtraction(File.Exists(archivePath)
+                ? "Extração cancelada; o pacote verificado foi preservado."
+                : "Extração cancelada e o pacote compactado não está mais disponível. Baixe-o novamente.");
             SetCatalogStatus($"{item.Title}: extração cancelada porque a sessão terminou.");
         }
         catch (SuiteAuthorizationException)
         {
-            if (File.Exists(archivePath))
-                item.FailExtraction("Autorização encerrada; o pacote verificado foi preservado.");
+            item.FailExtraction(File.Exists(archivePath)
+                ? "Autorização encerrada; o pacote verificado foi preservado."
+                : "Autorização encerrada e o pacote compactado não está mais disponível. Baixe-o novamente.");
             SetCatalogStatus($"{item.Title}: a autorização terminou antes da extração.");
+        }
+        catch (Exception exception) when (exception is IOException
+                                           or UnauthorizedAccessException
+                                           or InvalidDataException
+                                           or ArgumentException
+                                           or NotSupportedException
+                                           or JsonException
+                                           or CryptographicException
+                                           or TimeoutException)
+        {
+            item.FailExtraction(File.Exists(archivePath)
+                ? $"A organização não foi concluída: {exception.Message} O pacote verificado foi preservado para tentar novamente."
+                : $"A organização não foi concluída: {exception.Message} O pacote compactado não está mais disponível; baixe-o novamente.");
+            SetCatalogStatus($"{item.Title}: {item.DownloadStatus}");
         }
         finally
         {
@@ -4446,8 +4462,10 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
     {
         ThrowIfOperationUnauthorized();
         var artifact = RequireAuthorizedArtifact(item);
+        var isGameItem = IsGameItem(item);
+        var category = string.IsNullOrWhiteSpace(item.Category) ? item.CategoryId : item.Category;
         var recognizedArchiveOverride = artifact.ExtractPolicy == CatalogExtractPolicy.None
-                                        && IsGameItem(item)
+                                        && isGameItem
                                         && CatalogArchivePolicy.IsRecognizedArchive(artifact);
         var extractionArtifact = recognizedArchiveOverride
             ? CatalogArchivePolicy.ForExtraction(artifact)
@@ -4460,15 +4478,42 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             SetCatalogStatus($"{item.Title}: o pacote compactado não foi encontrado.");
             return;
         }
+        if (recognizedArchiveOverride) item.MarkArchiveReady(archivePath);
 
         ThrowIfOperationUnauthorized();
         _extractionRootsByItem[item.Id] = destinationBase;
         item.BeginExtraction();
         SetCatalogStatus($"{item.Title}: descompactando automaticamente...");
 
-        var isGameItem = IsGameItem(item);
-        var category = string.IsNullOrWhiteSpace(item.Category) ? item.CategoryId : item.Category;
-        var result = await Task.Run(() => _archiveExtractor.ExtractAsync(
+        CatalogArchiveExtractionResult? result = null;
+        CatalogGamePackageOrganizationResult? organizedInstallation = null;
+        string? recoveryBackupPath = null;
+        var partialPath = isGameItem
+            ? CatalogArchiveExtractor.BuildGameDestinationPath(
+                destinationBase,
+                category,
+                item.Id)
+            : string.Empty;
+        if (isGameItem
+            && Directory.Exists(partialPath)
+            && Directory.Exists(Path.Combine(partialPath, "sistema", "roms"))
+            && File.Exists(Path.Combine(
+                partialPath,
+                CatalogArchiveExtractor.CompletionMarkerFileName)))
+        {
+            ThrowIfOperationUnauthorized();
+            SetCatalogStatus($"{item.Title}: preservando a extração parcial antes de validar novamente o pacote...");
+            recoveryBackupPath = await Task.Run(
+                () => CatalogGamePackageOrganizer.MovePartialExtractionToRecovery(
+                    partialPath,
+                    destinationBase,
+                    category,
+                    item.Id),
+                _storeOperationCancellation.Token);
+            ThrowIfOperationUnauthorized();
+        }
+
+        var extractionResult = await Task.Run(() => _archiveExtractor.ExtractAsync(
             archivePath,
             destinationBase,
             category,
@@ -4477,9 +4522,28 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             baseDirectoryIsGameLibrary: isGameItem,
             itemId: item.Id,
             cancellationToken: _storeOperationCancellation.Token));
-
+        result = extractionResult;
         ThrowIfOperationUnauthorized();
-        if (result.Succeeded)
+        if (extractionResult.Succeeded)
+        {
+            if (isGameItem)
+            {
+                organizedInstallation = await Task.Run(
+                    () => CatalogGamePackageOrganizer.Organize(
+                        extractionResult.DestinationPath,
+                        destinationBase,
+                        extractionArtifact,
+                        category,
+                        item.Id),
+                    _storeOperationCancellation.Token);
+            }
+            else
+                organizedInstallation = new CatalogGamePackageOrganizationResult(
+                    extractionResult.DestinationPath,
+                    extractionResult.DestinationPath);
+        }
+
+        if (organizedInstallation is not null)
         {
             var completedLibraryRoot = isGameItem
                 ? destinationBase
@@ -4508,7 +4572,7 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                 _ = CatalogExtractionCompletionCleanup.DeleteArchivePreservingRecoveryMarker(
                     archivePath,
                     downloadRoot,
-                    result.DestinationPath);
+                    organizedInstallation.MarkerDirectory);
             }
             catch (Exception exception) when (exception is IOException
                                                or UnauthorizedAccessException
@@ -4518,12 +4582,42 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
             }
 
             ThrowIfOperationUnauthorized();
-            item.CompleteExtraction(result.DestinationPath);
+            item.CompleteExtraction(organizedInstallation.InstalledPath);
+            var recoveryCleanupMessage = string.Empty;
+            if (recoveryBackupPath is not null)
+            {
+                try
+                {
+                    _ = await Task.Run(() =>
+                        CatalogGamePackageOrganizer.DeleteRecoveryBackup(
+                            recoveryBackupPath,
+                            destinationBase));
+                }
+                catch (Exception exception) when (exception is IOException
+                                                   or UnauthorizedAccessException
+                                                   or InvalidDataException
+                                                   or ArgumentException
+                                                   or NotSupportedException
+                                                   or TimeoutException)
+                {
+                    recoveryCleanupMessage =
+                        $" O backup da tentativa anterior permanece como cache pendente: {exception.Message}";
+                }
+            }
             RefreshManagedGamesIfVisible(item.CategoryId);
             var libraryName = isGameItem
                 ? CatalogArchiveExtractor.GameLibraryFolderName
                 : CatalogArchiveExtractor.LibraryFolderName;
-            SetCatalogStatus($"{item.Title}: extração concluída em {libraryName}.{archiveCleanupMessage}");
+            SetCatalogStatus(
+                $"{item.Title}: extração concluída em {libraryName}.{archiveCleanupMessage}{recoveryCleanupMessage}");
+            return;
+        }
+
+        if (result is null)
+        {
+            item.FailExtraction(
+                "A extração não produziu um resultado recuperável. O pacote foi preservado para nova tentativa.");
+            SetCatalogStatus($"{item.Title}: {item.DownloadStatus}");
             return;
         }
 

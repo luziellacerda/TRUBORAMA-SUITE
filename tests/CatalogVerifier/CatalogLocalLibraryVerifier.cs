@@ -1,4 +1,6 @@
 using System.Security.Cryptography;
+using System.IO.Compression;
+using System.Text;
 using System.Text.Json;
 using TurboBoxManager.Catalog;
 
@@ -22,7 +24,15 @@ internal static class CatalogLocalLibraryVerifier
             downloadService,
             scenarioRoot);
         await VerifyExtractedDirectoryStatesAsync(service, libraryRoot);
+        await VerifyRecognizedArchiveDirectoryDeletionAsync(
+            service,
+            libraryRoot,
+            scenarioRoot);
         await VerifyPhysicalSystemInventoryAsync(service, libraryRoot, scenarioRoot);
+        await VerifyMergedReceiptBlocksOrphanDeletionAsync(
+            service,
+            libraryRoot,
+            scenarioRoot);
         await VerifyCancellationAsync(service, libraryRoot);
     }
 
@@ -41,7 +51,7 @@ internal static class CatalogLocalLibraryVerifier
         await File.WriteAllBytesAsync(expectedPath, payload);
         var downloaded = (await service.InspectAsync(libraryRoot, [item], CancellationToken.None))[0];
         Assert(downloaded.Status == CatalogLocalGameStatus.Downloaded,
-            "Um arquivo final com tamanho autorizado precisa aparecer como baixado.");
+            $"Um arquivo final com tamanho autorizado precisa aparecer como baixado. Estado: {downloaded.Status}. Detalhe: {downloaded.Detail}");
 
         await File.WriteAllBytesAsync(expectedPath, payload[..^1]);
         var incomplete = (await service.InspectAsync(libraryRoot, [item], CancellationToken.None))[0];
@@ -519,6 +529,166 @@ internal static class CatalogLocalLibraryVerifier
             category,
             categoryPath,
             [unavailable, missingUnavailable]);
+    }
+
+    private static async Task VerifyRecognizedArchiveDirectoryDeletionAsync(
+        CatalogLocalLibraryService service,
+        string libraryRoot,
+        string scenarioRoot)
+    {
+        const string category = "Recognized Archive";
+        const string itemId = "recognized-archive-none";
+        var archivePath = Path.Combine(scenarioRoot, "recognized-archive-none.zip");
+        using (var archive = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+        {
+            var entry = archive.CreateEntry("content/game.bin");
+            await using var writer = new StreamWriter(
+                entry.Open(),
+                new UTF8Encoding(false));
+            await writer.WriteAsync("RECOGNIZED");
+        }
+
+        var archiveBytes = await File.ReadAllBytesAsync(archivePath);
+        var item = CreateItem(
+            itemId,
+            archiveBytes,
+            CatalogExtractPolicy.None,
+            ".zip",
+            category);
+        var extraction = await new CatalogArchiveExtractor().ExtractAsync(
+            archivePath,
+            libraryRoot,
+            category,
+            item.Title,
+            CatalogArchivePolicy.ForExtraction(item.Artifact!),
+            baseDirectoryIsGameLibrary: true,
+            itemId: item.Id);
+        Assert(extraction.Succeeded, extraction.Message);
+
+        var inspection = (await service.InspectAsync(
+            libraryRoot,
+            [item],
+            CancellationToken.None))[0];
+        Assert(inspection.Status == CatalogLocalGameStatus.Downloaded,
+            "O archive reconhecido com ExtractPolicy.None não foi identificado como instalação extraída.");
+        var sentinel = Path.Combine(libraryRoot, "recognized-archive-sentinel.bin");
+        await File.WriteAllTextAsync(sentinel, "preserve");
+        var deleted = await service.DeleteAsync(
+            libraryRoot,
+            item,
+            CancellationToken.None);
+        Assert(deleted
+               && !Directory.Exists(extraction.DestinationPath)
+               && File.Exists(sentinel),
+            "A exclusão do archive reconhecido não removeu somente sua árvore extraída.");
+    }
+
+    private static async Task VerifyMergedReceiptBlocksOrphanDeletionAsync(
+        CatalogLocalLibraryService service,
+        string libraryRoot,
+        string scenarioRoot)
+    {
+        const string category = "Receipt System";
+        const string itemId = "receipt-owned-game";
+        var archivePath = Path.Combine(scenarioRoot, "receipt-owned-game.zip");
+        using (var archive = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+        {
+            var entry = archive.CreateEntry(
+                "sistema/roms/Receipt System/published/game.bin");
+            await using var writer = new StreamWriter(
+                entry.Open(),
+                new UTF8Encoding(false));
+            await writer.WriteAsync("RECEIPT-OWNED");
+        }
+
+        var archiveBytes = await File.ReadAllBytesAsync(archivePath);
+        var item = CreateItem(
+            itemId,
+            archiveBytes,
+            CatalogExtractPolicy.ExtractArchive,
+            ".zip",
+            category);
+        var extraction = await new CatalogArchiveExtractor().ExtractAsync(
+            archivePath,
+            libraryRoot,
+            category,
+            item.Title,
+            item.Artifact!,
+            baseDirectoryIsGameLibrary: true,
+            itemId: item.Id);
+        Assert(extraction.Succeeded, extraction.Message);
+        var organized = CatalogGamePackageOrganizer.Organize(
+            extraction.DestinationPath,
+            libraryRoot,
+            item.Artifact!,
+            category,
+            item.Id);
+        var publishedDirectory = Path.Combine(libraryRoot, category, "published");
+        var publishedFile = Path.Combine(publishedDirectory, "game.bin");
+        Assert(File.Exists(publishedFile),
+            "O cenário de proteção por receipt não publicou o arquivo esperado.");
+
+        var inventory = await service.InspectSystemAsync(
+            libraryRoot,
+            category,
+            [item],
+            CancellationToken.None);
+        Assert(inventory.CategoryStatus == CatalogLocalGameStatus.Unsafe
+               && inventory.Orphans.Count == 0,
+            "Filhos de uma categoria com receipt mesclado foram mostrados como órfãos removíveis.");
+
+        var forgedOrphan = new CatalogLocalOrphanInspection(
+            Path.GetFileName(publishedDirectory),
+            publishedDirectory,
+            true,
+            CatalogLocalGameStatus.Unrecognized,
+            "stale");
+        await AssertThrowsAsync<InvalidDataException>(() =>
+            CatalogLocalLibraryService.DeleteOrphanAsync(
+                libraryRoot,
+                category,
+                forgedOrphan,
+                [item],
+                CancellationToken.None));
+        Assert(File.Exists(publishedFile),
+            "A exclusão como órfão removeu conteúdo reservado por um receipt mesclado.");
+
+        await File.WriteAllTextAsync(
+            Path.Combine(
+                organized.MarkerDirectory,
+                CatalogArchiveExtractor.CompletionMarkerFileName),
+            "{");
+        const string otherCategory = "Other Receipt Category";
+        var otherCategoryPath = CatalogArchiveExtractor.BuildCategoryDestinationPath(
+            libraryRoot,
+            otherCategory);
+        var unrelatedDirectory = Path.Combine(otherCategoryPath, "unrelated-orphan");
+        Directory.CreateDirectory(unrelatedDirectory);
+        var unrelatedFile = Path.Combine(unrelatedDirectory, "keep.bin");
+        await File.WriteAllTextAsync(unrelatedFile, "preserve");
+        var otherCategoryInventory = await service.InspectSystemAsync(
+            libraryRoot,
+            otherCategory,
+            Array.Empty<CatalogItem>(),
+            CancellationToken.None);
+        Assert(otherCategoryInventory.CategoryStatus == CatalogLocalGameStatus.Unsafe
+               && otherCategoryInventory.Orphans.Count == 0,
+            "Um receipt inválido de item removido não bloqueou órfãos de outra categoria.");
+        var unrelatedOrphan = new CatalogLocalOrphanInspection(
+            Path.GetFileName(unrelatedDirectory),
+            unrelatedDirectory,
+            true,
+            CatalogLocalGameStatus.Unrecognized,
+            "stale");
+        await AssertThrowsAsync<InvalidDataException>(() =>
+            CatalogLocalLibraryService.DeleteOrphanAsync(
+                libraryRoot,
+                otherCategory,
+                unrelatedOrphan,
+                Array.Empty<CatalogItem>(),
+                CancellationToken.None));
+        Assert(File.Exists(publishedFile) && File.Exists(unrelatedFile),
+            "Um receipt adulterado autorizou a exclusão em sua categoria ou em outra categoria.");
     }
 
     private static async Task VerifyReparsePointIsNotFollowedAsync(

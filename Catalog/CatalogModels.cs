@@ -366,7 +366,6 @@ public sealed class CatalogItem : INotifyPropertyChanged
             || DownloadState == CatalogDownloadState.Paused);
     public bool CanRetryExtraction => !IsBusy
         && HasAuthorizedArtifact
-        && Artifact!.ExtractPolicy == CatalogExtractPolicy.ExtractArchive
         && ArchiveFilePath.Length > 0
         && DownloadState is CatalogDownloadState.AwaitingExtractionLocation
             or CatalogDownloadState.ExtractionFailed;

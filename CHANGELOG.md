@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.2 — 2026-09-04
+
+- pacotes de jogos agora são extraídos e organizados diretamente em `TruboRoms\roms`, sem preservar os invólucros com hash nem a estrutura intermediária `sistema\roms`;
+- vídeos, caches e demais arquivos auxiliares do pacote que não integram a instalação final são descartados com segurança;
+- documentos legados recebem um tutorial simples para iniciantes, além da URL e do telefone atuais do Turbobox;
+- a retomada após falha preserva o conteúdo parcial em recovery confinado até a conclusão autenticada, com testes de extração, organização, colisões e limpeza segura.
+
 ## 2.0.0 R25 — fonte homologada em 2026-09-03
 
 - consolidado em `main` todo o histórico funcional da R25, sem depender de branches anteriores;

@@ -13,6 +13,13 @@ internal static class ArchiveExtractionVerifier
         VerifyRecognizedArchiveOverride();
         await VerifySuccessfulZipAsync(root);
         await VerifySamboxTextCleanupAsync(root);
+        await VerifyGamePackageLayoutIsOrganizedAsync(root);
+        await VerifyGamePackageCollisionIsPreservedAsync(root);
+        await VerifyPartialGamePackageOrganizationRetryAsync(root);
+        await VerifyOrganizerRejectsUnexpectedExtractionPathAsync(root);
+        await VerifyOrganizerRejectsDestinationWithinWrapperAsync(root);
+        await VerifyAuthenticatedReextractionAfterPartialOrganizationAsync(root);
+        await VerifyCorruptArchivePreservesRecoveryBackupAsync(root);
         await VerifyRestartAndRedownloadRecoversWithRetainedMarkerAsync(root);
         await VerifyNamedGameLibraryAsync(root);
         await VerifyTraversalIsBlockedAsync(root);
@@ -71,7 +78,13 @@ internal static class ArchiveExtractionVerifier
             var readme = archive.CreateEntry("docs/Sambox-leia-me.txt");
             await using (var stream = readme.Open())
             await using (var writer = new StreamWriter(stream, new UTF8Encoding(false)))
-                await writer.WriteAsync("Pacote Sambox pronto para uso.");
+                await writer.WriteAsync("""
+Basta descompactar dentro da pasta do Turbobox, se pedir para substituir arquivos pode confirmar
+
+Pacote Sambox pronto para uso.
+site: https://Turbobox.club
+whatsapp: (21) 99795-8935
+""");
             var game = archive.CreateEntry("roms/game.iso");
             await using var gameStream = game.Open();
             await gameStream.WriteAsync("ROM-DATA"u8.ToArray());
@@ -88,11 +101,498 @@ internal static class ArchiveExtractionVerifier
         Check(File.Exists(correctedPath), "O documento Sambox não foi renomeado.");
         Check(File.ReadAllText(correctedPath).Contains("Turbobox", StringComparison.Ordinal),
             "O conteúdo Sambox não foi corrigido para Turbobox.");
+        var correctedText = File.ReadAllText(correctedPath);
+        Check(correctedText.Contains("COMO USAR A PASTA TRUBOROMS", StringComparison.Ordinal)
+              && correctedText.Contains("https://turbobox.lzgames.com.br/", StringComparison.Ordinal)
+              && correctedText.Contains("82993474007", StringComparison.Ordinal),
+            "O tutorial ou os contatos novos não foram aplicados ao documento.");
         Check(!Directory.EnumerateFiles(result.DestinationPath, "*.txt", SearchOption.AllDirectories)
                 .Any(path => File.ReadAllText(path).Contains("Sambox", StringComparison.OrdinalIgnoreCase)),
             "Permaneceu referência Sambox nos documentos extraídos.");
         Check(File.Exists(Path.Combine(result.DestinationPath, "roms", "game.iso")),
             "O arquivo do jogo foi alterado pela limpeza de documentos.");
+    }
+
+    private static async Task VerifyGamePackageLayoutIsOrganizedAsync(string root)
+    {
+        var archivePath = Path.Combine(root, "organized-layout.zip");
+        using (var archive = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+        {
+            CreateEntry(archive, "sistema/roms/xboxone/images/game.jpg", "IMAGE");
+            CreateEntry(archive, "sistema/roms/xboxone/videos/trailer.mp4", "VIDEO");
+            CreateEntry(archive, "sistema/roms/xboxinstallers/Game/Game.exe", "GAME");
+            CreateEntry(archive, "leia-me.txt", "site: https://Turbobox.club");
+            CreateEntry(archive, "docs/cache.txt", "NAO PUBLICAR");
+        }
+
+        var gameLibrary = Path.Combine(root, "organized-base", "TruboRoms", "roms");
+        Directory.CreateDirectory(gameLibrary);
+        var artifact = CatalogArchiveExtractorTestExtensions.CreateAuthorizedArtifact(archivePath);
+        var extracted = await new CatalogArchiveExtractor().ExtractAsync(
+            archivePath,
+            gameLibrary,
+            "Xbox One",
+            "Game",
+            artifact,
+            baseDirectoryIsGameLibrary: true,
+            itemId: "organized-game");
+        Check(extracted.Succeeded, extracted.Message);
+
+        var organized = CatalogGamePackageOrganizer.Organize(
+            extracted.DestinationPath,
+            gameLibrary,
+            artifact,
+            "Xbox One",
+            "organized-game");
+        Check(organized.InstalledPath.Equals(
+                  Path.GetFullPath(gameLibrary),
+                  StringComparison.OrdinalIgnoreCase),
+            "O pacote organizado não apontou para a raiz TruboRoms\\roms.");
+        Check(File.Exists(Path.Combine(gameLibrary, "xboxone", "images", "game.jpg"))
+              && File.Exists(Path.Combine(gameLibrary, "xboxinstallers", "Game", "Game.exe")),
+            "Os arquivos úteis não foram publicados diretamente na pasta de ROMs.");
+        Check(!Directory.Exists(Path.Combine(gameLibrary, "xboxone", "videos")),
+            "A pasta videos do pacote deveria ter sido excluída.");
+        Check(!Directory.Exists(extracted.DestinationPath)
+              && File.Exists(Path.Combine(
+                  organized.MarkerDirectory,
+                  CatalogArchiveExtractor.CompletionMarkerFileName)),
+            "O invólucro intermediário não foi removido ou o comprovante foi perdido.");
+        Check(!File.Exists(Path.Combine(gameLibrary, "docs", "cache.txt")),
+            "Arquivos fora de sistema\\roms não podem vazar para a biblioteca.");
+
+        using var downloadService = new CatalogDownloadService();
+        var localService = new CatalogLocalLibraryService(downloadService);
+        var item = new CatalogItem
+        {
+            Id = "organized-game",
+            CategoryId = "xbox-one",
+            Category = "Xbox One",
+            Title = "Game",
+            Extract = true,
+            Artifact = artifact
+        };
+        var inspection = (await localService.InspectAsync(
+            gameLibrary,
+            [item],
+            CancellationToken.None))[0];
+        Check(inspection.Status == CatalogLocalGameStatus.Downloaded,
+            $"O pacote achatado precisa aparecer instalado. Estado: {inspection.Status}; {inspection.Detail}");
+    }
+
+    private static async Task VerifyGamePackageCollisionIsPreservedAsync(string root)
+    {
+        var archivePath = Path.Combine(root, "organized-collision.zip");
+        using (var archive = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+            CreateEntry(archive, "sistema/roms/xboxone/Game/data.bin", "NOVO");
+
+        var gameLibrary = Path.Combine(root, "collision-base", "TruboRoms", "roms");
+        var occupied = Path.Combine(gameLibrary, "xboxone", "Game", "data.bin");
+        Directory.CreateDirectory(Path.GetDirectoryName(occupied)!);
+        await File.WriteAllTextAsync(occupied, "ANTIGO");
+        var artifact = CatalogArchiveExtractorTestExtensions.CreateAuthorizedArtifact(archivePath);
+        var extracted = await new CatalogArchiveExtractor().ExtractAsync(
+            archivePath,
+            gameLibrary,
+            "Xbox One",
+            "Game",
+            artifact,
+            baseDirectoryIsGameLibrary: true,
+            itemId: "collision-game");
+        Check(extracted.Succeeded, extracted.Message);
+
+        try
+        {
+            _ = CatalogGamePackageOrganizer.Organize(
+                extracted.DestinationPath,
+                gameLibrary,
+                artifact,
+                "Xbox One",
+                "collision-game");
+            throw new InvalidDataException("Uma colisão diferente deveria interromper a organização.");
+        }
+        catch (IOException)
+        {
+        }
+        Check(await File.ReadAllTextAsync(occupied) == "ANTIGO"
+              && Directory.Exists(extracted.DestinationPath),
+            "A colisão alterou o arquivo anterior ou destruiu a cópia recuperável.");
+    }
+
+    private static async Task VerifyPartialGamePackageOrganizationRetryAsync(string root)
+    {
+        const string category = "Xbox One";
+        const string itemId = "partial-organization-retry";
+        var archivePath = Path.Combine(root, "partial-organization-retry.zip");
+        using (var archive = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+        {
+            CreateEntry(archive, "sistema/roms/xboxone/Retry/first.bin", "FIRST");
+            CreateEntry(archive, "sistema/roms/xboxone/Retry/second.bin", "SECOND");
+        }
+
+        var gameLibrary = Path.Combine(root, "partial-retry-base", "TruboRoms", "roms");
+        Directory.CreateDirectory(gameLibrary);
+        var artifact = CatalogArchiveExtractorTestExtensions.CreateAuthorizedArtifact(archivePath);
+        var extracted = await new CatalogArchiveExtractor().ExtractAsync(
+            archivePath,
+            gameLibrary,
+            category,
+            "Retry parcial",
+            artifact,
+            baseDirectoryIsGameLibrary: true,
+            itemId: itemId);
+        Check(extracted.Succeeded, extracted.Message);
+
+        var firstSource = Path.Combine(
+            extracted.DestinationPath,
+            "sistema",
+            "roms",
+            "xboxone",
+            "Retry",
+            "first.bin");
+        var firstDestination = Path.Combine(
+            gameLibrary,
+            "xboxone",
+            "Retry",
+            "first.bin");
+        Directory.CreateDirectory(Path.GetDirectoryName(firstDestination)!);
+        File.Move(firstSource, firstDestination, overwrite: false);
+
+        var organized = CatalogGamePackageOrganizer.Organize(
+            extracted.DestinationPath,
+            gameLibrary,
+            artifact,
+            category,
+            itemId);
+        Check(File.Exists(firstDestination)
+              && File.Exists(Path.Combine(
+                  gameLibrary,
+                  "xboxone",
+                  "Retry",
+                  "second.bin"))
+              && !Directory.Exists(extracted.DestinationPath)
+              && File.Exists(Path.Combine(
+                  organized.MarkerDirectory,
+                  CatalogArchiveExtractor.CompletionMarkerFileName)),
+            "A retomada não concluiu uma organização parcialmente publicada.");
+
+        const string markerItemId = "foreign-marker-source";
+        var foreignArchivePath = Path.Combine(root, "foreign-marker.zip");
+        using (var archive = ZipFile.Open(foreignArchivePath, ZipArchiveMode.Create))
+            CreateEntry(archive, "sistema/roms/xboxone/Foreign/data.bin", "FOREIGN");
+        var foreignLibrary = Path.Combine(root, "foreign-marker-base", "TruboRoms", "roms");
+        Directory.CreateDirectory(foreignLibrary);
+        var foreignArtifact = CatalogArchiveExtractorTestExtensions.CreateAuthorizedArtifact(
+            foreignArchivePath);
+        var foreignExtraction = await new CatalogArchiveExtractor().ExtractAsync(
+            foreignArchivePath,
+            foreignLibrary,
+            category,
+            "Marker estrangeiro",
+            foreignArtifact,
+            baseDirectoryIsGameLibrary: true,
+            itemId: markerItemId);
+        Check(foreignExtraction.Succeeded, foreignExtraction.Message);
+
+        var differentArtifactId = new string(
+            foreignArtifact.ArtifactId[0] == '0' ? '1' : '0',
+            foreignArtifact.ArtifactId.Length);
+        var wrongArtifactRejected = false;
+        try
+        {
+            _ = CatalogGamePackageOrganizer.Organize(
+                foreignExtraction.DestinationPath,
+                foreignLibrary,
+                foreignArtifact with { ArtifactId = differentArtifactId },
+                category,
+                markerItemId);
+        }
+        catch (InvalidDataException)
+        {
+            wrongArtifactRejected = true;
+        }
+        Check(wrongArtifactRejected,
+            "Um marker de outro artefato precisa ser recusado antes da publicação.");
+
+        var wrongItemRejected = false;
+        try
+        {
+            _ = CatalogGamePackageOrganizer.Organize(
+                foreignExtraction.DestinationPath,
+                foreignLibrary,
+                foreignArtifact,
+                category,
+                "foreign-marker-other-item");
+        }
+        catch (InvalidDataException)
+        {
+            wrongItemRejected = true;
+        }
+        Check(wrongItemRejected
+              && Directory.Exists(foreignExtraction.DestinationPath)
+              && !File.Exists(Path.Combine(
+                  foreignLibrary,
+                  "xboxone",
+                  "Foreign",
+                  "data.bin")),
+            "Um marker de outro item foi aceito ou alterou a biblioteca antes de ser recusado.");
+
+        _ = CatalogGamePackageOrganizer.Organize(
+            foreignExtraction.DestinationPath,
+            foreignLibrary,
+            foreignArtifact,
+            category,
+            markerItemId);
+    }
+
+    private static async Task VerifyOrganizerRejectsUnexpectedExtractionPathAsync(string root)
+    {
+        const string category = "Path Check";
+        const string itemId = "expected-wrapper";
+        var archivePath = Path.Combine(root, "unexpected-wrapper.zip");
+        using (var archive = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+            CreateEntry(archive, "sistema/roms/Path Check/Game/data.bin", "DATA");
+
+        var gameLibrary = Path.Combine(root, "unexpected-wrapper-base", "TruboRoms", "roms");
+        Directory.CreateDirectory(gameLibrary);
+        var artifact = CatalogArchiveExtractorTestExtensions.CreateAuthorizedArtifact(archivePath);
+        var extracted = await new CatalogArchiveExtractor().ExtractAsync(
+            archivePath,
+            gameLibrary,
+            category,
+            "Wrapper esperado",
+            artifact,
+            baseDirectoryIsGameLibrary: true,
+            itemId: itemId);
+        Check(extracted.Succeeded, extracted.Message);
+
+        var divergentPath = Path.Combine(
+            Path.GetDirectoryName(extracted.DestinationPath)!,
+            "unexpected-wrapper");
+        Directory.Move(extracted.DestinationPath, divergentPath);
+        var rejected = false;
+        try
+        {
+            _ = CatalogGamePackageOrganizer.Organize(
+                divergentPath,
+                gameLibrary,
+                artifact,
+                category,
+                itemId);
+        }
+        catch (InvalidDataException)
+        {
+            rejected = true;
+        }
+        Check(rejected && Directory.Exists(divergentPath),
+            "O Organizer aceitou ou removeu um wrapper fora do destino determinístico do item.");
+    }
+
+    private static async Task VerifyOrganizerRejectsDestinationWithinWrapperAsync(string root)
+    {
+        const string category = "Nested Destination";
+        const string itemId = "nested-destination";
+        var gameLibrary = Path.Combine(root, "nested-destination-base", "TruboRoms", "roms");
+        Directory.CreateDirectory(gameLibrary);
+        var stableDirectoryName = Path.GetFileName(
+            CatalogArchiveExtractor.BuildGameDestinationPath(
+                gameLibrary,
+                category,
+                itemId));
+        var archivePath = Path.Combine(root, "nested-destination.zip");
+        using (var archive = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+            CreateEntry(
+                archive,
+                $"sistema/roms/{category}/{stableDirectoryName}/data.bin",
+                "NESTED");
+
+        var artifact = CatalogArchiveExtractorTestExtensions.CreateAuthorizedArtifact(archivePath);
+        var extracted = await new CatalogArchiveExtractor().ExtractAsync(
+            archivePath,
+            gameLibrary,
+            category,
+            "Destino interno",
+            artifact,
+            baseDirectoryIsGameLibrary: true,
+            itemId: itemId);
+        Check(extracted.Succeeded, extracted.Message);
+
+        var rejected = false;
+        try
+        {
+            _ = CatalogGamePackageOrganizer.Organize(
+                extracted.DestinationPath,
+                gameLibrary,
+                artifact,
+                category,
+                itemId);
+        }
+        catch (InvalidDataException)
+        {
+            rejected = true;
+        }
+        Check(rejected
+              && Directory.Exists(extracted.DestinationPath)
+              && !Directory.Exists(CatalogGamePackageOrganizer.BuildMarkerDirectory(
+                  gameLibrary,
+                  stableDirectoryName)),
+            "O Organizer publicou dentro do próprio wrapper ou removeu o pacote rejeitado.");
+    }
+
+    private static async Task VerifyAuthenticatedReextractionAfterPartialOrganizationAsync(string root)
+    {
+        const string category = "Authenticated Retry";
+        const string itemId = "authenticated-retry";
+        var archivePath = Path.Combine(root, "authenticated-retry.zip");
+        using (var archive = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+        {
+            CreateEntry(archive, "sistema/roms/Authenticated Retry/Published/first.bin", "FIRST");
+            CreateEntry(archive, "sistema/roms/Authenticated Retry/Published/second.bin", "SECOND");
+        }
+
+        var gameLibrary = Path.Combine(root, "authenticated-retry-base", "TruboRoms", "roms");
+        Directory.CreateDirectory(gameLibrary);
+        var artifact = CatalogArchiveExtractorTestExtensions.CreateAuthorizedArtifact(archivePath);
+        var extractor = new CatalogArchiveExtractor();
+        var firstExtraction = await extractor.ExtractAsync(
+            archivePath,
+            gameLibrary,
+            category,
+            "Retry autenticado",
+            artifact,
+            baseDirectoryIsGameLibrary: true,
+            itemId: itemId);
+        Check(firstExtraction.Succeeded, firstExtraction.Message);
+
+        var firstSource = Path.Combine(
+            firstExtraction.DestinationPath,
+            "sistema",
+            "roms",
+            category,
+            "Published",
+            "first.bin");
+        var firstDestination = Path.Combine(
+            gameLibrary,
+            category,
+            "Published",
+            "first.bin");
+        Directory.CreateDirectory(Path.GetDirectoryName(firstDestination)!);
+        File.Move(firstSource, firstDestination, overwrite: false);
+
+        var markerPath = Path.Combine(
+            firstExtraction.DestinationPath,
+            CatalogArchiveExtractor.CompletionMarkerFileName);
+        var forgedMarker = JsonNode.Parse(await File.ReadAllTextAsync(markerPath))!.AsObject();
+        forgedMarker["ArtifactId"] = new string('0', 32);
+        await File.WriteAllTextAsync(markerPath, forgedMarker.ToJsonString());
+
+        var recoveryPath = await Task.Run(() =>
+            CatalogGamePackageOrganizer.MovePartialExtractionToRecovery(
+                firstExtraction.DestinationPath,
+                gameLibrary,
+                category,
+                itemId));
+        Check(!Directory.Exists(firstExtraction.DestinationPath)
+              && Directory.Exists(recoveryPath)
+              && File.Exists(firstDestination),
+            "O backup confinado do wrapper parcial não foi preservado ou atingiu um arquivo já publicado.");
+
+        var authenticatedExtraction = await extractor.ExtractAsync(
+            archivePath,
+            gameLibrary,
+            category,
+            "Retry autenticado",
+            artifact,
+            baseDirectoryIsGameLibrary: true,
+            itemId: itemId);
+        Check(authenticatedExtraction.Succeeded, authenticatedExtraction.Message);
+        var organized = CatalogGamePackageOrganizer.Organize(
+            authenticatedExtraction.DestinationPath,
+            gameLibrary,
+            artifact,
+            category,
+            itemId);
+        Check(File.Exists(firstDestination)
+              && File.Exists(Path.Combine(
+                  gameLibrary,
+                  category,
+                  "Published",
+                  "second.bin"))
+              && !Directory.Exists(authenticatedExtraction.DestinationPath)
+              && File.Exists(Path.Combine(
+                  organized.MarkerDirectory,
+                  CatalogArchiveExtractor.CompletionMarkerFileName)),
+            "A reextração autenticada não concluiu a publicação idempotente após o retry.");
+        Check(CatalogGamePackageOrganizer.DeleteRecoveryBackup(
+                  recoveryPath,
+                  gameLibrary)
+              && !Directory.Exists(recoveryPath),
+            "O backup de recuperação não foi removido depois da conclusão autenticada.");
+    }
+
+    private static async Task VerifyCorruptArchivePreservesRecoveryBackupAsync(string root)
+    {
+        const string category = "Corrupt Retry";
+        const string itemId = "corrupt-retry";
+        var archivePath = Path.Combine(root, "corrupt-retry.zip");
+        using (var archive = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+            CreateEntry(archive, "sistema/roms/Corrupt Retry/Published/game.bin", "RECOVER");
+
+        var gameLibrary = Path.Combine(root, "corrupt-retry-base", "TruboRoms", "roms");
+        Directory.CreateDirectory(gameLibrary);
+        var artifact = CatalogArchiveExtractorTestExtensions.CreateAuthorizedArtifact(archivePath);
+        var extractor = new CatalogArchiveExtractor();
+        var firstExtraction = await extractor.ExtractAsync(
+            archivePath,
+            gameLibrary,
+            category,
+            "Archive corrompido no retry",
+            artifact,
+            baseDirectoryIsGameLibrary: true,
+            itemId: itemId);
+        Check(firstExtraction.Succeeded, firstExtraction.Message);
+        var recoveryPath = CatalogGamePackageOrganizer.MovePartialExtractionToRecovery(
+            firstExtraction.DestinationPath,
+            gameLibrary,
+            category,
+            itemId);
+        var preservedPayload = Path.Combine(
+            recoveryPath,
+            "sistema",
+            "roms",
+            category,
+            "Published",
+            "game.bin");
+        var preservedMarker = Path.Combine(
+            recoveryPath,
+            CatalogArchiveExtractor.CompletionMarkerFileName);
+        Check(Directory.Exists(recoveryPath)
+              && File.Exists(preservedPayload)
+              && File.Exists(preservedMarker),
+            "O wrapper parcial não chegou íntegro à área de recuperação.");
+
+        await File.WriteAllTextAsync(archivePath, "CORRUPTED");
+        var failedRetry = await extractor.ExtractAsync(
+            archivePath,
+            gameLibrary,
+            category,
+            "Archive corrompido no retry",
+            artifact,
+            baseDirectoryIsGameLibrary: true,
+            itemId: itemId);
+        Check(failedRetry.Status == CatalogArchiveExtractionStatus.Failed
+              && Directory.Exists(recoveryPath)
+              && File.Exists(preservedPayload)
+              && File.Exists(preservedMarker)
+              && !Directory.Exists(firstExtraction.DestinationPath),
+            "Uma reextração com archive corrompido removeu ou alterou o backup recuperável.");
+    }
+
+    private static void CreateEntry(ZipArchive archive, string path, string content)
+    {
+        var entry = archive.CreateEntry(path);
+        using var writer = new StreamWriter(entry.Open(), new UTF8Encoding(false));
+        writer.Write(content);
     }
 
     private static async Task VerifySuccessfulZipAsync(string root)

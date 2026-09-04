@@ -271,6 +271,13 @@ internal sealed class CatalogLocalLibraryService
 
             try
             {
+                if (HasAnyInstalledReceipt(gameLibraryRoot))
+                    return new CatalogLocalSystemInspection(
+                        categoryPath,
+                        CatalogLocalGameStatus.Unsafe,
+                        "Há comprovantes de pacote mesclado na biblioteca; por segurança, nenhum item físico será oferecido como órfão removível.",
+                        catalogItems,
+                        Array.Empty<CatalogLocalOrphanInspection>());
                 var recognizedPaths = BuildRecognizedCategoryPaths(
                     gameLibraryRoot,
                     categoryPath,
@@ -308,12 +315,15 @@ internal sealed class CatalogLocalLibraryService
         ArgumentException.ThrowIfNullOrWhiteSpace(category);
         ArgumentNullException.ThrowIfNull(orphan);
         ArgumentNullException.ThrowIfNull(currentItems);
-        return Task.Run(() =>
+        return Task.Run(() => RunUnderLibraryMutationGate(gameLibraryRoot, () =>
         {
             cancellationToken.ThrowIfCancellationRequested();
             var categoryPath = CatalogArchiveExtractor.BuildCategoryDestinationPath(
                 gameLibraryRoot,
                 category);
+            if (HasAnyInstalledReceipt(gameLibraryRoot))
+                throw new InvalidDataException(
+                    "Há comprovantes de pacote mesclado na biblioteca; a exclusão como órfão foi bloqueada por segurança.");
             var candidatePath = PathIdentity.Canonicalize(orphan.LocalPath);
             EnsureDirectChild(candidatePath, categoryPath);
             if (!Path.GetFileName(candidatePath).Equals(
@@ -359,7 +369,7 @@ internal sealed class CatalogLocalLibraryService
             }
 
             return PathIdentity.DeleteFileExact(candidatePath, categoryPath);
-        }, cancellationToken);
+        }), cancellationToken);
     }
 
     internal Task<bool> DeleteAsync(
@@ -368,7 +378,7 @@ internal sealed class CatalogLocalLibraryService
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(item);
-        return Task.Run(() =>
+        return Task.Run(() => RunUnderLibraryMutationGate(gameLibraryRoot, () =>
         {
             cancellationToken.ThrowIfCancellationRequested();
             var completedDirectDownloads = PrepareDirectDownloads(
@@ -417,7 +427,11 @@ internal sealed class CatalogLocalLibraryService
             }
 
             var artifact = RequireArtifact(item);
-            if (artifact.ExtractPolicy != CatalogExtractPolicy.ExtractArchive)
+            if (IsMergedMarkerDirectory(gameLibraryRoot, inspection.ExpectedPath))
+                throw new InvalidDataException(
+                    "Este pacote foi integrado à pasta mestre de ROMs. Por segurança, exclua seus arquivos pela pasta do sistema.");
+            if (artifact.ExtractPolicy != CatalogExtractPolicy.ExtractArchive
+                && !CatalogArchivePolicy.IsRecognizedArchive(artifact))
                 return PathIdentity.DeleteFileExact(inspection.ExpectedPath, gameLibraryRoot);
 
             EnsureDeletionTreeContainsNoReparsePoints(
@@ -427,12 +441,30 @@ internal sealed class CatalogLocalLibraryService
                 inspection.ExpectedPath,
                 gameLibraryRoot,
                 MaximumDeletionEntries);
-        }, cancellationToken);
+        }), cancellationToken);
     }
+
+    private static bool RunUnderLibraryMutationGate(
+        string gameLibraryRoot,
+        Func<bool> action) => CatalogGamePackageOrganizer.WithLibraryMutationLock(
+        gameLibraryRoot,
+        action);
 
     internal string BuildExpectedPath(string gameLibraryRoot, CatalogItem item)
     {
         var artifact = RequireArtifact(item);
+        if (artifact.ExtractPolicy == CatalogExtractPolicy.ExtractArchive
+            || CatalogArchivePolicy.IsRecognizedArchive(artifact))
+        {
+            var stablePath = CatalogArchiveExtractor.BuildGameDestinationPath(
+                gameLibraryRoot,
+                string.IsNullOrWhiteSpace(item.Category) ? item.CategoryId : item.Category,
+                item.Id);
+            var markerDirectory = CatalogGamePackageOrganizer.BuildMarkerDirectory(
+                gameLibraryRoot,
+                Path.GetFileName(stablePath));
+            return Directory.Exists(markerDirectory) ? markerDirectory : stablePath;
+        }
         return artifact.ExtractPolicy == CatalogExtractPolicy.ExtractArchive
             ? CatalogArchiveExtractor.BuildGameDestinationPath(
                 gameLibraryRoot,
@@ -453,7 +485,8 @@ internal sealed class CatalogLocalLibraryService
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!item.HasAuthorizedArtifact
-                || item.Artifact!.ExtractPolicy != CatalogExtractPolicy.None)
+                || item.Artifact!.ExtractPolicy != CatalogExtractPolicy.None
+                || CatalogArchivePolicy.IsRecognizedArchive(item.Artifact))
                 continue;
 
             string expectedPath;
@@ -541,12 +574,16 @@ internal sealed class CatalogLocalLibraryService
 
             expectedPath = BuildExpectedPath(gameLibraryRoot, item);
             var artifact = RequireArtifact(item);
-            if (artifact.ExtractPolicy == CatalogExtractPolicy.ExtractArchive)
+            if (artifact.ExtractPolicy == CatalogExtractPolicy.ExtractArchive
+                || CatalogArchivePolicy.IsRecognizedArchive(artifact))
                 return InspectExtractedDirectory(
                     expectedPath,
                     item,
                     artifact,
-                    cancellationToken);
+                    cancellationToken,
+                    IsMergedMarkerDirectory(gameLibraryRoot, expectedPath)
+                        ? gameLibraryRoot
+                        : null);
 
             var authorizedDirectMatches = FindCompletedDirectDownloads(
                     completedDirectDownloads,
@@ -650,7 +687,8 @@ internal sealed class CatalogLocalLibraryService
         string expectedPath,
         CatalogItem item,
         CatalogArtifactDescriptor artifact,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? inventoryBaseRoot = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (!Directory.Exists(expectedPath))
@@ -741,10 +779,13 @@ internal sealed class CatalogLocalLibraryService
                     "O inventário da instalação local é inválido.");
 
             previousRelativePath = normalizedRelativePath;
+            var inventoryRoot = inventoryBaseRoot is null
+                ? expectedPath
+                : Path.GetFullPath(inventoryBaseRoot);
             var localFile = Path.GetFullPath(Path.Combine(
-                expectedPath,
+                inventoryRoot,
                 normalizedRelativePath.Replace('/', Path.DirectorySeparatorChar)));
-            EnsureWithin(localFile, expectedPath);
+            EnsureWithin(localFile, inventoryRoot);
             if (!File.Exists(localFile))
                 return new CatalogLocalGameInspection(
                     CatalogLocalGameStatus.Incomplete,
@@ -828,7 +869,8 @@ internal sealed class CatalogLocalLibraryService
         foreach (var item in items)
         {
             if (item.HasAuthorizedArtifact
-                && item.Artifact!.ExtractPolicy != CatalogExtractPolicy.ExtractArchive)
+                && item.Artifact!.ExtractPolicy != CatalogExtractPolicy.ExtractArchive
+                && !CatalogArchivePolicy.IsRecognizedArchive(item.Artifact))
                 continue;
 
             try
@@ -854,6 +896,21 @@ internal sealed class CatalogLocalLibraryService
             }
         }
         return recognized;
+    }
+
+    private static bool HasAnyInstalledReceipt(string gameLibraryRoot)
+    {
+        var receiptRoot = PathIdentity.Canonicalize(Path.Combine(
+            gameLibraryRoot,
+            CatalogGamePackageOrganizer.ReceiptFolderName));
+        if (File.Exists(receiptRoot)) return true;
+        if (!Directory.Exists(receiptRoot)) return false;
+
+        using var receiptTree = PathIdentity.OpenDirectoryTree(receiptRoot);
+        using var entries = Directory.EnumerateFileSystemEntries(receiptRoot).GetEnumerator();
+        var containsAnyEntry = entries.MoveNext();
+        receiptTree.Revalidate();
+        return containsAnyEntry;
     }
 
     private static CategoryChildrenInspection InspectCategoryChildren(
@@ -1083,6 +1140,17 @@ internal sealed class CatalogLocalLibraryService
     private static bool IsCanonicalSha256(string? value) =>
         value is { Length: 64 }
         && value.All(character => character is >= '0' and <= '9' or >= 'a' and <= 'f');
+
+    private static bool IsMergedMarkerDirectory(string gameLibraryRoot, string candidatePath)
+    {
+        var receiptRoot = PathIdentity.Canonicalize(Path.Combine(
+            gameLibraryRoot,
+            CatalogGamePackageOrganizer.ReceiptFolderName));
+        var candidate = PathIdentity.Canonicalize(candidatePath);
+        var prefix = Path.TrimEndingDirectorySeparator(receiptRoot)
+                     + Path.DirectorySeparatorChar;
+        return candidate.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
+    }
 
     private sealed record ExtractionCompletionMarker(
         int SchemaVersion,

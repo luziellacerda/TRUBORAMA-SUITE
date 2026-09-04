@@ -18,6 +18,16 @@ internal sealed record CatalogPackageTextTransformation(
 internal static partial class CatalogPackageTextSanitizer
 {
     internal const int MaximumInspectableBytes = 4 * 1024 * 1024;
+    private const string BeginnerTutorial = """
+COMO USAR A PASTA TRUBOROMS
+
+1. Abra a unidade escolhida para guardar seus jogos.
+2. Localize a pasta TruboRoms e, dentro dela, abra a pasta roms.
+3. Cada sistema possui sua própria pasta dentro de TruboRoms\roms.
+4. O Turborama organiza automaticamente o jogo baixado na pasta correta.
+5. Não mova nem renomeie as pastas depois da instalação, pois o programa poderá deixar de encontrar o jogo.
+6. Para conferir ou excluir jogos instalados, abra a opção Jogos locais.
+""";
 
     internal static bool ShouldInspect(string relativePath, long declaredSize) =>
         declaredSize is >= 0 and <= MaximumInspectableBytes
@@ -35,10 +45,18 @@ internal static partial class CatalogPackageTextSanitizer
             return brandedFileName || ContainsBrandBytes(sourceBytes)
                 ? new(CatalogPackageTextDisposition.Drop, relativePath, null)
                 : new(CatalogPackageTextDisposition.Preserve, relativePath, sourceBytes);
-        if (!brandedFileName && !BrandRegex().IsMatch(text))
+        var requiresRewrite = brandedFileName
+                              || BrandRegex().IsMatch(text)
+                              || OldSiteRegex().IsMatch(text)
+                              || OldPhoneRegex().IsMatch(text)
+                              || OldInstallInstructionRegex().IsMatch(text);
+        if (!requiresRewrite)
             return new(CatalogPackageTextDisposition.Preserve, relativePath, sourceBytes);
 
         var rewritten = BrandRegex().Replace(text, "Turbobox");
+        rewritten = OldInstallInstructionRegex().Replace(rewritten, BeginnerTutorial.Trim());
+        rewritten = OldSiteRegex().Replace(rewritten, "https://turbobox.lzgames.com.br/");
+        rewritten = OldPhoneRegex().Replace(rewritten, "82993474007");
         if (string.IsNullOrWhiteSpace(rewritten))
             return new(CatalogPackageTextDisposition.Drop, relativePath, null);
 
@@ -113,4 +131,13 @@ internal static partial class CatalogPackageTextSanitizer
 
     [GeneratedRegex("Sambox", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex BrandRegex();
+
+    [GeneratedRegex(@"https?://(?:www\.)?turbobox\.club/?", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex OldSiteRegex();
+
+    [GeneratedRegex(@"(?:\+?55\s*)?\(?21\)?\s*9?\s*9795[-\s]*8935", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex OldPhoneRegex();
+
+    [GeneratedRegex(@"Basta\s+descompactar\s+dentro\s+da\s+pasta\s+do\s+Turbobox,?\s+se\s+pedir\s+para\s+substituir\s+arquivos\s+pode\s+confirmar", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex OldInstallInstructionRegex();
 }
