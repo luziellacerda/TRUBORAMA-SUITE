@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Xml.Linq;
+using TurboBoxManager;
 using TurboBoxManager.Catalog;
 using TurboBoxManager.CatalogVerifier;
 using TurboBoxManager.Licensing;
@@ -143,6 +144,32 @@ if (args is ["--verify-local-library"])
         if (Directory.Exists(localLibraryRoot))
             Directory.Delete(localLibraryRoot, recursive: true);
     }
+    return;
+}
+
+if (args is ["--verify-archive-extraction"])
+{
+    var root = Path.Combine(Path.GetTempPath(), "TurboramaArchiveVerifier-" + Guid.NewGuid().ToString("N"));
+    Directory.CreateDirectory(root);
+    try
+    {
+        await ArchiveExtractionVerifier.RunAsync(root);
+        Console.WriteLine("PASS: extração e correção de documentos Sambox verificadas.");
+    }
+    finally { if (Directory.Exists(root)) Directory.Delete(root, recursive: true); }
+    return;
+}
+
+if (args is ["--verify-music"])
+{
+    var tracks = EmbeddedMusicLibrary.PreparePlaylist(CancellationToken.None);
+    Assert(tracks.Count == 9, "A playlist interna deve possuir nove faixas.");
+    var newTrack = tracks.Single(path => Path.GetFileName(path).Equals("Aperta Start.m4a", StringComparison.Ordinal));
+    Assert(new FileInfo(newTrack).Length == 3_274_433, "A faixa Aperta Start possui tamanho inesperado.");
+    Assert(Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(newTrack))).Equals(
+        "0ECA8F163386DC3590BBDA679F7998892406BB89A0FDF41C2398BFB8C8FE7A2C", StringComparison.Ordinal),
+        "A faixa Aperta Start falhou na verificação SHA-256.");
+    Console.WriteLine("PASS: Aperta Start incorporada e validada na playlist interna.");
     return;
 }
 

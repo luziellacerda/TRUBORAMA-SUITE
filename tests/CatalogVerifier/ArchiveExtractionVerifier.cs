@@ -11,6 +11,7 @@ internal static class ArchiveExtractionVerifier
     {
         Directory.CreateDirectory(root);
         await VerifySuccessfulZipAsync(root);
+        await VerifySamboxTextCleanupAsync(root);
         await VerifyRestartAndRedownloadRecoversWithRetainedMarkerAsync(root);
         await VerifyNamedGameLibraryAsync(root);
         await VerifyTraversalIsBlockedAsync(root);
@@ -31,6 +32,38 @@ internal static class ArchiveExtractionVerifier
         await VerifyExtractPolicyNoneIsRejectedAsync(root);
         await VerifyForgedRecoveryMarkerIsRejectedAsync(root);
         await VerifyLongPathSegmentsAreBlockedAsync(root);
+    }
+
+    private static async Task VerifySamboxTextCleanupAsync(string root)
+    {
+        var archivePath = Path.Combine(root, "sambox-cleanup.zip");
+        using (var archive = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+        {
+            var readme = archive.CreateEntry("docs/Sambox-leia-me.txt");
+            await using (var stream = readme.Open())
+            await using (var writer = new StreamWriter(stream, new UTF8Encoding(false)))
+                await writer.WriteAsync("Pacote Sambox pronto para uso.");
+            var game = archive.CreateEntry("roms/game.iso");
+            await using var gameStream = game.Open();
+            await gameStream.WriteAsync("ROM-DATA"u8.ToArray());
+        }
+
+        var destinationBase = Path.Combine(root, "sambox-cleanup-base");
+        Directory.CreateDirectory(destinationBase);
+        var result = await new CatalogArchiveExtractor().ExtractAsync(
+            archivePath, destinationBase, "PlayStation 2", "Limpeza de documento",
+            itemId: "sambox-cleanup");
+
+        Check(result.Succeeded, result.Message);
+        var correctedPath = Path.Combine(result.DestinationPath, "docs", "Turbobox-leia-me.txt");
+        Check(File.Exists(correctedPath), "O documento Sambox não foi renomeado.");
+        Check(File.ReadAllText(correctedPath).Contains("Turbobox", StringComparison.Ordinal),
+            "O conteúdo Sambox não foi corrigido para Turbobox.");
+        Check(!Directory.EnumerateFiles(result.DestinationPath, "*.txt", SearchOption.AllDirectories)
+                .Any(path => File.ReadAllText(path).Contains("Sambox", StringComparison.OrdinalIgnoreCase)),
+            "Permaneceu referência Sambox nos documentos extraídos.");
+        Check(File.Exists(Path.Combine(result.DestinationPath, "roms", "game.iso")),
+            "O arquivo do jogo foi alterado pela limpeza de documentos.");
     }
 
     private static async Task VerifySuccessfulZipAsync(string root)

@@ -4023,9 +4023,9 @@ internal static class WpfTemplateVerifier
     private static void VerifyEmbeddedMusicResources()
     {
         var tracks = EmbeddedMusicLibrary.Tracks;
-        if (tracks.Count != 8)
+        if (tracks.Count != 9)
             throw new InvalidDataException(
-                "A playlist interna precisa conter as oito músicas únicas aprovadas.");
+                "A playlist interna precisa conter as nove músicas únicas aprovadas.");
         var resourceNames = new HashSet<string>(StringComparer.Ordinal);
         var fileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var hashes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

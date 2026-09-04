@@ -919,7 +919,7 @@ else {
     if ($targetFramework -ne 'net10.0-windows') {
         Add-Failure $failures "TargetFramework de producao inesperado: '$targetFramework'."
     }
-    if ($version -ne '2.0.1') {
+    if ($version -ne '2.0.2') {
         Add-Failure $failures "Versao de producao inesperada: '$version'."
     }
     if ($packageReferences.Count -ne 2 -or $sharpCompress.Count -ne 1 -or

@@ -530,7 +530,7 @@ foreach ($required in @(
 $signature = $null
 if (Test-Path -LiteralPath $exe -PathType Leaf) {
     $version = [Diagnostics.FileVersionInfo]::GetVersionInfo($exe)
-    if ($version.FileVersion -ne '2.0.1.0') {
+    if ($version.FileVersion -ne '2.0.2.0') {
         Add-Failure "FileVersion inesperada: $($version.FileVersion)"
     }
     $signature = Microsoft.PowerShell.Security\Get-AuthenticodeSignature `
@@ -580,7 +580,7 @@ if ((Test-Path -LiteralPath $exe -PathType Leaf) -and
         }
         else {
             $applicationPackage = $applicationPackages[0]
-            if ([string]$applicationPackage.versionInfo -ne '2.0.1') {
+            if ([string]$applicationPackage.versionInfo -ne '2.0.2') {
                 Add-Failure "Versao inesperada no SBOM: $($applicationPackage.versionInfo)"
             }
             $exeSha256 = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash
@@ -682,7 +682,7 @@ if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
         Add-Failure 'Schema do manifesto de Release invalido.'
     }
     if ($manifest.product -ne 'TURBORAMA_SUITE' -or
-        $manifest.version -ne '2.0.1' -or
+        $manifest.version -ne '2.0.2' -or
         $manifest.runtime -ne 'win-x64' -or
         $manifest.selfContained -ne $true) {
         Add-Failure 'Identidade, versao ou runtime do manifesto de Release e invalido.'
@@ -748,9 +748,9 @@ if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
             }
         }
         if ($manifest.source.dirty -ne $false -or
-            [string]$manifest.source.tag -ne 'v2.0.1' -or
+            [string]$manifest.source.tag -ne 'v2.0.2' -or
             [string]$manifest.source.branch -ne 'main') {
-            Add-Failure 'Manifesto assinado exige snapshot limpo, branch main e tag v2.0.1.'
+            Add-Failure 'Manifesto assinado exige snapshot limpo, branch main e tag v2.0.2.'
         }
         $manifestRepository = ([string]$manifest.source.repository).TrimEnd('/')
         if ($manifestRepository -notin @(

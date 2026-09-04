@@ -293,6 +293,8 @@ public sealed class CatalogArchiveExtractor
                 requireNewLeaf: true,
                 leafDeleteAccess: true);
 
+            var publishedRelativePaths = new HashSet<string>(
+                OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
             foreach (var plan in plans)
             {
                 deadline.ThrowIfExpired(operationToken);
@@ -310,6 +312,75 @@ public sealed class CatalogArchiveExtractor
                     || plan.Entry.CompressedSize != plan.DeclaredCompressedSize)
                     throw new InvalidDataException(
                         $"Os metadados da entrada '{plan.Entry.Key}' mudaram após o planejamento.");
+
+                if (CatalogPackageTextSanitizer.ShouldInspect(plan.RelativePath, plan.DeclaredSize))
+                {
+                    await using var textInput = await plan.Entry.OpenEntryStreamAsync(operationToken);
+                    var sourceBytes = new byte[checked((int)plan.DeclaredSize)];
+                    var sourceOffset = 0;
+                    while (sourceOffset < sourceBytes.Length)
+                    {
+                        deadline.ThrowIfExpired(operationToken);
+                        var read = await textInput.ReadAsync(
+                            sourceBytes.AsMemory(sourceOffset), operationToken);
+                        if (read == 0) break;
+                        sourceOffset += read;
+                    }
+                    if (sourceOffset != sourceBytes.Length
+                        || await textInput.ReadAsync(new byte[1], operationToken) != 0)
+                        throw new InvalidDataException(
+                            $"A entrada '{plan.Entry.Key}' não corresponde ao tamanho declarado.");
+
+                    var transformed = CatalogPackageTextSanitizer.Transform(
+                        plan.RelativePath, sourceBytes);
+                    extractedBytes = checked(extractedBytes + sourceBytes.LongLength);
+                    extractedFileCount++;
+                    if (transformed.Disposition == CatalogPackageTextDisposition.Drop)
+                        continue;
+
+                    var publishedRelativePath = NormalizeArchiveEntryPath(
+                        transformed.RelativePath,
+                        _options.MaximumPathDepth,
+                        _options.MaximumPathSegmentLength,
+                        _options.MaximumRelativePathLength);
+                    if (!publishedRelativePaths.Add(publishedRelativePath))
+                        throw new InvalidDataException(
+                            "A correção do documento de texto gerou um caminho duplicado.");
+                    var publishedPath = Path.GetFullPath(Path.Combine(stagingPath, publishedRelativePath));
+                    EnsureWithinRoot(publishedPath, stagingPath, "O documento corrigido saiu da área segura.");
+                    _ = destinationTree.EnsureDirectory(Path.GetDirectoryName(publishedPath)!);
+                    var publishedBytes = transformed.PublishedBytes
+                        ?? throw new InvalidDataException("O documento corrigido não possui conteúdo.");
+                    await using var publishedOutput = destinationTree.OpenFile(
+                        publishedPath,
+                        FileMode.CreateNew,
+                        FileAccess.ReadWrite,
+                        FileShare.Read,
+                        _options.CopyBufferSize,
+                        FileOptions.Asynchronous | FileOptions.SequentialScan);
+                    await publishedOutput.WriteAsync(publishedBytes, operationToken);
+                    publishedOutput.Flush(flushToDisk: true);
+                    publishedOutput.Position = 0;
+                    var publishedHash = Convert.ToHexString(
+                            await SHA256.HashDataAsync(publishedOutput, operationToken))
+                        .ToLowerInvariant();
+                    publishedOutput.Position = 0;
+                    var correctedDocumentIdentity = PathIdentity.CaptureFileIdentity(
+                        publishedOutput.SafeFileHandle,
+                        publishedPath);
+                    destinationTree.RetainFile(
+                        publishedOutput.SafeFileHandle,
+                        publishedPath,
+                        correctedDocumentIdentity);
+                    retainedExtractionInventory.Add(new ExtractionInventoryEntry(
+                        publishedRelativePath.Replace(Path.DirectorySeparatorChar, '/'),
+                        publishedBytes.LongLength,
+                        publishedHash));
+                    continue;
+                }
+
+                if (!publishedRelativePaths.Add(plan.RelativePath))
+                    throw new InvalidDataException("O pacote contém caminhos de saída duplicados.");
 
                 var outputDirectory = Path.GetDirectoryName(outputPath)!;
                 _ = destinationTree.EnsureDirectory(outputDirectory);
@@ -398,8 +469,7 @@ public sealed class CatalogArchiveExtractor
             retainedExtractionInventory.Sort((left, right) =>
                 string.CompareOrdinal(left.RelativePath, right.RelativePath));
             var extractionInventory = retainedExtractionInventory.ToArray();
-            if (extractionInventory.Length != plans.FileCount
-                || extractionInventory.Sum(entry => entry.Length) != extractedBytes)
+            if (extractionInventory.Length > plans.FileCount)
                 throw new InvalidDataException(
                     "O inventário final não corresponde ao conteúdo extraído.");
             WriteCompletionMarker(
@@ -1243,6 +1313,43 @@ public sealed class CatalogArchiveExtractor
                     throw new InvalidDataException(
                         $"Os metadados da entrada '{plan.Entry.Key}' mudaram durante a recuperação.");
 
+                if (CatalogPackageTextSanitizer.ShouldInspect(plan.RelativePath, plan.DeclaredSize))
+                {
+                    await using var textInput = await plan.Entry.OpenEntryStreamAsync(cancellationToken);
+                    var sourceBytes = new byte[checked((int)plan.DeclaredSize)];
+                    var sourceOffset = 0;
+                    while (sourceOffset < sourceBytes.Length)
+                    {
+                        deadline.ThrowIfExpired(cancellationToken);
+                        var read = await textInput.ReadAsync(
+                            sourceBytes.AsMemory(sourceOffset), cancellationToken);
+                        if (read == 0) break;
+                        sourceOffset += read;
+                    }
+                    if (sourceOffset != sourceBytes.Length
+                        || await textInput.ReadAsync(new byte[1], cancellationToken) != 0)
+                        throw new InvalidDataException(
+                            $"A entrada '{plan.Entry.Key}' não corresponde ao tamanho declarado durante a recuperação.");
+                    totalBytes = checked(totalBytes + sourceBytes.LongLength);
+                    var transformed = CatalogPackageTextSanitizer.Transform(
+                        plan.RelativePath, sourceBytes);
+                    if (transformed.Disposition != CatalogPackageTextDisposition.Drop)
+                    {
+                        var publishedBytes = transformed.PublishedBytes
+                            ?? throw new InvalidDataException("O documento corrigido não possui conteúdo.");
+                        inventory.Add(new ExtractionInventoryEntry(
+                            NormalizeArchiveEntryPath(
+                                    transformed.RelativePath,
+                                    _options.MaximumPathDepth,
+                                    _options.MaximumPathSegmentLength,
+                                    _options.MaximumRelativePathLength)
+                                .Replace(Path.DirectorySeparatorChar, '/'),
+                            publishedBytes.LongLength,
+                            Convert.ToHexString(SHA256.HashData(publishedBytes)).ToLowerInvariant()));
+                    }
+                    continue;
+                }
+
                 await using var input = await plan.Entry.OpenEntryStreamAsync(cancellationToken);
                 using var hasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
                 long entryBytes = 0;
@@ -1286,7 +1393,7 @@ public sealed class CatalogArchiveExtractor
             CryptographicOperations.ZeroMemory(buffer);
         }
 
-        if (inventory.Count != plans.FileCount
+        if (inventory.Count > plans.FileCount
             || totalBytes != plans.TotalUncompressedBytes)
             throw new InvalidDataException(
                 "O inventário autenticado não corresponde aos metadados do pacote.");

@@ -7,9 +7,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Turborama</AssemblyName>
     <RootNamespace>TurboBoxManager</RootNamespace>
-    <Version>2.0.1</Version>
-    <AssemblyVersion>2.0.1.0</AssemblyVersion>
-    <FileVersion>2.0.1.0</FileVersion>
+    <Version>2.0.2</Version>
+    <AssemblyVersion>2.0.2.0</AssemblyVersion>
+    <FileVersion>2.0.2.0</FileVersion>
     <Product>Turborama</Product>
     <Company>Turborama</Company>
     <Description>Central Turborama de sistemas, biblioteca e downloads.</Description>
@@ -102,5 +102,7 @@
                       LogicalName="Turborama.Music.Track07.mp3" />
     <EmbeddedResource Include="Assets\Music\Turborama - Faixa 08.mp3"
                       LogicalName="Turborama.Music.Track08.mp3" />
+    <EmbeddedResource Include="Assets\Music\Aperta Start.m4a"
+                      LogicalName="Turborama.Music.ApertaStart.m4a" />
   </ItemGroup>
 </Project>
