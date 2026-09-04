@@ -45,7 +45,19 @@ jobs:
 
       - name: Build and gate unsigned evidence
         shell: pwsh
-        run: .\tools\Build-Production.ps1 -UnsignedStaging -OutputRoot .\artifacts -DotNetPath dotnet
+        run: |
+          .\tools\Build-Production.ps1 `
+            -UnsignedStaging `
+            -OutputRoot .\artifacts `
+            -DotNetPath dotnet `
+            -AuthorityConfigurationPath .\authority\public\suite-authority-envelope.json `
+            -AuthorityConfigurationSha256 20F7F066B654AAD700C4733C9B011495A2BB9B52E7A8B3A77E806CDEDEBFA3E6 `
+            -AuthorityIssuerSpkiPath .\authority\public\suite-authority-issuer.spki.der `
+            -AuthorityIssuerSpkiSha256 9BA572CC64CCFD9DCADA0699AB5E4F43E4662F84C1A82908A1125AA56C987B3A `
+            -ContentAuthorityConfigurationPath .\authority\public\content-authority-envelope.json `
+            -ContentAuthorityConfigurationSha256 56E7A1BD100E5B5A9CD1109C0B90EDFCAFAF6C1497AE3113551684D872A0BA07 `
+            -ContentAuthorityIssuerSpkiPath .\authority\public\content-authority-issuer.spki.der `
+            -ContentAuthorityIssuerSpkiSha256 65631E0AAA9EFB75991098F7A68DDA462004E5BBC183AE6BF4FF9256397A8DC5
 
       - name: Upload unsigned CI evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

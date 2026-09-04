@@ -49,7 +49,10 @@ param(
     [ValidatePattern('\A(?:|[0-9a-f]{64})\z')]
     [string]$ContentAuthorityConfigurationSha256 = '',
 
-    [string]$ContentAuthorityIssuerSpkiBase64 = ''
+    [string]$ContentAuthorityIssuerSpkiBase64 = '',
+
+    [Parameter(Mandatory)]
+    [string]$AuthorityVerifierAssemblyPath
 )
 
 Set-StrictMode -Version Latest
@@ -121,7 +124,18 @@ $exePath = Join-Path $package 'Turborama.exe'
 if (-not (Test-Path -LiteralPath $exePath -PathType Leaf)) {
     throw 'Turborama.exe ausente no pacote.'
 }
-$signature = Get-AuthenticodeSignature -LiteralPath $exePath
+$signature = Microsoft.PowerShell.Security\Get-AuthenticodeSignature `
+    -LiteralPath $exePath
+if ($Unsigned) {
+    if ($signature.Status -ne 'NotSigned') {
+        throw "Um staging unsigned precisa estar sem Authenticode: $($signature.Status)"
+    }
+}
+elseif ($signature.Status -ne 'Valid' -or
+    $null -eq $signature.SignerCertificate -or
+    $null -eq $signature.TimeStamperCertificate) {
+    throw 'Um candidato assinado exige Authenticode valido e timestamp verificavel.'
+}
 $signatureBlock = [ordered]@{
     required = -not $Unsigned.IsPresent
     status = [string]$signature.Status
@@ -142,12 +156,8 @@ $hasContentAuthorityInput = `
     -not [string]::IsNullOrWhiteSpace($ContentAuthorityConfigurationBase64) -or
     -not [string]::IsNullOrWhiteSpace($ContentAuthorityConfigurationSha256) -or
     -not [string]::IsNullOrWhiteSpace($ContentAuthorityIssuerSpkiBase64)
-if ($Unsigned -and ($hasAuthorityInput -or $hasContentAuthorityInput)) {
-    throw 'Um staging unsigned nao pode declarar configuracao de autoridade.'
-}
-if (-not $Unsigned -and (-not $hasAuthorityInput -or
-        -not $hasContentAuthorityInput)) {
-    throw 'Um candidato assinado exige as duas autoridades capturadas.'
+if (-not $hasAuthorityInput -or -not $hasContentAuthorityInput) {
+    throw 'Pacotes signed e unsigned exigem as duas autoridades publicas capturadas.'
 }
 
 if ($hasContentAuthorityInput) {
@@ -278,6 +288,28 @@ if ($hasAuthorityInput) {
         [Security.Cryptography.CryptographicOperations]::ZeroMemory($authorityConfigurationBytes)
         [Security.Cryptography.CryptographicOperations]::ZeroMemory($authorityIssuerSpkiBytes)
     }
+}
+
+$verifierAssembly = (Resolve-Path -LiteralPath $AuthorityVerifierAssemblyPath).Path
+$verifierInfo = Get-Item -LiteralPath $verifierAssembly -Force
+if ($verifierInfo.PSIsContainer -or
+    ($verifierInfo.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+    throw 'O verificador criptografico da autoridade nao e um arquivo regular.'
+}
+$authorityVerificationOutput = @(& $DotNetPath $verifierAssembly `
+    '--verify-authority-base64' `
+    $AuthorityConfigurationBase64 $AuthorityIssuerSpkiBase64 `
+    $AuthorityConfigurationSha256 2>&1)
+if ($LASTEXITCODE -ne 0) {
+    throw 'A assinatura, identidade HTTPS ou vigencia da autoridade e invalida.'
+}
+$contentAuthorityVerificationOutput = @(& $DotNetPath $verifierAssembly `
+    '--verify-content-authority-base64' `
+    $ContentAuthorityConfigurationBase64 `
+    $ContentAuthorityIssuerSpkiBase64 `
+    $ContentAuthorityConfigurationSha256 2>&1)
+if ($LASTEXITCODE -ne 0) {
+    throw 'A assinatura ou vigencia da autoridade de conteudo e invalida.'
 }
 
 $files = Get-ChildItem -LiteralPath $package -Recurse -File -Force |

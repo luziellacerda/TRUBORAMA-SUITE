@@ -181,17 +181,15 @@ $toolchainPinParameters = @(
 $hasAnyToolchainPin = @($toolchainPinParameters | Where-Object {
     -not [string]::IsNullOrWhiteSpace($_)
 }).Count -ne 0
-
-if ($AllowUnsigned -and ($hasAuthorityInput -or $hasContentAuthorityInput)) {
-    Add-Failure 'Um staging unsigned nao pode receber configuracao de autoridade.'
-}
 if ($AllowUnsigned -and $hasAnyToolchainPin) {
     Add-Failure 'Um staging unsigned nao pode receber pins de toolchain de producao.'
 }
-if (-not $AllowUnsigned) {
-    if ([string]::IsNullOrWhiteSpace($CertificateThumbprint) -or
-        [string]::IsNullOrWhiteSpace($TimestampCertificateThumbprint) -or
-        -not $hasAuthorityInput -or
+if (-not $AllowUnsigned -and
+    ([string]::IsNullOrWhiteSpace($CertificateThumbprint) -or
+     [string]::IsNullOrWhiteSpace($TimestampCertificateThumbprint))) {
+    Add-Failure 'O gate assinado exige os thumbprints de Authenticode e timestamp.'
+}
+if (-not $hasAuthorityInput -or
         -not $hasContentAuthorityInput -or
         [string]::IsNullOrWhiteSpace($AuthorityConfigurationBase64) -or
         [string]::IsNullOrWhiteSpace($AuthorityConfigurationSha256) -or
@@ -200,9 +198,9 @@ if (-not $AllowUnsigned) {
         [string]::IsNullOrWhiteSpace($ContentAuthorityConfigurationSha256) -or
         [string]::IsNullOrWhiteSpace($ContentAuthorityIssuerSpkiBase64) -or
         [string]::IsNullOrWhiteSpace($AuthorityVerifierAssemblyPath)) {
-        Add-Failure 'O gate assinado exige thumbprint, autoridade Base64 e o verificador compilado.'
-    }
-    else {
+    Add-Failure 'O gate exige as duas autoridades publicas completas e o verificador compilado.'
+}
+else {
         try {
             if ($AuthorityConfigurationBase64.Length -gt 10924 -or
                 $AuthorityIssuerSpkiBase64.Length -gt 1368 -or
@@ -353,11 +351,11 @@ if (-not $AllowUnsigned) {
             Add-Failure "A autoridade de conteudo nao pode ser capturada: $($_.Exception.Message)"
         }
     }
-    if (@($toolchainPinParameters | Where-Object {
+if (-not $AllowUnsigned -and
+    @($toolchainPinParameters | Where-Object {
             [string]::IsNullOrWhiteSpace($_)
         }).Count -ne 0) {
-        Add-Failure 'O gate assinado exige todos os pins independentes de toolchain.'
-    }
+    Add-Failure 'O gate assinado exige todos os pins independentes de toolchain.'
 }
 
 if (-not ('Turborama.Release.BinaryNeedleScanner' -as [type])) {
@@ -532,10 +530,11 @@ foreach ($required in @(
 $signature = $null
 if (Test-Path -LiteralPath $exe -PathType Leaf) {
     $version = [Diagnostics.FileVersionInfo]::GetVersionInfo($exe)
-    if ($version.FileVersion -ne '2.0.0.0') {
+    if ($version.FileVersion -ne '2.0.1.0') {
         Add-Failure "FileVersion inesperada: $($version.FileVersion)"
     }
-    $signature = Get-AuthenticodeSignature -LiteralPath $exe
+    $signature = Microsoft.PowerShell.Security\Get-AuthenticodeSignature `
+        -LiteralPath $exe
     if ($AllowUnsigned -and $signature.Status -ne 'NotSigned') {
         Add-Failure "O staging unsigned precisa estar sem assinatura: $($signature.Status)"
     }
@@ -581,7 +580,7 @@ if ((Test-Path -LiteralPath $exe -PathType Leaf) -and
         }
         else {
             $applicationPackage = $applicationPackages[0]
-            if ([string]$applicationPackage.versionInfo -ne '2.0.0') {
+            if ([string]$applicationPackage.versionInfo -ne '2.0.1') {
                 Add-Failure "Versao inesperada no SBOM: $($applicationPackage.versionInfo)"
             }
             $exeSha256 = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash
@@ -683,7 +682,7 @@ if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
         Add-Failure 'Schema do manifesto de Release invalido.'
     }
     if ($manifest.product -ne 'TURBORAMA_SUITE' -or
-        $manifest.version -ne '2.0.0' -or
+        $manifest.version -ne '2.0.1' -or
         $manifest.runtime -ne 'win-x64' -or
         $manifest.selfContained -ne $true) {
         Add-Failure 'Identidade, versao ou runtime do manifesto de Release e invalido.'
@@ -694,11 +693,11 @@ if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
     if (-not $AllowUnsigned -and $manifest.unsigned -ne $false) {
         Add-Failure 'Um candidato assinado precisa declarar unsigned=false exatamente.'
     }
-    if (-not $AllowUnsigned -and $null -eq $manifest.authority) {
-        Add-Failure 'Pacote de producao sem hashes da configuracao de autoridade.'
+    if ($null -eq $manifest.authority) {
+        Add-Failure 'Pacote sem hashes da configuracao de autoridade.'
     }
-    if (-not $AllowUnsigned -and $null -eq $manifest.contentAuthority) {
-        Add-Failure 'Pacote de producao sem hashes da autoridade de conteudo.'
+    if ($null -eq $manifest.contentAuthority) {
+        Add-Failure 'Pacote sem hashes da autoridade de conteudo.'
     }
     $expectedCommit = (& $GitPath -c 'core.fsmonitor=false' -c 'core.hooksPath=NUL' `
         -C $root rev-parse HEAD).Trim()
@@ -724,8 +723,14 @@ if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
                 Add-Failure "Staging unsigned declarou pin de toolchain: $unsignedToolchainField"
             }
         }
+        if ($manifest.authenticode.required -ne $false -or
+            [string]$manifest.authenticode.status -ne 'NotSigned' -or
+            $null -ne $manifest.authenticode.signerThumbprint -or
+            $null -ne $manifest.authenticode.timestampThumbprint) {
+            Add-Failure 'Bloco Authenticode do manifesto unsigned e invalido ou inconsistente.'
+        }
     }
-    if (-not $AllowUnsigned) {
+    else {
         $expectedToolchainPins = [ordered]@{
             powerShellExecutableSha256 = $PowerShellSha256
             powerShellHomeTreeSha256 = $PowerShellHomeTreeSha256
@@ -743,9 +748,9 @@ if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
             }
         }
         if ($manifest.source.dirty -ne $false -or
-            [string]$manifest.source.tag -ne 'v2.0.0' -or
+            [string]$manifest.source.tag -ne 'v2.0.1' -or
             [string]$manifest.source.branch -ne 'main') {
-            Add-Failure 'Manifesto assinado exige snapshot limpo, branch main e tag v2.0.0.'
+            Add-Failure 'Manifesto assinado exige snapshot limpo, branch main e tag v2.0.1.'
         }
         $manifestRepository = ([string]$manifest.source.repository).TrimEnd('/')
         if ($manifestRepository -notin @(
@@ -764,40 +769,40 @@ if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
                 [StringComparison]::OrdinalIgnoreCase)) {
             Add-Failure 'Bloco Authenticode do manifesto e invalido ou inconsistente.'
         }
+    }
 
-        if ($null -ne $manifest.authority -and
-            -not [string]::IsNullOrWhiteSpace($authorityConfigurationHash) -and
-            -not [string]::IsNullOrWhiteSpace($authorityIssuerSpkiHash)) {
-            if (-not ([string]$manifest.authority.configurationSha256).Equals(
-                    $AuthorityConfigurationSha256,
-                    [StringComparison]::Ordinal) -or
-                -not ([string]$manifest.authority.issuerSpkiSha256).Equals(
-                    $authorityIssuerSpkiHash,
-                    [StringComparison]::Ordinal)) {
-                Add-Failure 'Hashes da autoridade no manifesto nao correspondem aos bytes incorporados.'
-            }
+    if ($null -ne $manifest.authority -and
+        -not [string]::IsNullOrWhiteSpace($authorityConfigurationHash) -and
+        -not [string]::IsNullOrWhiteSpace($authorityIssuerSpkiHash)) {
+        if (-not ([string]$manifest.authority.configurationSha256).Equals(
+                $AuthorityConfigurationSha256,
+                [StringComparison]::Ordinal) -or
+            -not ([string]$manifest.authority.issuerSpkiSha256).Equals(
+                $authorityIssuerSpkiHash,
+                [StringComparison]::Ordinal)) {
+            Add-Failure 'Hashes da autoridade no manifesto nao correspondem aos bytes incorporados.'
         }
-        else {
-            Add-Failure 'Os bytes congelados da autoridade nao foram fornecidos ao gate.'
-        }
+    }
+    else {
+        Add-Failure 'Os bytes congelados da autoridade nao foram fornecidos ao gate.'
+    }
 
-        if ($null -ne $manifest.contentAuthority -and
-            -not [string]::IsNullOrWhiteSpace(
-                $contentAuthorityConfigurationHash) -and
-            -not [string]::IsNullOrWhiteSpace(
-                $contentAuthorityIssuerSpkiHash)) {
-            if (-not ([string]$manifest.contentAuthority.configurationSha256).Equals(
-                    $ContentAuthorityConfigurationSha256,
-                    [StringComparison]::Ordinal) -or
-                -not ([string]$manifest.contentAuthority.issuerSpkiSha256).Equals(
-                    $contentAuthorityIssuerSpkiHash,
-                    [StringComparison]::Ordinal)) {
-                Add-Failure 'Hashes da autoridade de conteudo nao correspondem aos bytes incorporados.'
-            }
+    if ($null -ne $manifest.contentAuthority -and
+        -not [string]::IsNullOrWhiteSpace(
+            $contentAuthorityConfigurationHash) -and
+        -not [string]::IsNullOrWhiteSpace(
+            $contentAuthorityIssuerSpkiHash)) {
+        if (-not ([string]$manifest.contentAuthority.configurationSha256).Equals(
+                $ContentAuthorityConfigurationSha256,
+                [StringComparison]::Ordinal) -or
+            -not ([string]$manifest.contentAuthority.issuerSpkiSha256).Equals(
+                $contentAuthorityIssuerSpkiHash,
+                [StringComparison]::Ordinal)) {
+            Add-Failure 'Hashes da autoridade de conteudo nao correspondem aos bytes incorporados.'
         }
-        else {
-            Add-Failure 'A autoridade de conteudo congelada nao foi fornecida ao gate.'
-        }
+    }
+    else {
+        Add-Failure 'A autoridade de conteudo congelada nao foi fornecida ao gate.'
     }
 
     $listed = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
@@ -991,7 +996,7 @@ if (Test-Path -LiteralPath $exe -PathType Leaf) {
         Add-Failure 'Dominio de origem privado encontrado no executavel.'
     }
 
-    if (-not $AllowUnsigned -and $authorityEmbeddedValues.Count -eq 3) {
+    if ($authorityEmbeddedValues.Count -eq 3) {
         foreach ($embeddedValue in $authorityEmbeddedValues) {
             $embeddedNeedle = [Text.Encoding]::ASCII.GetBytes($embeddedValue)
             if ([Turborama.Release.BinaryNeedleScanner]::FindFirst(
@@ -1001,8 +1006,7 @@ if (Test-Path -LiteralPath $exe -PathType Leaf) {
             }
         }
     }
-    if (-not $AllowUnsigned -and
-        $contentAuthorityEmbeddedValues.Count -eq 3) {
+    if ($contentAuthorityEmbeddedValues.Count -eq 3) {
         foreach ($embeddedValue in $contentAuthorityEmbeddedValues) {
             $embeddedNeedle = [Text.Encoding]::ASCII.GetBytes($embeddedValue)
             if ([Turborama.Release.BinaryNeedleScanner]::FindFirst(
@@ -1036,7 +1040,7 @@ if ($failures.Count -ne 0) {
 }
 
 if ($AllowUnsigned) {
-    Write-Host 'PASS: staging, hashes, capas, icones, videos, SBOM e ausencia de Authenticode foram validados.'
+    Write-Host 'PASS: staging, hashes, capas, icones, videos, SBOM, autoridades e ausencia de Authenticode foram validados.'
 }
 else {
     Write-Host 'PASS: candidato, hashes, capas, icones, videos, SBOM, autoridade e Authenticode foram validados.'

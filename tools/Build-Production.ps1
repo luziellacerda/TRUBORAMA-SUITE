@@ -34,31 +34,39 @@ param(
     [string]$TimestampCertificateThumbprint,
 
     [Parameter(ParameterSetName = 'Signed', Mandatory)]
+    [Parameter(ParameterSetName = 'Unsigned', Mandatory)]
     [string]$AuthorityConfigurationPath,
 
     [Parameter(ParameterSetName = 'Signed', Mandatory)]
+    [Parameter(ParameterSetName = 'Unsigned', Mandatory)]
     [ValidatePattern('\A[0-9A-Fa-f]{64}\z')]
     [string]$AuthorityConfigurationSha256,
 
     [Parameter(ParameterSetName = 'Signed', Mandatory)]
+    [Parameter(ParameterSetName = 'Unsigned', Mandatory)]
     [string]$AuthorityIssuerSpkiPath,
 
     [Parameter(ParameterSetName = 'Signed', Mandatory)]
-    [ValidatePattern('^[0-9A-Fa-f]{64}$')]
+    [Parameter(ParameterSetName = 'Unsigned', Mandatory)]
+    [ValidatePattern('\A[0-9A-Fa-f]{64}\z')]
     [string]$AuthorityIssuerSpkiSha256,
 
     [Parameter(ParameterSetName = 'Signed', Mandatory)]
+    [Parameter(ParameterSetName = 'Unsigned', Mandatory)]
     [string]$ContentAuthorityConfigurationPath,
 
     [Parameter(ParameterSetName = 'Signed', Mandatory)]
+    [Parameter(ParameterSetName = 'Unsigned', Mandatory)]
     [ValidatePattern('\A[0-9A-Fa-f]{64}\z')]
     [string]$ContentAuthorityConfigurationSha256,
 
     [Parameter(ParameterSetName = 'Signed', Mandatory)]
+    [Parameter(ParameterSetName = 'Unsigned', Mandatory)]
     [string]$ContentAuthorityIssuerSpkiPath,
 
     [Parameter(ParameterSetName = 'Signed', Mandatory)]
-    [ValidatePattern('^[0-9A-Fa-f]{64}$')]
+    [Parameter(ParameterSetName = 'Unsigned', Mandatory)]
+    [ValidatePattern('\A[0-9A-Fa-f]{64}\z')]
     [string]$ContentAuthorityIssuerSpkiSha256,
 
     [string]$OutputRoot = '',
@@ -1375,9 +1383,13 @@ if (-not $isUnsigned) {
     & $assertPinnedDirectoryTree $trustedPowerShellHome `
         $PowerShellHomeTreeSha256 `
         'PSHOME mudou durante a fase de proveniencia Git.'
+}
+elseif ($dirtyEntries.Count -ne 0 -and -not $AllowDirty) {
+    throw 'A arvore Git esta suja. Use -AllowDirty somente para staging local nao publicavel.'
+}
 
-    $authorityConfigurationFullPath = [IO.Path]::GetFullPath($AuthorityConfigurationPath)
-    $authorityConfigurationBytes = Read-BoundedInput $authorityConfigurationFullPath 64 8KB `
+$authorityConfigurationFullPath = [IO.Path]::GetFullPath($AuthorityConfigurationPath)
+$authorityConfigurationBytes = Read-BoundedInput $authorityConfigurationFullPath 64 8KB `
         'O envelope assinado da autoridade'
     $authorityIssuerSpkiBytes = $null
     $authorityConfigurationSha256Normalized = $AuthorityConfigurationSha256.ToLowerInvariant()
@@ -1413,7 +1425,7 @@ if (-not $isUnsigned) {
         }
     }
 
-    $contentAuthorityConfigurationFullPath = [IO.Path]::GetFullPath(
+$contentAuthorityConfigurationFullPath = [IO.Path]::GetFullPath(
         $ContentAuthorityConfigurationPath)
     $contentAuthorityConfigurationBytes = Read-BoundedInput `
         $contentAuthorityConfigurationFullPath 64 8KB `
@@ -1449,10 +1461,6 @@ if (-not $isUnsigned) {
             [Security.Cryptography.CryptographicOperations]::ZeroMemory(
                 $contentAuthorityIssuerSpkiBytes)
         }
-    }
-}
-elseif ($dirtyEntries.Count -ne 0 -and -not $AllowDirty) {
-    throw 'A arvore Git esta suja. Use -AllowDirty somente para staging local nao publicavel.'
 }
 
 $outputParent = [IO.Path]::GetFullPath($OutputRoot)
@@ -1876,34 +1884,30 @@ try {
     Invoke-Checked $DotNetPath (@('run', '--project', $testProject, '-c', 'Release', '--no-restore') + $msBuildSecurityProperties + @('--', $catalog))
     $authorityVerifierAssembly = Join-Path `
         (Split-Path -Parent $testProject) 'bin\Release\net10.0-windows\CatalogVerifier.dll'
-    if (-not $isUnsigned) {
-        if (-not (Test-Path -LiteralPath $authorityVerifierAssembly -PathType Leaf)) {
-            throw 'O build nao produziu o verificador criptografico da autoridade.'
-        }
-        Invoke-Checked $DotNetPath (@(
-            $authorityVerifierAssembly, '--verify-authority-base64',
-            $authorityConfigurationBase64, $authorityIssuerSpkiBase64,
-            $authorityConfigurationSha256Normalized))
-        Invoke-Checked $DotNetPath (@(
-            $authorityVerifierAssembly, '--verify-content-authority-base64',
-            $contentAuthorityConfigurationBase64,
-            $contentAuthorityIssuerSpkiBase64,
-            $contentAuthorityConfigurationSha256Normalized))
+    if (-not (Test-Path -LiteralPath $authorityVerifierAssembly -PathType Leaf)) {
+        throw 'O build nao produziu o verificador criptografico da autoridade.'
     }
+    Invoke-Checked $DotNetPath (@(
+        $authorityVerifierAssembly, '--verify-authority-base64',
+        $authorityConfigurationBase64, $authorityIssuerSpkiBase64,
+        $authorityConfigurationSha256Normalized))
+    Invoke-Checked $DotNetPath (@(
+        $authorityVerifierAssembly, '--verify-content-authority-base64',
+        $contentAuthorityConfigurationBase64,
+        $contentAuthorityIssuerSpkiBase64,
+        $contentAuthorityConfigurationSha256Normalized))
     $publishArguments = @(
         'publish', $project, '-c', 'Release', '-r', 'win-x64', '--self-contained', 'true', '--no-restore',
         '-p:PublishSingleFile=true', '-p:PublishTrimmed=false', '-p:PublishReadyToRun=false',
         '-p:IncludeNativeLibrariesForSelfExtract=true', '-p:DebugType=None', '-p:DebugSymbols=false',
         '-o', $publish)
     $publishArguments += $msBuildSecurityProperties
-    if (-not $isUnsigned) {
-        $publishArguments += "-p:SuiteAuthorityConfigurationBase64=$authorityConfigurationBase64"
-        $publishArguments += "-p:SuiteAuthorityConfigurationSha256=$authorityConfigurationSha256Normalized"
-        $publishArguments += "-p:SuiteAuthorityIssuerSpkiBase64=$authorityIssuerSpkiBase64"
-        $publishArguments += "-p:SuiteContentAuthorityConfigurationBase64=$contentAuthorityConfigurationBase64"
-        $publishArguments += "-p:SuiteContentAuthorityConfigurationSha256=$contentAuthorityConfigurationSha256Normalized"
-        $publishArguments += "-p:SuiteContentAuthorityIssuerSpkiBase64=$contentAuthorityIssuerSpkiBase64"
-    }
+    $publishArguments += "-p:SuiteAuthorityConfigurationBase64=$authorityConfigurationBase64"
+    $publishArguments += "-p:SuiteAuthorityConfigurationSha256=$authorityConfigurationSha256Normalized"
+    $publishArguments += "-p:SuiteAuthorityIssuerSpkiBase64=$authorityIssuerSpkiBase64"
+    $publishArguments += "-p:SuiteContentAuthorityConfigurationBase64=$contentAuthorityConfigurationBase64"
+    $publishArguments += "-p:SuiteContentAuthorityConfigurationSha256=$contentAuthorityConfigurationSha256Normalized"
+    $publishArguments += "-p:SuiteContentAuthorityIssuerSpkiBase64=$contentAuthorityIssuerSpkiBase64"
     Invoke-Checked $DotNetPath $publishArguments
     if (-not $isUnsigned) {
         & $assertPinnedDirectoryTree $dotNetSdkRoot $DotNetSdkTreeSha256 `
@@ -1965,15 +1969,16 @@ try {
         DotNetPath = $DotNetPath
         GitPath = $GitPath
         SourceBranch = $sourceBranch
+        AuthorityVerifierAssemblyPath = $authorityVerifierAssembly
     }
     if ($isUnsigned) { $manifestArguments.Unsigned = $true }
-    else {
-        $manifestArguments.AuthorityConfigurationBase64 = $authorityConfigurationBase64
-        $manifestArguments.AuthorityConfigurationSha256 = $authorityConfigurationSha256Normalized
-        $manifestArguments.AuthorityIssuerSpkiBase64 = $authorityIssuerSpkiBase64
-        $manifestArguments.ContentAuthorityConfigurationBase64 = $contentAuthorityConfigurationBase64
-        $manifestArguments.ContentAuthorityConfigurationSha256 = $contentAuthorityConfigurationSha256Normalized
-        $manifestArguments.ContentAuthorityIssuerSpkiBase64 = $contentAuthorityIssuerSpkiBase64
+    $manifestArguments.AuthorityConfigurationBase64 = $authorityConfigurationBase64
+    $manifestArguments.AuthorityConfigurationSha256 = $authorityConfigurationSha256Normalized
+    $manifestArguments.AuthorityIssuerSpkiBase64 = $authorityIssuerSpkiBase64
+    $manifestArguments.ContentAuthorityConfigurationBase64 = $contentAuthorityConfigurationBase64
+    $manifestArguments.ContentAuthorityConfigurationSha256 = $contentAuthorityConfigurationSha256Normalized
+    $manifestArguments.ContentAuthorityIssuerSpkiBase64 = $contentAuthorityIssuerSpkiBase64
+    if (-not $isUnsigned) {
         $manifestArguments.PowerShellSha256 = $PowerShellSha256
         $manifestArguments.PowerShellHomeTreeSha256 = $PowerShellHomeTreeSha256
         $manifestArguments.GitSha256 = $GitSha256
@@ -1991,17 +1996,17 @@ try {
         GitPath = $GitPath
     }
     if ($isUnsigned) { $gateArguments.AllowUnsigned = $true }
-    else {
+    $gateArguments.AuthorityConfigurationBase64 = $authorityConfigurationBase64
+    $gateArguments.AuthorityConfigurationSha256 = $authorityConfigurationSha256Normalized
+    $gateArguments.AuthorityIssuerSpkiBase64 = $authorityIssuerSpkiBase64
+    $gateArguments.AuthorityVerifierAssemblyPath = $authorityVerifierAssembly
+    $gateArguments.ContentAuthorityConfigurationBase64 = $contentAuthorityConfigurationBase64
+    $gateArguments.ContentAuthorityConfigurationSha256 = $contentAuthorityConfigurationSha256Normalized
+    $gateArguments.ContentAuthorityIssuerSpkiBase64 = $contentAuthorityIssuerSpkiBase64
+    $gateArguments.DotNetPath = $DotNetPath
+    if (-not $isUnsigned) {
         $gateArguments.CertificateThumbprint = $CertificateThumbprint
         $gateArguments.TimestampCertificateThumbprint = $TimestampCertificateThumbprint
-        $gateArguments.AuthorityConfigurationBase64 = $authorityConfigurationBase64
-        $gateArguments.AuthorityConfigurationSha256 = $authorityConfigurationSha256Normalized
-        $gateArguments.AuthorityIssuerSpkiBase64 = $authorityIssuerSpkiBase64
-        $gateArguments.AuthorityVerifierAssemblyPath = $authorityVerifierAssembly
-        $gateArguments.ContentAuthorityConfigurationBase64 = $contentAuthorityConfigurationBase64
-        $gateArguments.ContentAuthorityConfigurationSha256 = $contentAuthorityConfigurationSha256Normalized
-        $gateArguments.ContentAuthorityIssuerSpkiBase64 = $contentAuthorityIssuerSpkiBase64
-        $gateArguments.DotNetPath = $DotNetPath
         $gateArguments.PowerShellSha256 = $PowerShellSha256
         $gateArguments.PowerShellHomeTreeSha256 = $PowerShellHomeTreeSha256
         $gateArguments.GitSha256 = $GitSha256
@@ -2026,17 +2031,17 @@ try {
         GitPath = $GitPath
     }
     if ($isUnsigned) { $copiedGateArguments.AllowUnsigned = $true }
-    else {
+    $copiedGateArguments.AuthorityConfigurationBase64 = $authorityConfigurationBase64
+    $copiedGateArguments.AuthorityConfigurationSha256 = $authorityConfigurationSha256Normalized
+    $copiedGateArguments.AuthorityIssuerSpkiBase64 = $authorityIssuerSpkiBase64
+    $copiedGateArguments.AuthorityVerifierAssemblyPath = $authorityVerifierAssembly
+    $copiedGateArguments.ContentAuthorityConfigurationBase64 = $contentAuthorityConfigurationBase64
+    $copiedGateArguments.ContentAuthorityConfigurationSha256 = $contentAuthorityConfigurationSha256Normalized
+    $copiedGateArguments.ContentAuthorityIssuerSpkiBase64 = $contentAuthorityIssuerSpkiBase64
+    $copiedGateArguments.DotNetPath = $DotNetPath
+    if (-not $isUnsigned) {
         $copiedGateArguments.CertificateThumbprint = $CertificateThumbprint
         $copiedGateArguments.TimestampCertificateThumbprint = $TimestampCertificateThumbprint
-        $copiedGateArguments.AuthorityConfigurationBase64 = $authorityConfigurationBase64
-        $copiedGateArguments.AuthorityConfigurationSha256 = $authorityConfigurationSha256Normalized
-        $copiedGateArguments.AuthorityIssuerSpkiBase64 = $authorityIssuerSpkiBase64
-        $copiedGateArguments.AuthorityVerifierAssemblyPath = $authorityVerifierAssembly
-        $copiedGateArguments.ContentAuthorityConfigurationBase64 = $contentAuthorityConfigurationBase64
-        $copiedGateArguments.ContentAuthorityConfigurationSha256 = $contentAuthorityConfigurationSha256Normalized
-        $copiedGateArguments.ContentAuthorityIssuerSpkiBase64 = $contentAuthorityIssuerSpkiBase64
-        $copiedGateArguments.DotNetPath = $DotNetPath
         $copiedGateArguments.PowerShellSha256 = $PowerShellSha256
         $copiedGateArguments.PowerShellHomeTreeSha256 = $PowerShellHomeTreeSha256
         $copiedGateArguments.GitSha256 = $GitSha256

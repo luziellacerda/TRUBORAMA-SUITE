@@ -110,76 +110,50 @@ foreach ($indexEntry in $gitIndexEntries) {
 try {
     $buildCommand = Get-Command -Name $buildProductionPath -CommandType ExternalScript `
         -ErrorAction Stop
-    $authorityHashParameter = $buildCommand.Parameters['AuthorityConfigurationSha256']
-    if ($null -eq $authorityHashParameter -or
-        $authorityHashParameter.ParameterType -ne [string]) {
-        Add-Failure $failures `
-            'Build assinado nao exige AuthorityConfigurationSha256 textual.'
-    }
-    else {
-        $parameterAttributes = @($authorityHashParameter.Attributes | Where-Object {
-            $_ -is [Management.Automation.ParameterAttribute]
-        })
-        $signedBindings = @($parameterAttributes | Where-Object {
-            $_.ParameterSetName -eq 'Signed' -and $_.Mandatory
-        })
-        $unsignedBindings = @($parameterAttributes | Where-Object {
-            $_.ParameterSetName -eq 'Unsigned'
-        })
-        $hashPatterns = @($authorityHashParameter.Attributes | Where-Object {
-            $_ -is [Management.Automation.ValidatePatternAttribute]
-        })
-        if ($signedBindings.Count -ne 1 -or
-            $unsignedBindings.Count -ne 0 -or
-            $hashPatterns.Count -ne 1 -or
-            $hashPatterns[0].RegexPattern -ne '\A[0-9A-Fa-f]{64}\z') {
-            Add-Failure $failures `
-                'AuthorityConfigurationSha256 deve ser obrigatorio somente em Signed e aceitar exatamente 64 hex.'
-        }
-    }
-}
-catch {
-    Add-Failure $failures `
-        "Nao foi possivel validar os parameter sets do build: $($_.Exception.Message)"
-}
-
-try {
-    $buildCommand = Get-Command -Name $buildProductionPath `
-        -CommandType ExternalScript -ErrorAction Stop
-    $contentAuthorityHashParameter =
-        $buildCommand.Parameters['ContentAuthorityConfigurationSha256']
-    if ($null -eq $contentAuthorityHashParameter -or
-        $contentAuthorityHashParameter.ParameterType -ne [string]) {
-        Add-Failure $failures `
-            'Build assinado nao exige ContentAuthorityConfigurationSha256 textual.'
-    }
-    else {
-        $parameterAttributes = @(
-            $contentAuthorityHashParameter.Attributes | Where-Object {
+    foreach ($authorityParameterName in @(
+            'AuthorityConfigurationPath',
+            'AuthorityConfigurationSha256',
+            'AuthorityIssuerSpkiPath',
+            'AuthorityIssuerSpkiSha256',
+            'ContentAuthorityConfigurationPath',
+            'ContentAuthorityConfigurationSha256',
+            'ContentAuthorityIssuerSpkiPath',
+            'ContentAuthorityIssuerSpkiSha256')) {
+        $authorityParameter = $buildCommand.Parameters[$authorityParameterName]
+        $parameterAttributes = @(if ($null -ne $authorityParameter) {
+            $authorityParameter.Attributes | Where-Object {
                 $_ -is [Management.Automation.ParameterAttribute]
-            })
+            }
+        })
         $signedBindings = @($parameterAttributes | Where-Object {
             $_.ParameterSetName -eq 'Signed' -and $_.Mandatory
         })
         $unsignedBindings = @($parameterAttributes | Where-Object {
-            $_.ParameterSetName -eq 'Unsigned'
+            $_.ParameterSetName -eq 'Unsigned' -and $_.Mandatory
         })
-        $hashPatterns = @(
-            $contentAuthorityHashParameter.Attributes | Where-Object {
+        if ($null -eq $authorityParameter -or
+            $authorityParameter.ParameterType -ne [string] -or
+            $signedBindings.Count -ne 1 -or
+            $unsignedBindings.Count -ne 1) {
+            Add-Failure $failures `
+                "$authorityParameterName deve ser textual e obrigatorio em Signed e Unsigned."
+            continue
+        }
+        if ($authorityParameterName.EndsWith('Sha256', [StringComparison]::Ordinal)) {
+            $hashPatterns = @($authorityParameter.Attributes | Where-Object {
                 $_ -is [Management.Automation.ValidatePatternAttribute]
             })
-        if ($signedBindings.Count -ne 1 -or
-            $unsignedBindings.Count -ne 0 -or
-            $hashPatterns.Count -ne 1 -or
-            $hashPatterns[0].RegexPattern -ne '\A[0-9A-Fa-f]{64}\z') {
-            Add-Failure $failures `
-                'ContentAuthorityConfigurationSha256 deve ser obrigatorio somente em Signed e aceitar 64 hex.'
+            if ($hashPatterns.Count -ne 1 -or
+                $hashPatterns[0].RegexPattern -ne '\A[0-9A-Fa-f]{64}\z') {
+                Add-Failure $failures `
+                    "$authorityParameterName deve aceitar exatamente 64 caracteres hexadecimais."
+            }
         }
     }
 }
 catch {
     Add-Failure $failures `
-        "Nao foi possivel validar os parametros da autoridade de conteudo: $($_.Exception.Message)"
+        "Nao foi possivel validar os parametros obrigatorios das autoridades: $($_.Exception.Message)"
 }
 
 try {
@@ -945,7 +919,7 @@ else {
     if ($targetFramework -ne 'net10.0-windows') {
         Add-Failure $failures "TargetFramework de producao inesperado: '$targetFramework'."
     }
-    if ($version -ne '2.0.0') {
+    if ($version -ne '2.0.1') {
         Add-Failure $failures "Versao de producao inesperada: '$version'."
     }
     if ($packageReferences.Count -ne 2 -or $sharpCompress.Count -ne 1 -or
