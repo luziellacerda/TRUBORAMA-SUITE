@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using TurboBoxManager;
 using TurboBoxManager.Catalog;
 
 internal static class DownloadResumeVerifier
@@ -20,6 +21,8 @@ internal static class DownloadResumeVerifier
             Path.Combine(root, "sidecar-authorization"));
         await VerifySidecarCannotChooseDestinationAsync(Path.Combine(root, "sidecar-path"));
         await VerifyRotatingGrantResumesWithoutPersistenceAsync(Path.Combine(root, "rotating-grant"));
+        await VerifyRecognizedGameArchiveStartsFromHomologatedRootAsync(
+            Path.Combine(root, "recognized-game-root"));
         await VerifyDeferredHashCompletedArtifactRestoresAsync(
             Path.Combine(root, "deferred-completed"));
         await VerifyReadySidecarIsRehashedAsync(Path.Combine(root, "ready-rehash"));
@@ -27,6 +30,50 @@ internal static class DownloadResumeVerifier
         await VerifyInvalidRangeIsDeniedBeforeNetworkAsync(Path.Combine(root, "invalid-range"));
         await VerifyHardLinkedPartialCannotModifyTargetAsync(Path.Combine(root, "hardlink-partial"));
         await VerifyExactResponseLengthIsRequiredAsync(Path.Combine(root, "response-length"));
+    }
+
+    private static async Task VerifyRecognizedGameArchiveStartsFromHomologatedRootAsync(
+        string root)
+    {
+        var requestedRoot = Path.Combine(root, "general-installation");
+        var gameLibraryRoot = Path.Combine(root, "TruboRoms", "roms");
+        Directory.CreateDirectory(gameLibraryRoot);
+        Check(!Directory.Exists(requestedRoot),
+            "A raiz geral precisa permanecer ausente para reproduzir a falha anterior à rede.");
+
+        var bytes = CreatePayload(96_000);
+        var item = WithArtifact(CreateItem("recognized-game-root", bytes), artifact => artifact with
+        {
+            SafeFileName = "recognized-game-root.rar",
+            FileExtension = ".rar",
+            ExtractPolicy = CatalogExtractPolicy.None
+        });
+        Check(CatalogArchivePolicy.IsRecognizedArchive(item.Artifact!),
+            "O cenário precisa representar um pacote de jogo reconhecido sem política explícita de extração.");
+
+        var selectedRoot = StoreWindow.ResolveGameDownloadRootForDownload(
+            item.Artifact!,
+            requestedRoot,
+            gameLibraryRoot,
+            hasRememberedDownloadRoot: false);
+        Check(selectedRoot.Equals(gameLibraryRoot, StringComparison.OrdinalIgnoreCase),
+            "Pacote reconhecido deve preservar a raiz de início homologada em TruboRoms\\roms.");
+
+        using var handler = new PayloadHandler(bytes);
+        using var client = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
+        using var service = new CatalogDownloadService(
+            client,
+            new RotatingGrantProvider(),
+            CreateOptions());
+        var result = await service.DownloadAsync(item, selectedRoot).WaitAsync(ScenarioTimeout);
+
+        Check(result.Succeeded && handler.RequestCount == 1,
+            "O pacote reconhecido não chegou à primeira requisição HTTP a partir da raiz homologada. "
+            + $"Estado={result.State}; requisições={handler.RequestCount}; mensagem={result.Message}");
+        Check(Path.GetFullPath(result.LocalFilePath).StartsWith(
+                  Path.GetFullPath(gameLibraryRoot) + Path.DirectorySeparatorChar,
+                  StringComparison.OrdinalIgnoreCase),
+            "O download reconhecido saiu da biblioteca de jogos homologada.");
     }
 
     private static async Task VerifyDeferredHashCompletedArtifactRestoresAsync(string root)

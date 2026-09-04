@@ -4299,9 +4299,11 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
                 }
 
                 var hasRememberedDownloadRoot = _downloadRootsByItem.ContainsKey(item.Id);
-                if (!shouldExtract
-                    && (!hasRememberedDownloadRoot || !Directory.Exists(installationRoot)))
-                    installationRoot = gameLibraryRoot;
+                installationRoot = ResolveGameDownloadRootForDownload(
+                    artifact,
+                    installationRoot,
+                    gameLibraryRoot,
+                    hasRememberedDownloadRoot);
                 ThrowIfOperationUnauthorized();
                 _extractionRootsByItem[item.Id] = gameLibraryRoot;
             }
@@ -4396,6 +4398,22 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         {
             SetCatalogStatus($"{item.Title}: a autorização terminou; nada novo foi iniciado.");
         }
+    }
+
+    internal static string ResolveGameDownloadRootForDownload(
+        CatalogArtifactDescriptor artifact,
+        string requestedDownloadRoot,
+        string gameLibraryRoot,
+        bool hasRememberedDownloadRoot)
+    {
+        ArgumentNullException.ThrowIfNull(artifact);
+        ArgumentException.ThrowIfNullOrWhiteSpace(requestedDownloadRoot);
+        ArgumentException.ThrowIfNullOrWhiteSpace(gameLibraryRoot);
+
+        return artifact.ExtractPolicy != CatalogExtractPolicy.ExtractArchive
+               && (!hasRememberedDownloadRoot || !Directory.Exists(requestedDownloadRoot))
+            ? gameLibraryRoot
+            : requestedDownloadRoot;
     }
 
     private async Task ExtractArchiveAsync(
