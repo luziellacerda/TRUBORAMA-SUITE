@@ -374,12 +374,14 @@ Publique como GitHub Release associada à tag verificada. Anexe o pacote final e
 
 - `Turborama.exe` ou instalador integralmente assinado;
 - `RELEASE-MANIFEST.json`;
-- `PACKAGE-SHA256SUMS.txt`;
+- `SHA256SUMS-v2.0.0.txt`, gerado como asset externo após o gate;
 - `Turborama.spdx.json`;
 - notices de terceiros;
 - registro resumido dos testes sem dados sensíveis.
 
-Não anexe o diretório `UNSIGNED-NOT-FOR-DISTRIBUTION` e não chame um artefato apenas funcional de pacote assinado.
+Não acrescente o checksum dentro do diretório já aprovado: a allowlist do pacote é fechada e qualquer mutação posterior invalida o gate. Não anexe o diretório `UNSIGNED-NOT-FOR-DISTRIBUTION` e não chame um artefato apenas funcional de pacote assinado.
+
+A automação protegida, os nomes exatos dos secrets/variables e a promoção draft → release estável estão em `GITHUB-RELEASE-FINAL-R25.md` e `.github/workflows/release-final.yml`.
 
 ## 14. Atualização futura sem voltar às branches antigas
 

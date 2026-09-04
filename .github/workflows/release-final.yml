@@ -1,0 +1,691 @@
+name: Release final assinada
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Tag final GPG já publicada (ex.: v2.0.0)"
+        required: true
+        default: "v2.0.0"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: turborama-final-release
+  cancel-in-progress: false
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+  RELEASE_TAG: ${{ inputs.release_tag }}
+  SUITE_AUTHORITY_ENVELOPE_SHA256: "20F7F066B654AAD700C4733C9B011495A2BB9B52E7A8B3A77E806CDEDEBFA3E6"
+  SUITE_AUTHORITY_ISSUER_SPKI_SHA256: "9BA572CC64CCFD9DCADA0699AB5E4F43E4662F84C1A82908A1125AA56C987B3A"
+  CONTENT_AUTHORITY_ENVELOPE_SHA256: "56E7A1BD100E5B5A9CD1109C0B90EDFCAFAF6C1497AE3113551684D872A0BA07"
+  CONTENT_AUTHORITY_ISSUER_SPKI_SHA256: "65631E0AAA9EFB75991098F7A68DDA462004E5BBC183AE6BF4FF9256397A8DC5"
+
+jobs:
+  build_signed:
+    name: Assinar e validar pacote
+    runs-on: windows-2025
+    timeout-minutes: 180
+    environment: production-signing
+    permissions:
+      contents: read
+    outputs:
+      release_tag_object: ${{ steps.source_identity.outputs.tag_object }}
+    env:
+      AUTHENTICODE_CERTIFICATE_THUMBPRINT: ${{ vars.AUTHENTICODE_CERTIFICATE_THUMBPRINT }}
+      TIMESTAMP_URL: ${{ vars.TIMESTAMP_URL }}
+      TIMESTAMP_CERTIFICATE_THUMBPRINT: ${{ vars.TIMESTAMP_CERTIFICATE_THUMBPRINT }}
+      RELEASE_TAG_SIGNER_FINGERPRINT: ${{ vars.RELEASE_TAG_SIGNER_FINGERPRINT }}
+      RELEASE_TAG_PRIMARY_KEY_FINGERPRINT: ${{ vars.RELEASE_TAG_PRIMARY_KEY_FINGERPRINT }}
+      RELEASE_TAG_PUBLIC_KEY_SHA256: ${{ vars.RELEASE_TAG_PUBLIC_KEY_SHA256 }}
+      POWERSHELL_SHA256: ${{ vars.POWERSHELL_SHA256 }}
+      POWERSHELL_HOME_TREE_SHA256: ${{ vars.POWERSHELL_HOME_TREE_SHA256 }}
+      GIT_SHA256: ${{ vars.GIT_SHA256 }}
+      GIT_TREE_SHA256: ${{ vars.GIT_TREE_SHA256 }}
+      GPG_SHA256: ${{ vars.GPG_SHA256 }}
+      DOTNET_SDK_TREE_SHA256: ${{ vars.DOTNET_SDK_TREE_SHA256 }}
+      SIGNTOOL_SHA256: ${{ vars.SIGNTOOL_SHA256 }}
+
+    steps:
+      - name: Checkout da main com histórico e tags
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: main
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+          clean: true
+
+      - name: Fixar diretório isolado do SDK
+        shell: pwsh
+        run: |
+          $path = [IO.Path]::GetFullPath((Join-Path $env:RUNNER_TEMP 'turborama-dotnet-10.0.400'))
+          "DOTNET_INSTALL_DIR=$path" | Out-File -LiteralPath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Instalar .NET fixado
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
+        with:
+          dotnet-version: 10.0.400
+
+      - name: Validar fonte, tag e configuração protegida
+        id: source_identity
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          AUTHENTICODE_PFX_BASE64: ${{ secrets.AUTHENTICODE_PFX_BASE64 }}
+          AUTHENTICODE_PFX_PASSWORD: ${{ secrets.AUTHENTICODE_PFX_PASSWORD }}
+          RELEASE_TAG_PUBLIC_KEY_BASE64: ${{ secrets.RELEASE_TAG_PUBLIC_KEY_BASE64 }}
+          SUITE_AUTHORITY_ENVELOPE_BASE64: ${{ secrets.SUITE_AUTHORITY_ENVELOPE_BASE64 }}
+          SUITE_AUTHORITY_ISSUER_SPKI_BASE64: ${{ secrets.SUITE_AUTHORITY_ISSUER_SPKI_BASE64 }}
+          CONTENT_AUTHORITY_ENVELOPE_BASE64: ${{ secrets.CONTENT_AUTHORITY_ENVELOPE_BASE64 }}
+          CONTENT_AUTHORITY_ISSUER_SPKI_BASE64: ${{ secrets.CONTENT_AUTHORITY_ISSUER_SPKI_BASE64 }}
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+
+          [xml]$project = Get-Content -LiteralPath '.\TurboBoxManager.csproj' -Raw
+          $version = [string](@($project.Project.PropertyGroup.Version) | Select-Object -First 1)
+          $expectedTag = "v$version"
+          if ($env:RELEASE_TAG -cne $expectedTag) {
+            throw "A tag solicitada deve ser exatamente $expectedTag."
+          }
+          if ((git branch --show-current).Trim() -cne 'main') {
+            throw 'O checkout da release não está na branch main.'
+          }
+          git branch --set-upstream-to=origin/main main
+          if ($LASTEXITCODE -ne 0) { throw 'Não foi possível fixar o upstream origin/main.' }
+
+          $head = (git rev-parse HEAD).Trim()
+          $upstream = (git rev-parse '@{u}').Trim()
+          if ($head -cne $upstream -or $head -cne '${{ github.sha }}') {
+            throw 'HEAD, origin/main e o commit do workflow não são idênticos.'
+          }
+          if (@(git status --porcelain --untracked-files=all).Count -ne 0) {
+            throw 'A árvore Git da release não está limpa.'
+          }
+          $tagType = (git cat-file -t "refs/tags/$env:RELEASE_TAG" 2>$null).Trim()
+          if ($LASTEXITCODE -ne 0 -or $tagType -cne 'tag') {
+            throw 'A tag final precisa existir e ser um objeto anotado/assinado.'
+          }
+          $tagCommit = (git rev-parse "refs/tags/$env:RELEASE_TAG^{}").Trim()
+          if ($tagCommit -cne $head) {
+            throw 'A tag final não aponta para o commit exato de main.'
+          }
+          $tagObject = (git rev-parse "refs/tags/$env:RELEASE_TAG").Trim()
+          if ($tagObject -notmatch '^[0-9a-f]{40}$') {
+            throw 'O objeto da tag final é inválido.'
+          }
+          "tag_object=$tagObject" | Out-File -LiteralPath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+          gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) {
+            throw "Já existe uma GitHub Release para $env:RELEASE_TAG; nada será sobrescrito."
+          }
+
+          $required = [ordered]@{
+            AUTHENTICODE_PFX_BASE64 = $env:AUTHENTICODE_PFX_BASE64
+            AUTHENTICODE_PFX_PASSWORD = $env:AUTHENTICODE_PFX_PASSWORD
+            RELEASE_TAG_PUBLIC_KEY_BASE64 = $env:RELEASE_TAG_PUBLIC_KEY_BASE64
+            SUITE_AUTHORITY_ENVELOPE_BASE64 = $env:SUITE_AUTHORITY_ENVELOPE_BASE64
+            SUITE_AUTHORITY_ISSUER_SPKI_BASE64 = $env:SUITE_AUTHORITY_ISSUER_SPKI_BASE64
+            CONTENT_AUTHORITY_ENVELOPE_BASE64 = $env:CONTENT_AUTHORITY_ENVELOPE_BASE64
+            CONTENT_AUTHORITY_ISSUER_SPKI_BASE64 = $env:CONTENT_AUTHORITY_ISSUER_SPKI_BASE64
+            TIMESTAMP_URL = $env:TIMESTAMP_URL
+            TIMESTAMP_CERTIFICATE_THUMBPRINT = $env:TIMESTAMP_CERTIFICATE_THUMBPRINT
+            RELEASE_TAG_SIGNER_FINGERPRINT = $env:RELEASE_TAG_SIGNER_FINGERPRINT
+            RELEASE_TAG_PRIMARY_KEY_FINGERPRINT = $env:RELEASE_TAG_PRIMARY_KEY_FINGERPRINT
+            RELEASE_TAG_PUBLIC_KEY_SHA256 = $env:RELEASE_TAG_PUBLIC_KEY_SHA256
+            POWERSHELL_SHA256 = $env:POWERSHELL_SHA256
+            POWERSHELL_HOME_TREE_SHA256 = $env:POWERSHELL_HOME_TREE_SHA256
+            GIT_SHA256 = $env:GIT_SHA256
+            GIT_TREE_SHA256 = $env:GIT_TREE_SHA256
+            GPG_SHA256 = $env:GPG_SHA256
+            DOTNET_SDK_TREE_SHA256 = $env:DOTNET_SDK_TREE_SHA256
+            SIGNTOOL_SHA256 = $env:SIGNTOOL_SHA256
+            AUTHENTICODE_CERTIFICATE_THUMBPRINT = $env:AUTHENTICODE_CERTIFICATE_THUMBPRINT
+          }
+          $missing = @($required.GetEnumerator() | Where-Object {
+            [string]::IsNullOrWhiteSpace([string]$_.Value)
+          } | ForEach-Object Key)
+          if ($missing.Count -ne 0) {
+            throw ('Configuração production-signing incompleta: ' + ($missing -join ', '))
+          }
+
+          foreach ($name in @(
+            'RELEASE_TAG_PUBLIC_KEY_SHA256', 'POWERSHELL_SHA256',
+            'POWERSHELL_HOME_TREE_SHA256', 'GIT_SHA256', 'GIT_TREE_SHA256',
+            'GPG_SHA256', 'DOTNET_SDK_TREE_SHA256', 'SIGNTOOL_SHA256')) {
+            if ([string]$required[$name] -notmatch '^[0-9A-Fa-f]{64}$') {
+              throw "$name deve ser um SHA-256 hexadecimal."
+            }
+          }
+          foreach ($name in @('RELEASE_TAG_SIGNER_FINGERPRINT', 'RELEASE_TAG_PRIMARY_KEY_FINGERPRINT')) {
+            if ([string]$required[$name] -notmatch '^(?:[0-9A-Fa-f]{40}|[0-9A-Fa-f]{64})$') {
+              throw "$name possui formato inválido."
+            }
+          }
+          if ($env:TIMESTAMP_CERTIFICATE_THUMBPRINT -notmatch '^[0-9A-Fa-f]{40}$') {
+            throw 'TIMESTAMP_CERTIFICATE_THUMBPRINT possui formato inválido.'
+          }
+          if ($env:AUTHENTICODE_CERTIFICATE_THUMBPRINT -notmatch '^[0-9A-Fa-f]{40}$') {
+            throw 'AUTHENTICODE_CERTIFICATE_THUMBPRINT possui formato inválido.'
+          }
+          $timestampUri = [Uri]$env:TIMESTAMP_URL
+          if (-not $timestampUri.IsAbsoluteUri -or $timestampUri.Scheme -cne 'https') {
+            throw 'TIMESTAMP_URL precisa ser uma URL HTTPS absoluta.'
+          }
+
+      - name: Materializar entradas e importar certificado temporário
+        shell: pwsh
+        env:
+          AUTHENTICODE_PFX_BASE64: ${{ secrets.AUTHENTICODE_PFX_BASE64 }}
+          AUTHENTICODE_PFX_PASSWORD: ${{ secrets.AUTHENTICODE_PFX_PASSWORD }}
+          RELEASE_TAG_PUBLIC_KEY_BASE64: ${{ secrets.RELEASE_TAG_PUBLIC_KEY_BASE64 }}
+          SUITE_AUTHORITY_ENVELOPE_BASE64: ${{ secrets.SUITE_AUTHORITY_ENVELOPE_BASE64 }}
+          SUITE_AUTHORITY_ISSUER_SPKI_BASE64: ${{ secrets.SUITE_AUTHORITY_ISSUER_SPKI_BASE64 }}
+          CONTENT_AUTHORITY_ENVELOPE_BASE64: ${{ secrets.CONTENT_AUTHORITY_ENVELOPE_BASE64 }}
+          CONTENT_AUTHORITY_ISSUER_SPKI_BASE64: ${{ secrets.CONTENT_AUTHORITY_ISSUER_SPKI_BASE64 }}
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+
+          $inputRoot = Join-Path $env:RUNNER_TEMP ('turborama-final-' + [Guid]::NewGuid().ToString('N'))
+          New-Item -ItemType Directory -Path $inputRoot | Out-Null
+          $importedList = Join-Path $inputRoot 'imported-certificates.txt'
+
+          function Write-BoundedBase64File {
+            param([string]$Base64, [string]$Path, [int]$MaximumBytes)
+            $bytes = [Convert]::FromBase64String($Base64)
+            try {
+              if ($bytes.Length -eq 0 -or $bytes.Length -gt $MaximumBytes) {
+                throw "Entrada fora do limite permitido: $(Split-Path -Leaf $Path)."
+              }
+              [IO.File]::WriteAllBytes($Path, $bytes)
+            }
+            finally {
+              [Security.Cryptography.CryptographicOperations]::ZeroMemory($bytes)
+            }
+          }
+
+          function Assert-FileHash([string]$Path, [string]$Expected) {
+            $actual = (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash
+            if (-not $actual.Equals($Expected, [StringComparison]::OrdinalIgnoreCase)) {
+              throw "Hash não aprovado: $(Split-Path -Leaf $Path)."
+            }
+          }
+
+          $pfxPath = Join-Path $inputRoot 'authenticode.pfx'
+          $releaseKeyPath = Join-Path $inputRoot 'release-tag-public-key.asc'
+          $suiteEnvelopePath = Join-Path $inputRoot 'suite-authority-envelope.json'
+          $suiteSpkiPath = Join-Path $inputRoot 'suite-authority-issuer.spki.der'
+          $contentEnvelopePath = Join-Path $inputRoot 'content-authority-envelope.json'
+          $contentSpkiPath = Join-Path $inputRoot 'content-authority-issuer.spki.der'
+
+          try {
+            Write-BoundedBase64File $env:AUTHENTICODE_PFX_BASE64 $pfxPath 262144
+            Write-BoundedBase64File $env:RELEASE_TAG_PUBLIC_KEY_BASE64 $releaseKeyPath 131072
+            Write-BoundedBase64File $env:SUITE_AUTHORITY_ENVELOPE_BASE64 $suiteEnvelopePath 8192
+            Write-BoundedBase64File $env:SUITE_AUTHORITY_ISSUER_SPKI_BASE64 $suiteSpkiPath 1024
+            Write-BoundedBase64File $env:CONTENT_AUTHORITY_ENVELOPE_BASE64 $contentEnvelopePath 8192
+            Write-BoundedBase64File $env:CONTENT_AUTHORITY_ISSUER_SPKI_BASE64 $contentSpkiPath 1024
+
+            Assert-FileHash $releaseKeyPath $env:RELEASE_TAG_PUBLIC_KEY_SHA256
+            Assert-FileHash $suiteEnvelopePath $env:SUITE_AUTHORITY_ENVELOPE_SHA256
+            Assert-FileHash $suiteSpkiPath $env:SUITE_AUTHORITY_ISSUER_SPKI_SHA256
+            Assert-FileHash $contentEnvelopePath $env:CONTENT_AUTHORITY_ENVELOPE_SHA256
+            Assert-FileHash $contentSpkiPath $env:CONTENT_AUTHORITY_ISSUER_SPKI_SHA256
+
+            $before = @(Get-ChildItem Cert:\CurrentUser\My -ErrorAction SilentlyContinue |
+              ForEach-Object Thumbprint)
+            $password = ConvertTo-SecureString $env:AUTHENTICODE_PFX_PASSWORD -AsPlainText -Force
+            $imported = @(Import-PfxCertificate -FilePath $pfxPath `
+              -CertStoreLocation Cert:\CurrentUser\My -Password $password -Exportable:$false)
+            $after = @(Get-ChildItem Cert:\CurrentUser\My | ForEach-Object Thumbprint)
+            $newThumbprints = @($after | Where-Object { $_ -notin $before })
+            [IO.File]::WriteAllLines($importedList, $newThumbprints)
+
+            $signers = @($imported | Where-Object {
+              $_.HasPrivateKey -and
+              '1.3.6.1.5.5.7.3.3' -in @($_.EnhancedKeyUsageList | ForEach-Object { $_.ObjectId.Value })
+            })
+            if ($signers.Count -ne 1) {
+              throw 'O PFX deve conter exatamente um certificado com chave privada e EKU Code Signing.'
+            }
+            $signer = $signers[0]
+            if (-not $signer.Thumbprint.Equals(
+                $env:AUTHENTICODE_CERTIFICATE_THUMBPRINT,
+                [StringComparison]::OrdinalIgnoreCase)) {
+              throw 'O PFX não corresponde ao thumbprint Authenticode aprovado.'
+            }
+            $now = Get-Date
+            if ($now -lt $signer.NotBefore -or $now -gt $signer.NotAfter) {
+              throw 'O certificado Authenticode está fora da validade.'
+            }
+
+            $chain = [Security.Cryptography.X509Certificates.X509Chain]::new()
+            try {
+              $chain.ChainPolicy.RevocationMode = [Security.Cryptography.X509Certificates.X509RevocationMode]::Online
+              $chain.ChainPolicy.RevocationFlag = [Security.Cryptography.X509Certificates.X509RevocationFlag]::EntireChain
+              if (-not $chain.Build($signer)) {
+                $statuses = @($chain.ChainStatus | ForEach-Object Status) -join ', '
+                throw "A cadeia do certificado Authenticode não é confiável: $statuses"
+              }
+            }
+            finally {
+              $chain.Dispose()
+            }
+
+            $pwshPath = (Get-Command pwsh -ErrorAction Stop).Source
+            $dotnetPath = (Get-Command dotnet -ErrorAction Stop).Source
+            $gitPath = (Get-Command git -ErrorAction Stop).Source
+            $kitsBin = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10\bin'
+            $signToolMatches = @(Get-ChildItem -LiteralPath $kitsBin -Filter signtool.exe -File -Recurse |
+              Where-Object {
+                $_.FullName -match '\\x64\\signtool\.exe$' -and
+                (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.Equals(
+                  $env:SIGNTOOL_SHA256, [StringComparison]::OrdinalIgnoreCase)
+              } | Sort-Object FullName -Descending)
+            if ($signToolMatches.Count -eq 0) {
+              throw 'Nenhum SignTool x64 corresponde ao hash aprovado.'
+            }
+            $signToolPath = $signToolMatches[0].FullName
+
+            @(
+              "RELEASE_INPUT_ROOT=$inputRoot"
+              "IMPORTED_CERTIFICATES_FILE=$importedList"
+              "AUTHENTICODE_THUMBPRINT=$($signer.Thumbprint)"
+              "RELEASE_TAG_PUBLIC_KEY_PATH=$releaseKeyPath"
+              "SUITE_AUTHORITY_ENVELOPE_PATH=$suiteEnvelopePath"
+              "SUITE_AUTHORITY_ISSUER_SPKI_PATH=$suiteSpkiPath"
+              "CONTENT_AUTHORITY_ENVELOPE_PATH=$contentEnvelopePath"
+              "CONTENT_AUTHORITY_ISSUER_SPKI_PATH=$contentSpkiPath"
+              "POWERSHELL_PATH=$pwshPath"
+              "DOTNET_PATH=$dotnetPath"
+              "GIT_PATH=$gitPath"
+              "SIGNTOOL_PATH=$signToolPath"
+            ) | Out-File -LiteralPath $env:GITHUB_ENV -Encoding utf8 -Append
+          }
+          catch {
+            if (Test-Path -LiteralPath $importedList) {
+              foreach ($thumbprint in [IO.File]::ReadAllLines($importedList)) {
+                if ($thumbprint -match '^[0-9A-Fa-f]{40}$') {
+                  Remove-Item -LiteralPath "Cert:\CurrentUser\My\$thumbprint" -Force -ErrorAction SilentlyContinue
+                }
+              }
+            }
+            throw
+          }
+          finally {
+            if (Test-Path -LiteralPath $pfxPath) { Remove-Item -LiteralPath $pfxPath -Force }
+          }
+
+      - name: Build Signed R25 e gates integrais
+        shell: cmd
+        run: >-
+          "%POWERSHELL_PATH%" -NoLogo -NoProfile -NonInteractive -File
+          "%GITHUB_WORKSPACE%\tools\Build-Production.ps1"
+          -CertificateThumbprint "%AUTHENTICODE_THUMBPRINT%"
+          -TimestampUrl "%TIMESTAMP_URL%"
+          -ReleaseTagSignerFingerprint "%RELEASE_TAG_SIGNER_FINGERPRINT%"
+          -ReleaseTagPrimaryKeyFingerprint "%RELEASE_TAG_PRIMARY_KEY_FINGERPRINT%"
+          -ReleaseTagPublicKeyPath "%RELEASE_TAG_PUBLIC_KEY_PATH%"
+          -ReleaseTagPublicKeySha256 "%RELEASE_TAG_PUBLIC_KEY_SHA256%"
+          -TimestampCertificateThumbprint "%TIMESTAMP_CERTIFICATE_THUMBPRINT%"
+          -AuthorityConfigurationPath "%SUITE_AUTHORITY_ENVELOPE_PATH%"
+          -AuthorityConfigurationSha256 "%SUITE_AUTHORITY_ENVELOPE_SHA256%"
+          -AuthorityIssuerSpkiPath "%SUITE_AUTHORITY_ISSUER_SPKI_PATH%"
+          -AuthorityIssuerSpkiSha256 "%SUITE_AUTHORITY_ISSUER_SPKI_SHA256%"
+          -ContentAuthorityConfigurationPath "%CONTENT_AUTHORITY_ENVELOPE_PATH%"
+          -ContentAuthorityConfigurationSha256 "%CONTENT_AUTHORITY_ENVELOPE_SHA256%"
+          -ContentAuthorityIssuerSpkiPath "%CONTENT_AUTHORITY_ISSUER_SPKI_PATH%"
+          -ContentAuthorityIssuerSpkiSha256 "%CONTENT_AUTHORITY_ISSUER_SPKI_SHA256%"
+          -OutputRoot "%GITHUB_WORKSPACE%\artifacts"
+          -DotNetPath "%DOTNET_PATH%"
+          -GitPath "%GIT_PATH%"
+          -GitSha256 "%GIT_SHA256%"
+          -GitTreeSha256 "%GIT_TREE_SHA256%"
+          -GpgSha256 "%GPG_SHA256%"
+          -DotNetSdkTreeSha256 "%DOTNET_SDK_TREE_SHA256%"
+          -SignToolSha256 "%SIGNTOOL_SHA256%"
+          -SignToolPath "%SIGNTOOL_PATH%"
+          -PowerShellSha256 "%POWERSHELL_SHA256%"
+          -PowerShellHomeTreeSha256 "%POWERSHELL_HOME_TREE_SHA256%"
+
+      - name: Montar assets finais e conferir manifesto
+        shell: pwsh
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+
+          $packages = @(Get-ChildItem -LiteralPath '.\artifacts' -Directory |
+            Where-Object Name -Like '*-SIGNED-RELEASE-CANDIDATE')
+          if ($packages.Count -ne 1) { throw 'Era esperado exatamente um pacote Signed aprovado.' }
+          $package = $packages[0].FullName
+          $manifest = Get-Content -LiteralPath (Join-Path $package 'RELEASE-MANIFEST.json') `
+            -Raw | ConvertFrom-Json
+          if ($manifest.unsigned -ne $false -or
+              $manifest.source.tag -cne $env:RELEASE_TAG -or
+              $manifest.source.commit -cne $env:GITHUB_SHA -or
+              -not $manifest.authenticode.signerThumbprint.Equals(
+                $env:AUTHENTICODE_THUMBPRINT, [StringComparison]::OrdinalIgnoreCase)) {
+            throw 'O manifesto Signed não corresponde à tag, commit ou certificado aprovados.'
+          }
+
+          $signature = Get-AuthenticodeSignature -LiteralPath (Join-Path $package 'Turborama.exe')
+          if ($signature.Status -ne 'Valid' -or $null -eq $signature.TimeStamperCertificate) {
+            throw 'A verificação final do Authenticode/timestamp falhou.'
+          }
+
+          $assetRoot = Join-Path $env:GITHUB_WORKSPACE 'release-assets'
+          New-Item -ItemType Directory -Path $assetRoot | Out-Null
+          $zipPath = Join-Path $assetRoot "Turborama-Suite-$env:RELEASE_TAG-win-x64-SIGNED.zip"
+          [IO.Compression.ZipFile]::CreateFromDirectory(
+            $package, $zipPath, [IO.Compression.CompressionLevel]::Optimal, $false)
+
+          foreach ($name in @(
+            'RELEASE-MANIFEST.json', 'Turborama.spdx.json',
+            'THIRD-PARTY-NOTICES.txt', 'DOTNET-THIRD-PARTY-NOTICES.txt')) {
+            Copy-Item -LiteralPath (Join-Path $package $name) -Destination (Join-Path $assetRoot $name)
+          }
+
+          $checksumName = "SHA256SUMS-$env:RELEASE_TAG.txt"
+          $checksumPath = Join-Path $assetRoot $checksumName
+          $lines = @(Get-ChildItem -LiteralPath $assetRoot -File |
+            Where-Object Name -ne $checksumName | Sort-Object Name | ForEach-Object {
+              $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+              "$hash *$($_.Name)"
+            })
+          [IO.File]::WriteAllText($checksumPath, (($lines -join "`n") + "`n"),
+            [Text.UTF8Encoding]::new($false))
+
+          @(
+            "RELEASE_ASSET_ROOT=$assetRoot"
+            "RELEASE_ZIP_PATH=$zipPath"
+          ) | Out-File -LiteralPath $env:GITHUB_ENV -Encoding utf8 -Append
+
+          "### Assets finais de $env:RELEASE_TAG" | Out-File $env:GITHUB_STEP_SUMMARY -Append
+          foreach ($file in Get-ChildItem -LiteralPath $assetRoot -File | Sort-Object Name) {
+            $hash = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash
+            "- ``$($file.Name)`` — SHA-256 ``$hash``" | Out-File $env:GITHUB_STEP_SUMMARY -Append
+          }
+
+      - name: Remover certificado Authenticode após os gates
+        shell: pwsh
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+          if (-not (Test-Path -LiteralPath $env:IMPORTED_CERTIFICATES_FILE)) {
+            throw 'Inventário de certificados temporários ausente.'
+          }
+          foreach ($thumbprint in [IO.File]::ReadAllLines($env:IMPORTED_CERTIFICATES_FILE)) {
+            if ($thumbprint -notmatch '^[0-9A-Fa-f]{40}$') {
+              throw 'Inventário de certificados temporários inválido.'
+            }
+            Remove-Item -LiteralPath "Cert:\CurrentUser\My\$thumbprint" -Force
+          }
+          if (Test-Path -LiteralPath "Cert:\CurrentUser\My\$env:AUTHENTICODE_THUMBPRINT") {
+            throw 'A chave Authenticode temporária permaneceu no store após os gates.'
+          }
+
+      - name: Transferir pacote aprovado para publicação
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: Turborama-final-${{ inputs.release_tag }}-${{ github.sha }}
+          path: release-assets/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 90
+
+      - name: Remover material temporário
+        if: always()
+        shell: pwsh
+        run: |
+          if (-not [string]::IsNullOrWhiteSpace($env:IMPORTED_CERTIFICATES_FILE) -and
+              (Test-Path -LiteralPath $env:IMPORTED_CERTIFICATES_FILE)) {
+            foreach ($thumbprint in [IO.File]::ReadAllLines($env:IMPORTED_CERTIFICATES_FILE)) {
+              if ($thumbprint -match '^[0-9A-Fa-f]{40}$') {
+                Remove-Item -LiteralPath "Cert:\CurrentUser\My\$thumbprint" `
+                  -Force -ErrorAction SilentlyContinue
+              }
+            }
+          }
+          if (-not [string]::IsNullOrWhiteSpace($env:RELEASE_INPUT_ROOT) -and
+              (Test-Path -LiteralPath $env:RELEASE_INPUT_ROOT)) {
+            Remove-Item -LiteralPath $env:RELEASE_INPUT_ROOT -Recurse -Force
+          }
+
+  publish_final:
+    name: Atestar e publicar release estável
+    needs: build_signed
+    runs-on: windows-2025
+    timeout-minutes: 120
+    environment: production-release
+    permissions:
+      actions: read
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - name: Checkout das notas no commit aprovado
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+          clean: true
+
+      - name: Baixar pacote aprovado pelo job Signed
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: Turborama-final-${{ inputs.release_tag }}-${{ github.sha }}
+          path: release-assets
+
+      - name: Revalidar bytes recebidos e Authenticode
+        shell: pwsh
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+          $assetRoot = Join-Path $env:GITHUB_WORKSPACE 'release-assets'
+          $zipName = "Turborama-Suite-$env:RELEASE_TAG-win-x64-SIGNED.zip"
+          $checksumName = "SHA256SUMS-$env:RELEASE_TAG.txt"
+          $expectedNames = @(
+            'DOTNET-THIRD-PARTY-NOTICES.txt',
+            'RELEASE-MANIFEST.json',
+            $checksumName,
+            'THIRD-PARTY-NOTICES.txt',
+            $zipName,
+            'Turborama.spdx.json'
+          ) | Sort-Object
+          $files = @(Get-ChildItem -LiteralPath $assetRoot -File)
+          $actualNames = @($files.Name | Sort-Object)
+          if (($actualNames -join "`n") -cne ($expectedNames -join "`n")) {
+            throw 'O conjunto de assets transferido não é o conjunto final aprovado.'
+          }
+
+          $checksumPath = Join-Path $assetRoot $checksumName
+          $lines = @([IO.File]::ReadAllLines($checksumPath) | Where-Object Length -gt 0)
+          if ($lines.Count -ne 5) { throw 'O arquivo SHA256SUMS precisa listar os cinco assets de conteúdo.' }
+          $listedNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+          foreach ($line in $lines) {
+            if ($line -notmatch '^(?<hash>[0-9a-f]{64}) \*(?<name>[^\\/]+)$') {
+              throw 'Linha inválida em SHA256SUMS.'
+            }
+            $name = $Matches.name
+            if ($name -ceq $checksumName -or -not $listedNames.Add($name)) {
+              throw 'SHA256SUMS contém nome repetido ou autorreferência.'
+            }
+            $path = Join-Path $assetRoot $name
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+              throw "Asset listado está ausente: $name."
+            }
+            $actualHash = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
+            if (-not $actualHash.Equals($Matches.hash, [StringComparison]::OrdinalIgnoreCase)) {
+              throw "SHA-256 divergente para $name."
+            }
+          }
+
+          $manifestPath = Join-Path $assetRoot 'RELEASE-MANIFEST.json'
+          $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+          if ($manifest.unsigned -ne $false -or
+              $manifest.source.branch -cne 'main' -or
+              $manifest.source.tag -cne $env:RELEASE_TAG -or
+              $manifest.source.commit -cne $env:GITHUB_SHA -or
+              $manifest.authenticode.status -cne 'Valid' -or
+              [string]::IsNullOrWhiteSpace([string]$manifest.authenticode.signerThumbprint) -or
+              [string]::IsNullOrWhiteSpace([string]$manifest.authenticode.timestampThumbprint) -or
+              $null -eq $manifest.authority -or
+              $null -eq $manifest.contentAuthority) {
+            throw 'O manifesto recebido não representa o pacote Signed final.'
+          }
+
+          $extractRoot = Join-Path $env:RUNNER_TEMP ('turborama-verify-' + [Guid]::NewGuid().ToString('N'))
+          [IO.Compression.ZipFile]::ExtractToDirectory((Join-Path $assetRoot $zipName), $extractRoot)
+          $exePath = Join-Path $extractRoot 'Turborama.exe'
+          $signature = Get-AuthenticodeSignature -LiteralPath $exePath
+          if ($signature.Status -ne 'Valid' -or
+              $null -eq $signature.SignerCertificate -or
+              $null -eq $signature.TimeStamperCertificate -or
+              -not $signature.SignerCertificate.Thumbprint.Equals(
+                [string]$manifest.authenticode.signerThumbprint,
+                [StringComparison]::OrdinalIgnoreCase) -or
+              -not $signature.TimeStamperCertificate.Thumbprint.Equals(
+                [string]$manifest.authenticode.timestampThumbprint,
+                [StringComparison]::OrdinalIgnoreCase)) {
+            throw 'O executável extraído perdeu Authenticode ou timestamp válido.'
+          }
+          foreach ($name in @(
+            'RELEASE-MANIFEST.json', 'Turborama.spdx.json',
+            'THIRD-PARTY-NOTICES.txt', 'DOTNET-THIRD-PARTY-NOTICES.txt')) {
+            $insideHash = (Get-FileHash -LiteralPath (Join-Path $extractRoot $name) -Algorithm SHA256).Hash
+            $outsideHash = (Get-FileHash -LiteralPath (Join-Path $assetRoot $name) -Algorithm SHA256).Hash
+            if ($insideHash -cne $outsideHash) { throw "Metadado externo diverge do ZIP: $name." }
+          }
+          Remove-Item -LiteralPath $extractRoot -Recurse -Force
+
+      - name: Atestar proveniência de todos os assets
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        with:
+          subject-path: "${{ github.workspace }}/release-assets/*"
+          show-summary: true
+
+      - name: Atestar SBOM do pacote ZIP
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        with:
+          subject-path: "${{ github.workspace }}/release-assets/Turborama-Suite-${{ inputs.release_tag }}-win-x64-SIGNED.zip"
+          sbom-path: "${{ github.workspace }}/release-assets/Turborama.spdx.json"
+          show-summary: true
+
+      - name: Verificar atestações antes da publicação
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+          foreach ($file in Get-ChildItem -LiteralPath '.\release-assets' -File) {
+            gh attestation verify $file.FullName --repo $env:GITHUB_REPOSITORY
+            if ($LASTEXITCODE -ne 0) { throw "Atestação inválida para $($file.Name)." }
+          }
+
+      - name: Criar e validar draft privado da release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+          $assetRoot = Join-Path $env:GITHUB_WORKSPACE 'release-assets'
+          $assets = @(Get-ChildItem -LiteralPath $assetRoot -File | Sort-Object Name)
+          if ($assets.Count -ne 6) { throw 'A release final exige exatamente seis assets.' }
+
+          $tagObject = (git rev-parse "refs/tags/$env:RELEASE_TAG").Trim()
+          $tagType = (git cat-file -t $tagObject).Trim()
+          $tagCommit = (git rev-parse "refs/tags/$env:RELEASE_TAG^{}").Trim()
+          if ($tagType -cne 'tag' -or
+              $tagObject -cne '${{ needs.build_signed.outputs.release_tag_object }}' -or
+              $tagCommit -cne $env:GITHUB_SHA) {
+            throw 'A identidade local da tag mudou após o build Signed.'
+          }
+          $remoteLines = @(git ls-remote --tags origin `
+            "refs/tags/$env:RELEASE_TAG" "refs/tags/$env:RELEASE_TAG^{}")
+          $expectedRemote = @(
+            "$tagObject`trefs/tags/$env:RELEASE_TAG",
+            "$env:GITHUB_SHA`trefs/tags/$env:RELEASE_TAG^{}"
+          ) | Sort-Object
+          $actualRemote = (($remoteLines | Sort-Object) -join "`n")
+          if ($actualRemote -cne ($expectedRemote -join "`n")) {
+            throw 'A tag remota mudou ou não aponta para o commit aprovado.'
+          }
+
+          gh release create $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY `
+            --verify-tag --draft --title "Turborama Suite $env:RELEASE_TAG R25" `
+            --notes-file '.\docs\RELEASE-NOTES-v2.0.0.md'
+          if ($LASTEXITCODE -ne 0) { throw 'Não foi possível criar o draft da release.' }
+          $uploadArguments = @(
+            'release', 'upload', $env:RELEASE_TAG,
+            '--repo', $env:GITHUB_REPOSITORY
+          ) + @($assets.FullName)
+          & gh @uploadArguments
+          if ($LASTEXITCODE -ne 0) { throw 'Upload dos assets para o draft falhou.' }
+
+          $draft = gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$env:RELEASE_TAG" |
+            ConvertFrom-Json
+          if ($draft.tag_name -cne $env:RELEASE_TAG -or
+              $draft.draft -ne $true -or $draft.prerelease -ne $false -or
+              @($draft.assets).Count -ne 6) {
+            throw 'O draft não corresponde à release final esperada.'
+          }
+          foreach ($file in $assets) {
+            $remote = @($draft.assets | Where-Object name -CEQ $file.Name)
+            if ($remote.Count -ne 1 -or [long]$remote[0].size -ne $file.Length) {
+              throw "Nome/tamanho remoto divergente para $($file.Name)."
+            }
+            $expectedDigest = 'sha256:' + (Get-FileHash -LiteralPath $file.FullName `
+              -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ([string]::IsNullOrWhiteSpace([string]$remote[0].digest) -or
+                [string]$remote[0].digest -cne $expectedDigest) {
+              throw "Digest remoto divergente para $($file.Name)."
+            }
+          }
+
+      - name: Promover para release estável e Latest
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+          $tagObject = (git rev-parse "refs/tags/$env:RELEASE_TAG").Trim()
+          $tagCommit = (git rev-parse "refs/tags/$env:RELEASE_TAG^{}").Trim()
+          $remoteLines = @(git ls-remote --tags origin `
+            "refs/tags/$env:RELEASE_TAG" "refs/tags/$env:RELEASE_TAG^{}")
+          $expectedRemote = @(
+            "$tagObject`trefs/tags/$env:RELEASE_TAG",
+            "$env:GITHUB_SHA`trefs/tags/$env:RELEASE_TAG^{}"
+          ) | Sort-Object
+          $actualRemote = (($remoteLines | Sort-Object) -join "`n")
+          if ($tagObject -cne '${{ needs.build_signed.outputs.release_tag_object }}' -or
+              $tagCommit -cne $env:GITHUB_SHA -or
+              $actualRemote -cne ($expectedRemote -join "`n")) {
+            throw 'A tag final mudou durante a aprovação/publicação.'
+          }
+          gh release edit $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY `
+            --verify-tag --draft=false --prerelease=false --latest
+          if ($LASTEXITCODE -ne 0) { throw 'A promoção do draft para release estável falhou.' }
+
+          $release = gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$env:RELEASE_TAG" |
+            ConvertFrom-Json
+          if ($release.tag_name -cne $env:RELEASE_TAG -or
+              $release.draft -ne $false -or $release.prerelease -ne $false -or
+              @($release.assets).Count -ne 6) {
+            throw 'A release publicada não ficou integral e estável.'
+          }
+          "### Release final publicada" | Out-File $env:GITHUB_STEP_SUMMARY -Append
+          "- $($release.html_url)" | Out-File $env:GITHUB_STEP_SUMMARY -Append
