@@ -58,6 +58,12 @@ internal static class EmbeddedMusicLibrary
         Array.AsReadOnly<EmbeddedMusicTrack>(
     [
         new(
+            "Aperta Start",
+            "Aperta Start.mp3",
+            "Turborama.Music.ApertaStart.mp3",
+            4_601_143,
+            "dc034cc88e8e567fe553ee5829f45ceb9bd353e1a1d4f278ae20b87cfe45311a"),
+        new(
             "Turborama - Faixa 01",
             "Turborama - Faixa 01.mp3",
             "Turborama.Music.Track01.mp3",
@@ -104,16 +110,20 @@ internal static class EmbeddedMusicLibrary
             "Turborama - Faixa 08.mp3",
             "Turborama.Music.Track08.mp3",
             4_963_886,
-            "a3de2a48c6622d2786afc77c53bbcc75c774ded68c7c4260b73d540fa789c4e7"),
-        new(
-            "Aperta Start",
-            "Aperta Start.mp3",
-            "Turborama.Music.ApertaStart.mp3",
-            4_601_143,
-            "dc034cc88e8e567fe553ee5829f45ceb9bd353e1a1d4f278ae20b87cfe45311a")
+            "a3de2a48c6622d2786afc77c53bbcc75c774ded68c7c4260b73d540fa789c4e7")
     ]);
 
     internal static IReadOnlyList<EmbeddedMusicTrack> Tracks => BuiltInTracks;
+
+    // Playlist order stays stable; only the opening track is drawn.
+    // Aperta Start is track zero: 40%; each other track shares the remaining 60%.
+    internal static int SelectStartupIndex(int trackCount, Random? random = null)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(trackCount, 1);
+        if (trackCount == 1) return 0;
+        random ??= Random.Shared;
+        return random.Next(100) < 40 ? 0 : 1 + random.Next(trackCount - 1);
+    }
 
     internal static IReadOnlyList<string> PreparePlaylist(CancellationToken cancellationToken)
     {

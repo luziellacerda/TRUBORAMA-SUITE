@@ -2,6 +2,8 @@
 
 Data de consolidação: 03/09/2026.
 
+> Registro histórico R25. Para a linha 2.0.2, use o [handoff atual passo a passo](HANDOFF-CONSTRUCAO-HUMANO-V2.0.2-20260905.md). Desde a correção 2.0.1, os quatro arquivos públicos estão em authority/public e são obrigatórios também no build sem Authenticode. A playlist atual possui nove faixas.
+
 Este é o procedimento operacional único para obter, validar, compilar e publicar o cliente Windows Turborama Suite 2.0.0. A branch `main` é a fonte canônica. Depois da promoção desta R25, nenhuma branch `codex/*` é necessária para reconstruir o programa.
 
 Este documento separa três estados que não devem ser confundidos:
@@ -56,7 +58,7 @@ O `Turborama.exe` autocontido ultrapassa o limite normal de arquivo individual d
 
 ## 3. Entradas públicas externas do modo Signed
 
-O staging unsigned não exige autoridades de produção. A release Signed exige cinco entradas públicas, aprovadas fora do computador de assinatura:
+Correção posterior: staging unsigned e Signed exigem as quatro entradas públicas de autoridade e seus hashes. Signed exige também a chave pública GPG, com aprovação independente:
 
 1. envelope JSON assinado da autoridade de licença Suite;
 2. SPKI pública offline que verifica esse envelope;
@@ -64,9 +66,9 @@ O staging unsigned não exige autoridades de produção. A release Signed exige 
 4. SPKI pública offline que verifica o envelope de conteúdo;
 5. chave pública GPG que verifica a tag da release.
 
-Esses arquivos não contêm chaves privadas, mas permanecem externos ao repositório porque sua aprovação por canal independente faz parte da cadeia de confiança. O operador deve receber também o SHA-256 exato de cada arquivo por um segundo canal. Nunca use como aprovação o hash calculado apenas no mesmo host que fará a assinatura.
+Os quatro arquivos públicos de autoridade estão versionados desde a 2.0.1; os hashes aprovados estão fixos no workflow. A chave GPG e os requisitos de aprovação do modo Signed continuam separados. Nenhuma chave privada pertence ao repositório. Nunca substituir a aprovação de uma rotação por um hash calculado apenas para fazer o build passar.
 
-As autoridades são incorporadas ao assembly no build Signed. Os quatro JSONs/manifests internos usados pela interface para descrições e vídeos também são `EmbeddedResource`; eles não são publicados como arquivos externos mutáveis.
+As autoridades são incorporadas ao assembly nos dois modos pelo pipeline atual. Os JSONs/manifests internos usados pela interface para descrições e vídeos também são `EmbeddedResource`; eles não são publicados como arquivos externos mutáveis.
 
 ## 4. Requisitos do computador de build
 

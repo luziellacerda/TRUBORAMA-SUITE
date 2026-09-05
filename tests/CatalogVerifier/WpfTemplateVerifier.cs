@@ -4146,9 +4146,11 @@ internal static class WpfTemplateVerifier
                 || !isPlaying
                 || activeLease is null
                 || player is null
-                || trackIndex != 0
+                || !trackIndex.HasValue
+                || trackIndex.Value < 0
+                || trackIndex.Value >= tracks.Count
                 || string.IsNullOrWhiteSpace(openedPath)
-                || !openedPath.Equals(tracks[0], StringComparison.OrdinalIgnoreCase))
+                || !openedPath.Equals(tracks[trackIndex.Value], StringComparison.OrdinalIgnoreCase))
                 return;
             var expectedNames = EmbeddedMusicLibrary.Tracks.Select(track => track.FileName);
             if (!tracks.Select(Path.GetFileName).SequenceEqual(

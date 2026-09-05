@@ -1175,7 +1175,9 @@ public partial class StoreWindow : Window, INotifyPropertyChanged
         _musicTracks.Clear();
         _musicTracks.AddRange(tracks);
         _isBuiltInMusicPlaylist = isBuiltInPlaylist;
-        _musicTrackIndex = 0;
+        _musicTrackIndex = isBuiltInPlaylist
+            ? EmbeddedMusicLibrary.SelectStartupIndex(_musicTracks.Count)
+            : 0;
         _openedMusicTrackPath = string.Empty;
         _isMusicPlaying = false;
         _consecutiveMusicFailures = 0;

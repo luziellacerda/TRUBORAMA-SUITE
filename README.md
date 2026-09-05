@@ -10,6 +10,16 @@ O procedimento único, desde um clone limpo até staging, candidato assinado, ac
 
 “Fonte homologada” e “pacote comercial assinado” são estados distintos. Artefatos gerados, caches e chaves privadas não pertencem ao Git; o EXE distribuível deve ser produzido pelo pipeline Signed e identificado pelo manifesto e SHA-256.
 
+## Construção atual — 2.0.2
+
+Comece pelo [handoff humano completo de construção e manutenção](docs/HANDOFF-CONSTRUCAO-HUMANO-V2.0.2-20260905.md).
+Ele explica os arquivos, a arquitetura, o histórico de erros/correções, a construção no GitHub e no Windows, as autoridades públicas, o pacote e o aceite humano.
+
+A evolução está em `codex/v2.0.2-music-cleanup-final`, baseada na 2.0.1 com autoridades.
+Inclui 104 destaques em nove plataformas ([pesquisa e sequência](docs/ORDEM-POPULARIDADE-20260905.md)) e Aperta Start como primeira faixa, com 40% de chance na abertura; as outras oito dividem 60%.
+O workflow **Build and verify** incorpora as duas autoridades mesmo no modo sem Authenticode.
+Os documentos R25 abaixo registram o estado histórico de 03/09; instruções antigas de staging sem autoridade não se aplicam.
+
 ## Documentação mestre R25
 
 A arquitetura completa do cliente, servidor, páginas, banco, licenciamento, catálogo, downloads, build, implantação, testes, segurança e estado comprovado em 03/09/2026 está em [docs/TURBORAMA-SUITE-R25-DOCUMENTACAO-MESTRA-PONTA-A-PONTA-20260903.md](docs/TURBORAMA-SUITE-R25-DOCUMENTACAO-MESTRA-PONTA-A-PONTA-20260903.md).
@@ -54,7 +64,9 @@ As versões ficam fixadas por lock file. O `NuGet.Config` exige fonte HTTPS, map
 O comando consolidado executa o gate de origem, restauração em modo locked, build Release, verificadores, publicação autocontida, SBOM, manifesto SHA-256 e gate do pacote:
 
 ```powershell
-pwsh -File .\tools\Build-Production.ps1 -UnsignedStaging -AllowDirty
+# Use o comando completo com os quatro arquivos públicos e quatro hashes:
+# docs/HANDOFF-CONSTRUCAO-HUMANO-V2.0.2-20260905.md, seção 19.
+# Alternativa: Actions > Build and verify > Run workflow na branch correta.
 ```
 
 `-AllowDirty` só é aceito nesse modo local. O resultado recebe o sufixo `UNSIGNED-NOT-FOR-DISTRIBUTION` e não pode ser entregue a clientes.

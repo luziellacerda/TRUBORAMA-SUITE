@@ -162,6 +162,7 @@ if (args is ["--verify-archive-extraction"])
 
 if (args is ["--verify-music"])
 {
+    MusicStartupVerifier.Run();
     var tracks = EmbeddedMusicLibrary.PreparePlaylist(CancellationToken.None);
     Assert(tracks.Count == 9, "A playlist interna deve possuir nove faixas.");
     var newTrack = tracks.Single(path => Path.GetFileName(path).Equals("Aperta Start.mp3", StringComparison.Ordinal));
@@ -178,6 +179,8 @@ if (args.Length != 1)
 
 var manifestPath = Path.GetFullPath(args[0]);
 var repository = CatalogRepository.Load(manifestPath);
+CatalogPopularityVerifier.Run(repository);
+MusicStartupVerifier.Run();
 Assert(repository.Categories.Count == 22, "O catálogo deve ter 22 categorias.");
 Assert(repository.ItemCount == 902, "O catálogo deve materializar 902 itens explícitos.");
 AssertReadOnlyList(repository.Categories, "As categorias não podem expor um array mutável.");

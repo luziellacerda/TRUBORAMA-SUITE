@@ -230,7 +230,8 @@ public sealed class CatalogRepository
             .Where(item => normalizedSearch.Length == 0
                            || Normalize($"{item.Title} {item.Subtitle} {item.Category} {item.Keywords} {item.Version} {item.Size}")
                                .Contains(normalizedSearch, StringComparison.Ordinal))
-            .OrderBy(item => item.Order)
+            .OrderBy(CatalogPopularityOrder.GetRank)
+            .ThenBy(item => item.Order)
             .ThenBy(item => item.Title, StringComparer.CurrentCultureIgnoreCase)
             .ToArray();
 
