@@ -299,6 +299,8 @@ internal static class CatalogGamePackageOrganizer
         var receiptRoot = Path.Combine(root, ReceiptFolderName);
         if (!Directory.Exists(receiptRoot)) Directory.CreateDirectory(receiptRoot);
         RejectReparsePoint(receiptRoot, "A pasta de comprovantes");
+        if (OperatingSystem.IsWindows())
+            File.SetAttributes(receiptRoot, File.GetAttributes(receiptRoot) | FileAttributes.Hidden);
         var markerDirectory = BuildMarkerDirectory(root, Path.GetFileName(extracted));
         var pendingMarkerDirectory = Path.Combine(
             receiptRoot,
@@ -490,6 +492,7 @@ internal static class CatalogGamePackageOrganizer
         if (!normalized.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) return null;
         var mapped = normalized[prefix.Length..];
         if (mapped.Length == 0
+            || CatalogPackageMediaPolicy.IsImagesPath(mapped)
             || mapped.Split('/', StringSplitOptions.RemoveEmptyEntries)
                 .Any(segment => segment.Equals("videos", StringComparison.OrdinalIgnoreCase)))
             return null;

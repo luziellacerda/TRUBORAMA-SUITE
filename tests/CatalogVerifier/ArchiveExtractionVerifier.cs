@@ -13,6 +13,7 @@ internal static class ArchiveExtractionVerifier
         VerifyRecognizedArchiveOverride();
         await VerifySuccessfulZipAsync(root);
         await VerifySamboxTextCleanupAsync(root);
+        await VerifyImagesAreDiscardedWithRecoveryAsync(root);
         await VerifyGamePackageLayoutIsOrganizedAsync(root);
         await VerifyGamePackageCollisionIsPreservedAsync(root);
         await VerifyPartialGamePackageOrganizationRetryAsync(root);
@@ -113,6 +114,38 @@ whatsapp: (21) 99795-8935
             "O arquivo do jogo foi alterado pela limpeza de documentos.");
     }
 
+    private static async Task VerifyImagesAreDiscardedWithRecoveryAsync(string root)
+    {
+        var archivePath = Path.Combine(root, "discard-images.zip");
+        using (var archive = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+        {
+            CreateEntry(archive, "images/poster.jpg", "POSTER");
+            CreateEntry(archive, "roms/xboxone/IMAGES/nested/cover.png", "COVER");
+            CreateEntry(archive, "roms/xboxone/images/leia-me.txt", "Sambox");
+            _ = archive.CreateEntry("images/empty/");
+            CreateEntry(archive, "game/data.bin", "GAME");
+            CreateEntry(archive, "game/texture.png", "TEXTURE");
+            CreateEntry(archive, "images-backup/keep.bin", "KEEP");
+        }
+        var destinationBase = Path.Combine(root, "discard-images-base");
+        Directory.CreateDirectory(destinationBase);
+        var extractor = new CatalogArchiveExtractor();
+        var extracted = await extractor.ExtractAsync(
+            archivePath, destinationBase, "Windows", "Media cleanup", itemId: "discard-images");
+        Check(extracted.Succeeded, extracted.Message);
+        Check(!Directory.EnumerateDirectories(extracted.DestinationPath, "*", SearchOption.AllDirectories)
+            .Any(path => Path.GetFileName(path).Equals("images", StringComparison.OrdinalIgnoreCase)),
+            "Diretórios images, inclusive aninhados e vazios, não devem ser publicados.");
+        Check(File.Exists(Path.Combine(extracted.DestinationPath, "game", "data.bin"))
+              && File.Exists(Path.Combine(extracted.DestinationPath, "game", "texture.png"))
+              && File.Exists(Path.Combine(extracted.DestinationPath, "images-backup", "keep.bin")),
+            "A limpeza não deve remover arquivos fora das pastas com o nome exato images.");
+        var recovered = await extractor.ExtractAsync(
+            archivePath, destinationBase, "Windows", "Media cleanup", itemId: "discard-images");
+        Check(recovered.Succeeded && recovered.Message.Contains("recuperada", StringComparison.OrdinalIgnoreCase),
+            "A recuperação autenticada precisa usar a mesma regra de descarte do inventário.");
+    }
+
     private static async Task VerifyGamePackageLayoutIsOrganizedAsync(string root)
     {
         var archivePath = Path.Combine(root, "organized-layout.zip");
@@ -148,9 +181,10 @@ whatsapp: (21) 99795-8935
                   Path.GetFullPath(gameLibrary),
                   StringComparison.OrdinalIgnoreCase),
             "O pacote organizado não apontou para a raiz TruboRoms\\roms.");
-        Check(File.Exists(Path.Combine(gameLibrary, "xboxone", "images", "game.jpg"))
-              && File.Exists(Path.Combine(gameLibrary, "xboxinstallers", "Game", "Game.exe")),
+        Check(File.Exists(Path.Combine(gameLibrary, "xboxinstallers", "Game", "Game.exe")),
             "Os arquivos úteis não foram publicados diretamente na pasta de ROMs.");
+        Check(!Directory.Exists(Path.Combine(gameLibrary, "xboxone", "images")),
+            "A pasta images do pacote deveria ter sido descartada.");
         Check(!Directory.Exists(Path.Combine(gameLibrary, "xboxone", "videos")),
             "A pasta videos do pacote deveria ter sido excluída.");
         Check(!Directory.Exists(extracted.DestinationPath)

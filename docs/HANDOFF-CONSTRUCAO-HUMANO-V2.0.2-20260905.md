@@ -380,6 +380,18 @@ Depois de reinstalar e atualizar a análise, o jogo volta a aparecer.
 
 ## 15. Tratamento de TXT e remoção de videos
 
+Atualização solicitada em 05/09: pastas com o nome exato images, em qualquer nível do pacote, também são descartadas em todas as extrações ZIP/RAR/7z do cliente.
+A comparação ignora maiúsculas/minúsculas. images-backup e arquivos PNG/JPG fora dessas pastas não são removidos.
+O extrator lê e valida os bytes descartados, mas não os publica no destino nem no inventário final.
+A recuperação autenticada usa a mesma regra; limites, hash do compactado e cancelamento permanecem.
+Essa regra aplica-se somente ao conteúdo do pacote, nunca aos Assets do Turborama.
+Se um pacote tiver recursos indispensáveis dentro de uma pasta images, o fornecedor deve adequar sua estrutura: a regra pedida remove essa pasta independentemente do tipo dos arquivos.
+Os novos diretórios de comprovantes .turborama-installed são ocultos no Windows, mas não apagados.
+
+Na conferência específica de H:/TruboRoms/roms, .staging e Xbox One estavam vazias; artifacts guardava uma atestação residual.
+xboxone/Cuphead.bat apontava para xboxonexboxseriesxinstallars/Cuphead; essas duas pastas são relacionadas e não devem ser renomeadas ou mescladas arbitrariamente.
+A remoção das 125 imagens auxiliares desse pacote exige retirar somente suas entradas do comprovante local, preservando o restante.
+
 CatalogPackageTextSanitizer inspeciona somente .txt até 4 MiB.
 Binários e textos sem padrões reconhecidos são preservados.
 
@@ -790,4 +802,3 @@ A conclusão deve separar:
 
 Um operador novo deve começar pela referência Git correta, construir pelo workflow, conferir o manifesto e executar o aceite.
 Ele não deve precisar refazer a conversa nem reconstruir arquivos de branches antigas.
-

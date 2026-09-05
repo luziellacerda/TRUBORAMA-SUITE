@@ -304,6 +304,8 @@ public sealed class CatalogArchiveExtractor
 
                 if (plan.Entry.IsDirectory)
                 {
+                    if (CatalogPackageMediaPolicy.IsImagesPath(plan.RelativePath, isDirectory: true))
+                        continue;
                     _ = destinationTree.EnsureDirectory(outputPath);
                     continue;
                 }
@@ -312,6 +314,20 @@ public sealed class CatalogArchiveExtractor
                     || plan.Entry.CompressedSize != plan.DeclaredCompressedSize)
                     throw new InvalidDataException(
                         $"Os metadados da entrada '{plan.Entry.Key}' mudaram após o planejamento.");
+
+                if (CatalogPackageMediaPolicy.IsImagesPath(plan.RelativePath))
+                {
+                    // Read and validate the entire entry, but do not publish discarded media.
+                    // Byte counts, limits, cancellation and the authenticated archive remain checked.
+                    await using var discardedInput = await plan.Entry.OpenEntryStreamAsync(operationToken);
+                    var discardedBytes = await CopyEntryAsync(
+                        discardedInput, Stream.Null, plan.DeclaredSize,
+                        _options.MaximumEntryUncompressedBytes, _options.CopyBufferSize,
+                        deadline, static _ => { }, operationToken);
+                    extractedBytes = checked(extractedBytes + discardedBytes);
+                    extractedFileCount++;
+                    continue;
+                }
 
                 if (CatalogPackageTextSanitizer.ShouldInspect(plan.RelativePath, plan.DeclaredSize))
                 {
@@ -1313,7 +1329,8 @@ public sealed class CatalogArchiveExtractor
                     throw new InvalidDataException(
                         $"Os metadados da entrada '{plan.Entry.Key}' mudaram durante a recuperação.");
 
-                if (CatalogPackageTextSanitizer.ShouldInspect(plan.RelativePath, plan.DeclaredSize))
+                if (!CatalogPackageMediaPolicy.IsImagesPath(plan.RelativePath)
+                    && CatalogPackageTextSanitizer.ShouldInspect(plan.RelativePath, plan.DeclaredSize))
                 {
                     await using var textInput = await plan.Entry.OpenEntryStreamAsync(cancellationToken);
                     var sourceBytes = new byte[checked((int)plan.DeclaredSize)];
@@ -1377,10 +1394,11 @@ public sealed class CatalogArchiveExtractor
                 var hashBytes = hasher.GetHashAndReset();
                 try
                 {
-                    inventory.Add(new ExtractionInventoryEntry(
-                        plan.RelativePath.Replace(Path.DirectorySeparatorChar, '/'),
-                        entryBytes,
-                        Convert.ToHexString(hashBytes).ToLowerInvariant()));
+                    if (!CatalogPackageMediaPolicy.IsImagesPath(plan.RelativePath))
+                        inventory.Add(new ExtractionInventoryEntry(
+                            plan.RelativePath.Replace(Path.DirectorySeparatorChar, '/'),
+                            entryBytes,
+                            Convert.ToHexString(hashBytes).ToLowerInvariant()));
                 }
                 finally
                 {
